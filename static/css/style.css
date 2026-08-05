@@ -1,0 +1,114 @@
+/* ── PTA Mairie d'Adja-Ouèrè ───────────────────────────────────────────── */
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f4f6f9;
+}
+
+/* Sidebar */
+#sidebar {
+  min-width: 220px;
+  max-width: 220px;
+  min-height: 100vh;
+  transition: min-width .25s ease, max-width .25s ease;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+#sidebar.sidebar-collapsed {
+  min-width: 0;
+  max-width: 0;
+}
+
+#sidebar .nav-link:hover {
+  background-color: rgba(255,255,255,0.1);
+  border-radius: 6px;
+  margin: 0 4px;
+}
+
+#sidebar .active-link {
+  background-color: #0d6efd !important;
+  border-radius: 6px;
+  margin: 0 4px;
+}
+
+/* Topbar */
+.navbar {
+  min-height: 52px;
+}
+
+/* Cartes */
+.card {
+  border-radius: 12px;
+}
+
+.card-header {
+  border-radius: 12px 12px 0 0 !important;
+}
+
+/* Tables PTA */
+.table th {
+  font-size: .8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.table td {
+  vertical-align: middle;
+  font-size: .83rem;
+}
+
+/* Badges personnalisés */
+.badge {
+  font-weight: 500;
+}
+
+/* Barre de progression */
+.progress {
+  background-color: rgba(255,255,255,0.3);
+}
+
+/* Boutons très petits */
+.btn-xs {
+  font-size: .72rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+/* Impression */
+@media print {
+  #sidebar, .navbar, .btn, .modal, .alert-dismissible .btn-close,
+  button[data-bs-toggle], form[onsubmit] button { display: none !important; }
+  .card { box-shadow: none !important; border: 1px solid #ccc !important; }
+  body { background: white; }
+  .collapse { display: block !important; }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  #sidebar { min-width: 60px !important; max-width: 60px !important; }
+  #sidebar .nav-link span, #sidebar .fw-bold, #sidebar .text-muted { display: none; }
+}
+
+/* Ancres URL : décalage pour la barre d'en-tête collante */
+tr[id^="row-"], div[id^="row-"] { scroll-margin-top: 140px; }
+
+/* Flash de localisation après une action */
+@keyframes goto-cell-flash {
+  0%, 40% { box-shadow: inset 0 0 0 9999px rgba(13,202,240,0.40); }
+  100%     { box-shadow: none; }
+}
+@keyframes goto-card-flash {
+  0%, 40% { outline: 3px solid #0dcaf0; background-color: rgba(13,202,240,0.25); }
+  100%     { outline: none; background-color: transparent; }
+}
+/* Lignes de tableau : cibler les cellules pour contourner border-collapse */
+tr.goto-highlight > td,
+tr.goto-highlight > th { animation: goto-cell-flash 2.5s ease-out forwards; }
+/* Cartes et divs (bibliothèque) */
+div.goto-highlight { animation: goto-card-flash 2.5s ease-out forwards; }
+
+/* Taux couleurs */
+.taux-haut { color: #198754; font-weight: bold; }
+.taux-moyen { color: #fd7e14; font-weight: bold; }
+.taux-bas { color: #dc3545; font-weight: bold; }

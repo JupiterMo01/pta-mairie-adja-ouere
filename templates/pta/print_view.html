@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>PTA {{ annee.annee }} — Mairie d'Adja-Ouèrè</title>
+  <style>
+    @page {
+      size: A4 landscape;
+      margin: 1.8cm 1cm 2.2cm 1cm;
+      @bottom-left  { content: "Mairie d'Adja-Ouèrè — PTA {{ annee.annee }}"; font-size:7pt; color:#555; font-weight:bold; }
+      @bottom-center{ content: ""; }
+      @bottom-right { content: "Page " counter(page) " / " counter(pages); font-size:7pt; color:#555; font-weight:bold; }
+    }
+    * {
+      box-sizing:border-box; margin:0; padding:0;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    body { font-family:Arial,Helvetica,sans-serif; font-size:7.5pt; color:#000; background:#fff; }
+
+    .screen-bar {
+      background:#1a1a2e; color:#fff; padding:10px 20px;
+      display:flex; align-items:center; gap:12px;
+    }
+    .screen-bar span { font-size:14px; font-weight:bold; flex:1; }
+    .screen-bar button {
+      padding:7px 18px; border:none; border-radius:4px;
+      cursor:pointer; font-size:13px; font-weight:bold;
+    }
+    .btn-p { background:#28a745; color:#fff; }
+    .btn-c { background:#6c757d; color:#fff; }
+    @media print { .screen-bar { display:none !important; } }
+
+    .entete {
+      display:flex; justify-content:space-between; align-items:center;
+      margin-bottom:6px; border-bottom:2px solid #333; padding-bottom:6px;
+    }
+    .entete img { height:72px; width:auto; }
+    .entete-gauche { width:38%; }
+    .entete-gauche img { height:72px; width:auto; }
+    .entete-centre { text-align:center; width:24%; font-size:7.5pt; line-height:2.0; }
+    .entete-droite { text-align:right; width:38%; }
+    .titre-pta {
+      text-align:center; margin:7px 0 5px 0;
+      border:2.5px solid #1F4E79; border-radius:4px;
+      padding:6px 0; background:#EBF5FB;
+    }
+    .titre-pta-h1 { font-size:14pt; font-weight:bold; letter-spacing:2px; text-transform:uppercase; }
+    .titre-pta-h2 { font-size:10pt; font-weight:bold; color:#1a5276; margin-top:3px; }
+    .obj-gen {
+      border:1px solid #888; border-radius:3px; padding:4px 8px;
+      margin-bottom:6px; font-size:7.5pt; background:#f8f9fa; font-weight:bold;
+    }
+
+    table { width:100%; border-collapse:collapse; font-size:6.8pt; table-layout:fixed; }
+    col.c-code  { width:4.5%; }
+    col.c-nom   { width:20%; }
+    col.c-imp   { width:5%; }
+    col.c-rp    { width:5.5%; }
+    col.c-fa    { width:5%; }
+    col.c-fn    { width:5%; }
+    col.c-ap    { width:5.5%; }
+    col.c-af    { width:5.5%; }
+    col.c-tot   { width:6.5%; }
+    col.c-per   { width:6%; }
+    col.c-pds   { width:3%; }
+    col.c-resp  { width:5.5%; }
+    col.c-assoc { width:9%; }
+    col.c-mode  { width:5.5%; }
+    col.c-obs   { width:8%; }
+
+    thead { display:table-header-group; }
+    tfoot { display:table-footer-group; }
+
+    th {
+      background:#FF69B4; border:1px solid #555;
+      padding:2px 3px; text-align:center;
+      font-size:6.5pt; font-weight:bold; vertical-align:middle; word-wrap:break-word;
+    }
+    td { border:1px solid #888; padding:2px 3px; vertical-align:middle; word-wrap:break-word; }
+    td.r { text-align:right; }
+    td.c { text-align:center; }
+
+    tr.prog td { background:#FFFF99; font-weight:bold; }
+    tr.proj td { background:#FFB6C1; font-weight:bold; }
+    tr.act  td { background:#D3D3D3; font-weight:bold; }
+    tr.tach td { background:#fff; }
+    tr.os   td { background:#EAF4FB; font-style:italic; font-weight:bold; }
+    tr.tot  td { background:#AED6F1; color:#000; font-weight:bold; text-align:center; }
+
+    tfoot td {
+      font-size:6.5pt; color:#444; border:none; font-weight:bold;
+      border-top:1px solid #bbb; padding:2px 4px; background:#f5f5f5;
+    }
+  </style>
+</head>
+<body>
+
+<div class="screen-bar">
+  <span>📄 PTA {{ annee.annee }} — Aperçu avant impression</span>
+  <button class="btn-p" onclick="window.print()">🖨️ Imprimer / Enregistrer PDF</button>
+  <button class="btn-c" onclick="window.close()">✕ Fermer</button>
+</div>
+
+<div style="padding:8px 10px;">
+
+{# ── En-tête officiel ── #}
+<div class="entete">
+  <div class="entete-gauche">
+    <img src="{{ url_for('static', filename='img/bandeau.png') }}" alt="Bandeau officiel">
+  </div>
+  <div class="entete-centre">
+    <strong>BP 02 Adja-Ouèrè</strong><br>
+    <strong>Tél&nbsp;: +229 01 61 91 96 12</strong><br>
+    <strong>Email&nbsp;: contact.adjaouere@mairie.bj</strong>
+  </div>
+  <div class="entete-droite">
+    <img src="{{ url_for('static', filename='img/logo_commune.png') }}" alt="Logo Commune">
+  </div>
+</div>
+
+<div class="titre-pta">
+  <div class="titre-pta-h1">PLAN DE TRAVAIL ANNUEL</div>
+  <div class="titre-pta-h2">Exercice {{ annee.annee }}</div>
+</div>
+
+{% if annee.objectif_general %}
+<div class="obj-gen"><strong>Objectif général :</strong> {{ annee.objectif_general }}</div>
+{% endif %}
+
+{# ── Tableau (15 colonnes) ── #}
+<table>
+  <colgroup>
+    <col class="c-code"><col class="c-nom"><col class="c-imp">
+    <col class="c-rp"><col class="c-fa"><col class="c-fn"><col class="c-ap"><col class="c-af">
+    <col class="c-tot"><col class="c-per"><col class="c-pds">
+    <col class="c-resp"><col class="c-assoc"><col class="c-mode"><col class="c-obs">
+  </colgroup>
+
+  <thead>
+    <tr>
+      <th rowspan="3">Code</th>
+      <th rowspan="3">Objectifs/Résultats/<br>Actions/Activités/Tâches</th>
+      <th rowspan="3">Imputation<br>budgétaire</th>
+      <th colspan="6">Sources de financement (F CFA)</th>
+      <th rowspan="3">Période<br>d'exécution</th>
+      <th rowspan="3">Poids<br>(%)</th>
+      <th rowspan="3">Direction/<br>Unité Resp.</th>
+      <th rowspan="3">Structures associées /<br>Unité Admi. Associée</th>
+      <th rowspan="3">Mode<br>d'exécution</th>
+      <th rowspan="3">Observations<br>(ODD…)</th>
+    </tr>
+    <tr>
+      <th colspan="5">Source de financement</th>
+      <th rowspan="2">Total</th>
+    </tr>
+    <tr>
+      <th>Fonds Propres</th><th>FA</th><th>FNA</th>
+      <th>PTFs</th><th>Autres Fonds</th>
+    </tr>
+  </thead>
+
+  <tfoot>
+    <tr>
+      <td colspan="7" id="ft-date">Imprimé le …</td>
+      <td colspan="8" style="text-align:right;">Direction du Développement Local et de la Planification (DDLP)</td>
+    </tr>
+  </tfoot>
+
+  <tbody>
+  {% for prog in programmes %}
+
+    {% if prog.objectif_specifique %}
+    <tr class="os"><td colspan="15">Objectif {{ prog.numero }}/Résultat {{ prog.numero }} : {{ prog.objectif_specifique }}</td></tr>
+    {% endif %}
+
+    {% set p_rp = prog.ressources_propres or 0 %}
+    {% set p_fa = prog.fadec_affecte or 0 %}
+    {% set p_fn = prog.fadec_non_affecte or 0 %}
+    {% set p_ap = prog.autres_partenaires or 0 %}
+    {% set p_af = prog.autres_fonds or 0 %}
+    <tr class="prog">
+      <td class="c">{{ prog.code }}</td>
+      <td>{{ prog.libelle }}</td>
+      <td></td>
+      <td class="c">{{ "{:,.0f}".format(p_rp).replace(',', ' ') }}</td>
+      <td class="c">{{ "{:,.0f}".format(p_fa).replace(',', ' ') }}</td>
+      <td class="c">{{ "{:,.0f}".format(p_fn).replace(',', ' ') }}</td>
+      <td class="c">{{ "{:,.0f}".format(p_ap).replace(',', ' ') }}</td>
+      <td class="c">{{ "{:,.0f}".format(p_af).replace(',', ' ') }}</td>
+      <td class="c">{{ "{:,.0f}".format(p_rp+p_fa+p_fn+p_ap+p_af).replace(',', ' ') }}</td>
+      <td></td>
+      <td class="c">{{ prog.poids|pct_nat }}</td>
+      <td></td><td></td><td></td><td></td>
+    </tr>
+
+    {% for projet in prog.projets %}
+      {% set j_rp = projet.ressources_propres or 0 %}
+      {% set j_fa = projet.fadec_affecte or 0 %}
+      {% set j_fn = projet.fadec_non_affecte or 0 %}
+      {% set j_ap = projet.autres_partenaires or 0 %}
+      {% set j_af = projet.autres_fonds or 0 %}
+      <tr class="proj">
+        <td class="c">{{ projet.code }}</td>
+        <td>{{ projet.libelle }}</td>
+        <td></td>
+        <td class="c">{{ "{:,.0f}".format(j_rp).replace(',', ' ') }}</td>
+        <td class="c">{{ "{:,.0f}".format(j_fa).replace(',', ' ') }}</td>
+        <td class="c">{{ "{:,.0f}".format(j_fn).replace(',', ' ') }}</td>
+        <td class="c">{{ "{:,.0f}".format(j_ap).replace(',', ' ') }}</td>
+        <td class="c">{{ "{:,.0f}".format(j_af).replace(',', ' ') }}</td>
+        <td class="c">{{ "{:,.0f}".format(j_rp+j_fa+j_fn+j_ap+j_af).replace(',', ' ') }}</td>
+        <td></td>
+        <td class="c">{{ projet.poids|pct_nat }}</td>
+        <td></td><td></td><td></td><td></td>
+      </tr>
+
+      {% for act in projet.activites %}
+        {% if act.taches %}
+          {% set a_rp = act.taches|sum(attribute='ressources_propres') %}
+          {% set a_fa = act.taches|sum(attribute='fadec_affecte') %}
+          {% set a_fn = act.taches|sum(attribute='fadec_non_affecte') %}
+          {% set a_ap = act.taches|sum(attribute='autres_partenaires') %}
+          {% set a_af = act.taches|sum(attribute='autres_fonds') %}
+        {% else %}
+          {% set a_rp = act.ressources_propres or 0 %}
+          {% set a_fa = act.fadec_affecte or 0 %}
+          {% set a_fn = act.fadec_non_affecte or 0 %}
+          {% set a_ap = act.autres_partenaires or 0 %}
+          {% set a_af = act.autres_fonds or 0 %}
+        {% endif %}
+
+        {% set resp_a = act.direction_responsable.code if act.direction_responsable else '' %}
+
+        {% set nb_s = act.services_intervenants|length %}
+        {% set nb_d = act.directions_associees|length %}
+        {% set ns_a = namespace(assoc='') %}
+        {% if nb_services > 0 and nb_s == nb_services and nb_directions > 0 and nb_d == nb_directions %}
+          {% set ns_a.assoc = 'Tous services et directions' %}
+        {% elif nb_services > 0 and nb_s == nb_services %}
+          {% set ns_a.assoc = 'Tous les services' %}
+        {% elif nb_directions > 0 and nb_d == nb_directions %}
+          {% set ns_a.assoc = 'Toutes les directions' %}
+        {% else %}
+          {% set ns_a.assoc = (act.services_intervenants|map(attribute='code')|list
+                             + act.directions_associees|map(attribute='code')|list
+                             + act.structures_externes|map(attribute='nom')|list)|join(', ') %}
+          {% if act.acteurs_externes and act.acteurs_externes.strip() %}
+            {% set ns_a.assoc = (ns_a.assoc + (', ' if ns_a.assoc else '') + act.acteurs_externes) %}
+          {% endif %}
+          {% if not ns_a.assoc %}{% set ns_a.assoc = 'Aucun' %}{% endif %}
+        {% endif %}
+
+        {# Période activité #}
+        {% if act.periode_debut and act.periode_fin and act.periode_debut != act.periode_fin %}
+          {% set per_a = act.periode_debut|mois_court ~ ' - ' ~ act.periode_fin|mois_court %}
+        {% elif act.periode_debut %}
+          {% set per_a = act.periode_debut|mois_court %}
+        {% elif act.periode_fin %}
+          {% set per_a = act.periode_fin|mois_court %}
+        {% else %}
+          {% set per_a = '' %}
+        {% endif %}
+
+        <tr class="act">
+          <td class="c">{{ act.code }}</td>
+          <td>{{ act.nom }}</td>
+          <td class="c">{{ act.imputation_budgetaire or 'NÉANT' }}</td>
+          <td class="c">{{ "{:,.0f}".format(a_rp).replace(',', ' ') }}</td>
+          <td class="c">{{ "{:,.0f}".format(a_fa).replace(',', ' ') }}</td>
+          <td class="c">{{ "{:,.0f}".format(a_fn).replace(',', ' ') }}</td>
+          <td class="c">{{ "{:,.0f}".format(a_ap).replace(',', ' ') }}</td>
+          <td class="c">{{ "{:,.0f}".format(a_af).replace(',', ' ') }}</td>
+          <td class="c">{{ "{:,.0f}".format(a_rp+a_fa+a_fn+a_ap+a_af).replace(',', ' ') }}</td>
+          <td class="c">{{ per_a }}</td>
+          <td class="c">{{ act.poids|pct_nat }}</td>
+          <td class="c">{{ resp_a }}</td>
+          <td class="c">{{ ns_a.assoc }}</td>
+          <td class="c">{{ act.mode_execution or 'Direct' }}</td>
+          <td class="c">{{ act.observations or '' }}</td>
+        </tr>
+
+        {% for tache in act.taches %}
+          {% if not service_filtre or tache.service_responsable_id == service_filtre %}
+
+            {% if tache.service_responsable %}
+              {% set resp_t = tache.service_responsable.code %}
+            {% elif tache.direction_responsable %}
+              {% set resp_t = tache.direction_responsable.code %}
+            {% else %}
+              {% set resp_t = '' %}
+            {% endif %}
+
+            {% set nb_st = tache.services_concernes|length %}
+            {% set nb_dt = tache.directions_associees|length %}
+            {% set ns_t = namespace(assoc='') %}
+            {% if nb_services > 0 and nb_st == nb_services and nb_directions > 0 and nb_dt == nb_directions %}
+              {% set ns_t.assoc = 'Tous services et directions' %}
+            {% elif nb_services > 0 and nb_st == nb_services %}
+              {% set ns_t.assoc = 'Tous les services' %}
+            {% elif nb_directions > 0 and nb_dt == nb_directions %}
+              {% set ns_t.assoc = 'Toutes les directions' %}
+            {% else %}
+              {% set ns_t.assoc = (tache.services_concernes|map(attribute='code')|list
+                                 + tache.directions_associees|map(attribute='code')|list
+                                 + tache.structures_externes|map(attribute='nom')|list)|join(', ') %}
+              {% if tache.acteurs_externes and tache.acteurs_externes.strip() %}
+                {% set ns_t.assoc = (ns_t.assoc + (', ' if ns_t.assoc else '') + tache.acteurs_externes) %}
+              {% endif %}
+              {% if not ns_t.assoc %}{% set ns_t.assoc = 'Aucun' %}{% endif %}
+            {% endif %}
+
+            {# Période tâche #}
+            {% if tache.periode_debut and tache.periode_fin and tache.periode_debut != tache.periode_fin %}
+              {% set per_t = tache.periode_debut|mois_court ~ ' - ' ~ tache.periode_fin|mois_court %}
+            {% elif tache.periode_debut %}
+              {% set per_t = tache.periode_debut|mois_court %}
+            {% elif tache.periode_fin %}
+              {% set per_t = tache.periode_fin|mois_court %}
+            {% else %}
+              {% set per_t = '' %}
+            {% endif %}
+
+            {% set t_tot = (tache.ressources_propres or 0)+(tache.fadec_affecte or 0)+(tache.fadec_non_affecte or 0)+(tache.autres_partenaires or 0)+(tache.autres_fonds or 0) %}
+            <tr class="tach">
+              <td class="c">{{ tache.code }}</td>
+              <td style="padding-left:10px;">{{ tache.nom }}</td>
+              <td class="c">{{ tache.imputation_budgetaire or 'NÉANT' }}</td>
+              <td class="c">{{ "{:,.0f}".format(tache.ressources_propres or 0).replace(',', ' ') }}</td>
+              <td class="c">{{ "{:,.0f}".format(tache.fadec_affecte or 0).replace(',', ' ') }}</td>
+              <td class="c">{{ "{:,.0f}".format(tache.fadec_non_affecte or 0).replace(',', ' ') }}</td>
+              <td class="c">{{ "{:,.0f}".format(tache.autres_partenaires or 0).replace(',', ' ') }}</td>
+              <td class="c">{{ "{:,.0f}".format(tache.autres_fonds or 0).replace(',', ' ') }}</td>
+              <td class="c">{{ "{:,.0f}".format(t_tot).replace(',', ' ') }}</td>
+              <td class="c">{{ per_t }}</td>
+              <td class="c">{{ tache.poids|pct_nat }}</td>
+              <td class="c">{{ resp_t }}</td>
+              <td class="c">{{ ns_t.assoc }}</td>
+              <td class="c">{{ tache.mode_execution or 'Direct' }}</td>
+              <td class="c">{{ tache.observations or '' }}</td>
+            </tr>
+
+          {% endif %}
+        {% endfor %}
+      {% endfor %}
+    {% endfor %}
+  {% endfor %}
+
+  {# ── Total général ── #}
+  {% set tg = namespace(rp=0,fa=0,fn=0,ap=0,af=0) %}
+  {% for prog in programmes %}
+    {% set tg.rp = tg.rp + (prog.ressources_propres or 0) %}
+    {% set tg.fa = tg.fa + (prog.fadec_affecte or 0) %}
+    {% set tg.fn = tg.fn + (prog.fadec_non_affecte or 0) %}
+    {% set tg.ap = tg.ap + (prog.autres_partenaires or 0) %}
+    {% set tg.af = tg.af + (prog.autres_fonds or 0) %}
+  {% endfor %}
+  <tr class="tot">
+    <td></td><td>TOTAL GÉNÉRAL</td><td></td>
+    <td>{{ "{:,.0f}".format(tg.rp).replace(',', ' ') }}</td>
+    <td>{{ "{:,.0f}".format(tg.fa).replace(',', ' ') }}</td>
+    <td>{{ "{:,.0f}".format(tg.fn).replace(',', ' ') }}</td>
+    <td>{{ "{:,.0f}".format(tg.ap).replace(',', ' ') }}</td>
+    <td>{{ "{:,.0f}".format(tg.af).replace(',', ' ') }}</td>
+    <td>{{ "{:,.0f}".format(tg.rp+tg.fa+tg.fn+tg.ap+tg.af).replace(',', ' ') }}</td>
+    <td></td><td>100</td><td></td><td></td><td></td><td></td>
+  </tr>
+  </tbody>
+</table>
+</div>
+
+<script>
+(function() {
+  var now = new Date();
+  var p = function(n){ return n < 10 ? '0'+n : ''+n; };
+  var s = p(now.getDate())+'/'+p(now.getMonth()+1)+'/'+now.getFullYear()
+        +' à '+p(now.getHours())+':'+p(now.getMinutes())+':'+p(now.getSeconds());
+  var el = document.getElementById('ft-date');
+  if (el) el.textContent = 'Imprimé le ' + s;
+})();
+window.addEventListener('load', function(){ setTimeout(function(){ window.print(); }, 500); });
+</script>
+</body>
+</html>

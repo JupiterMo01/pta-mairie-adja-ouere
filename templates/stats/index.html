@@ -1,0 +1,750 @@
+{% extends "base.html" %}
+
+{% block title %}Statistiques PTA {{ annee.annee if annee }} — Mairie d'Adja-Ouèrè{% endblock %}
+
+{% block page_title %}
+  <i class="fas fa-chart-pie me-2 text-primary"></i>
+  Statistiques PTA {% if annee %}<span class="badge bg-primary ms-1">{{ annee.annee }}</span>{% endif %}
+  {% if annee %}
+  <div class="d-inline-flex flex-wrap gap-2 ms-3 align-items-center">
+    <a href="{{ url_for('stats.rapport_word') }}"
+       class="btn btn-sm btn-success"
+       title="Télécharger le rapport Word complet">
+      <i class="fas fa-file-word me-1"></i>Rapport Word
+    </a>
+    <a href="{{ url_for('pta.export_excel') }}"
+       class="btn btn-sm btn-outline-success"
+       title="Exporter le PTA complet en Excel">
+      <i class="fas fa-file-excel me-1"></i>Exporter Excel
+    </a>
+    <a href="{{ url_for('pta.print_view') }}" target="_blank"
+       class="btn btn-sm btn-outline-secondary"
+       title="Aperçu impression du PTA (PDF)">
+      <i class="fas fa-print me-1"></i>Imprimer
+    </a>
+    {% if current_user.role == 'admin_editeur' %}
+    <form method="POST" action="{{ url_for('pta.pta_save_manual') }}" class="d-inline m-0"
+          onsubmit="return confirm('Créer une sauvegarde du PTA {{ annee.annee }} ?\nRécupérable depuis Administration › Sauvegardes.')">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+      <button type="submit" class="btn btn-sm btn-outline-warning"
+              title="Créer une sauvegarde de la base de données">
+        <i class="fas fa-save me-1"></i>Sauvegarder
+      </button>
+    </form>
+    {% endif %}
+  </div>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+{% if not annee %}
+  <div class="alert alert-warning">Aucune année active. Configurez une année dans Administration.</div>
+{% else %}
+
+{# ── Cartes de synthèse ─────────────────────────────────────────────────── #}
+<div class="row g-3 mb-4">
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #1F4E79 !important;">
+      <div class="card-body">
+        <div class="text-muted small mb-1"><i class="fas fa-money-bill-wave me-1"></i>Budget total PTA</div>
+        <div class="fw-bold fs-5 text-primary">{{ total_budget|milliers }} F CFA</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-sm-3 col-xl-2">
+    <div class="card border-0 shadow-sm h-100 text-center">
+      <div class="card-body">
+        <div class="text-muted small mb-1"><i class="fas fa-layer-group me-1"></i>Programmes</div>
+        <div class="fw-bold fs-4">{{ nb_programmes }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-sm-3 col-xl-1">
+    <div class="card border-0 shadow-sm h-100 text-center">
+      <div class="card-body">
+        <div class="text-muted small mb-1"><i class="fas fa-project-diagram me-1"></i>Projets</div>
+        <div class="fw-bold fs-4">{{ nb_projets }}</div>
+      </div>
+    </div>
+  </div>
+  {# Activités : total + invest + fonct #}
+  <div class="col-6 col-sm-3 col-xl-2">
+    <div class="card border-0 shadow-sm h-100 text-center" style="border-top:3px solid #6c757d;">
+      <div class="card-body py-2">
+        <div class="text-muted small mb-1"><i class="fas fa-tasks me-1"></i>Activités (total)</div>
+        <div class="fw-bold fs-4">{{ nb_activites }}</div>
+        <div class="mt-1" style="font-size:.78rem;">
+          <span class="badge" style="background:#C0392B;">Invest. : {{ nb_activites_invest }}</span>
+          <span class="badge bg-success ms-1">Fonct. : {{ nb_activites_fonct }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-sm-3 col-xl-2">
+    <div class="card border-0 shadow-sm h-100 text-center" style="border-top:3px solid #6c757d;">
+      <div class="card-body py-2">
+        <div class="text-muted small mb-1"><i class="fas fa-check-square me-1"></i>Tâches (total)</div>
+        <div class="fw-bold fs-4">{{ nb_taches }}</div>
+        <div class="mt-1" style="font-size:.78rem;">
+          <span class="badge" style="background:#C0392B;">Invest. : {{ nb_taches_invest }}</span>
+          <span class="badge bg-success ms-1">Fonct. : {{ nb_taches_fonct }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-xl-2">
+    <div class="card border-0 shadow-sm h-100 text-center" style="border-top:3px solid #6c757d;">
+      <div class="card-body py-2">
+        <div class="text-muted small mb-1"><i class="fas fa-chart-bar me-1"></i>Budget par nature</div>
+        <div style="font-size:.82rem;">
+          <div><span class="badge" style="background:#C0392B;">Invest.</span>
+            <span class="fw-bold">{{ inv_budget|milliers }} F</span></div>
+          <div class="mt-1"><span class="badge bg-success">Fonct.</span>
+            <span class="fw-bold">{{ fct_budget|milliers }} F</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ── Macro : tableau programmes/projets ───────────────────────────────────── #}
+{% macro table_prog(data, nb_act, nb_tch, tot_rp, tot_fa, tot_fn, tot_ap, tot_af, tot_b, row_bg='#FFB6C1') %}
+<div class="table-responsive">
+  <table class="table table-sm table-bordered align-middle mb-0" style="font-size:.82rem;">
+    <thead>
+      <tr class="table-dark text-center">
+        <th rowspan="2" class="align-middle" style="width:6%">Code</th>
+        <th rowspan="2" class="align-middle text-start">Intitulé</th>
+        <th rowspan="2" class="align-middle">Poids<br>(%)</th>
+        <th rowspan="2" class="align-middle">Projets</th>
+        <th rowspan="2" class="align-middle">Activités</th>
+        <th rowspan="2" class="align-middle">Tâches</th>
+        <th colspan="5" class="text-center">Sources de financement (F CFA)</th>
+        <th rowspan="2" class="align-middle">Total (F CFA)</th>
+      </tr>
+      <tr class="table-secondary text-center" style="font-size:.75rem;">
+        <th>RP</th><th>FA</th><th>FNA</th><th>PTFs</th><th>Autres</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for prog in data %}
+      <tr style="background:#FFFF99; font-weight:bold;">
+        <td class="text-center">{{ prog.code }}</td>
+        <td>Programme {{ prog.code }} : {{ prog.nom }}</td>
+        <td class="text-center">{{ prog.poids|pct_nat }}</td>
+        <td class="text-center">{{ prog.nb_projets }}</td>
+        <td class="text-center">{{ prog.nb_activites }}</td>
+        <td class="text-center">{{ prog.nb_taches }}</td>
+        <td class="text-end">{{ prog.rp|milliers }}</td>
+        <td class="text-end">{{ prog.fa|milliers }}</td>
+        <td class="text-end">{{ prog.fn|milliers }}</td>
+        <td class="text-end">{{ prog.ap|milliers }}</td>
+        <td class="text-end">{{ prog.af|milliers }}</td>
+        <td class="text-end fw-bold">{{ prog.budget|milliers }}</td>
+      </tr>
+      {% for proj in prog.projets %}
+      <tr style="background:{{ row_bg }};">
+        <td class="text-center ps-3">{{ proj.code }}</td>
+        <td class="ps-3">Projet {{ proj.code }} : {{ proj.nom }}</td>
+        <td class="text-center">{{ proj.poids|pct_nat }}</td>
+        <td class="text-center text-muted">—</td>
+        <td class="text-center">{{ proj.nb_activites }}</td>
+        <td class="text-center">{{ proj.nb_taches }}</td>
+        <td class="text-end">{{ proj.rp|milliers }}</td>
+        <td class="text-end">{{ proj.fa|milliers }}</td>
+        <td class="text-end">{{ proj.fn|milliers }}</td>
+        <td class="text-end">{{ proj.ap|milliers }}</td>
+        <td class="text-end">{{ proj.af|milliers }}</td>
+        <td class="text-end fw-semibold">{{ proj.budget|milliers }}</td>
+      </tr>
+      {% endfor %}
+      {% endfor %}
+    </tbody>
+    <tfoot style="background:#AED6F1; font-weight:bold;">
+      <tr>
+        <td colspan="3" class="text-center">TOTAL</td>
+        <td class="text-center">—</td>
+        <td class="text-center">{{ nb_act }}</td>
+        <td class="text-center">{{ nb_tch }}</td>
+        <td class="text-end">{{ tot_rp|milliers }}</td>
+        <td class="text-end">{{ tot_fa|milliers }}</td>
+        <td class="text-end">{{ tot_fn|milliers }}</td>
+        <td class="text-end">{{ tot_ap|milliers }}</td>
+        <td class="text-end">{{ tot_af|milliers }}</td>
+        <td class="text-end">{{ tot_b|milliers }}</td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+{% endmacro %}
+
+{# ── Macro : tableau sources ──────────────────────────────────────────────── #}
+{% macro table_sources(rp, fa, fn, ap, af, tot, pct_fn, chart_id) %}
+<div class="row align-items-center g-4">
+  <div class="col-md-5 text-center">
+    <canvas id="{{ chart_id }}" style="max-height:250px;"></canvas>
+  </div>
+  <div class="col-md-7">
+    <table class="table table-sm table-bordered align-middle mb-0">
+      <thead class="table-dark">
+        <tr><th>Source</th><th class="text-end">Montant (F CFA)</th><th class="text-end">%</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><span class="badge" style="background:#1F4E79">Fonds Propres (RP)</span></td>
+            <td class="text-end fw-semibold">{{ rp|milliers }}</td><td class="text-end">{{ pct_fn(rp) }} %</td></tr>
+        <tr><td><span class="badge" style="background:#2E86AB">FADEC Affecté (FA)</span></td>
+            <td class="text-end fw-semibold">{{ fa|milliers }}</td><td class="text-end">{{ pct_fn(fa) }} %</td></tr>
+        <tr><td><span class="badge" style="background:#3BB273">FADEC Non Affecté (FNA)</span></td>
+            <td class="text-end fw-semibold">{{ fn|milliers }}</td><td class="text-end">{{ pct_fn(fn) }} %</td></tr>
+        <tr><td><span class="badge" style="background:#E9C46A; color:#333">PTFs / Partenaires</span></td>
+            <td class="text-end fw-semibold">{{ ap|milliers }}</td><td class="text-end">{{ pct_fn(ap) }} %</td></tr>
+        <tr><td><span class="badge" style="background:#E76F51">Autres Fonds</span></td>
+            <td class="text-end fw-semibold">{{ af|milliers }}</td><td class="text-end">{{ pct_fn(af) }} %</td></tr>
+      </tbody>
+      <tfoot class="table-dark fw-bold">
+        <tr><td>TOTAL</td><td class="text-end">{{ tot|milliers }}</td><td class="text-end">100 %</td></tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+{% endmacro %}
+
+{# ── Macro : tableau directions ───────────────────────────────────────────── #}
+{% macro table_dirs(dirs, nb_act, nb_tch) %}
+<table class="table table-sm table-bordered align-middle mb-0" style="font-size:.82rem;">
+  <thead class="table-dark text-center">
+    <tr>
+      <th style="width:10%">Code</th>
+      <th class="text-start">Direction</th>
+      <th style="width:14%">Nb activités<br>responsable</th>
+      <th style="width:14%">Nb tâches<br>responsable</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for d in dirs %}
+    <tr {% if d.nb_activites == 0 and d.nb_taches == 0 %}class="text-muted"{% endif %}>
+      <td class="text-center fw-semibold">{{ d.code }}</td>
+      <td>{{ d.nom }}</td>
+      <td class="text-center {% if d.nb_activites > 0 %}fw-bold text-primary{% endif %}">{{ d.nb_activites }}</td>
+      <td class="text-center {% if d.nb_taches > 0 %}fw-bold text-success{% endif %}">{{ d.nb_taches }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+  <tfoot style="background:#AED6F1; font-weight:bold;">
+    <tr>
+      <td colspan="2" class="text-center">TOTAL</td>
+      <td class="text-center">{{ nb_act }}</td>
+      <td class="text-center">{{ nb_tch }}</td>
+    </tr>
+  </tfoot>
+</table>
+{% endmacro %}
+
+{# ── Section 1 : Sources de financement ──────────────────────────────────── #}
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-header bg-primary text-white fw-bold">
+    <i class="fas fa-pie-chart me-2"></i>Répartition par source de financement
+  </div>
+  <div class="card-body">
+    <ul class="nav nav-pills mb-3" id="tabSrc" role="tablist">
+      <li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#srcGen"  type="button">Toutes</button></li>
+      <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#srcInv" type="button" style="color:#C0392B;">Investissement</button></li>
+      <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#srcFct" type="button" style="color:#1A7245;">Fonctionnement</button></li>
+    </ul>
+    <div class="tab-content">
+      <div class="tab-pane fade show active" id="srcGen">
+        {{ table_sources(total_rp, total_fa, total_fn, total_ap, total_af, total_budget, pct, 'chartSrcGen') }}
+      </div>
+      <div class="tab-pane fade" id="srcInv">
+        {{ table_sources(inv_rp, inv_fa, inv_fn, inv_ap, inv_af, inv_budget, pct_invest, 'chartSrcInv') }}
+      </div>
+      <div class="tab-pane fade" id="srcFct">
+        {{ table_sources(fct_rp, fct_fa, fct_fn, fct_ap, fct_af, fct_budget, pct_fonct, 'chartSrcFct') }}
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ── Section 2 : Programmes — Projets — Activités — Tâches ─────────────── #}
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-header bg-warning text-dark fw-bold">
+    <i class="fas fa-sitemap me-2"></i>Programmes — Projets — Activités — Tâches
+  </div>
+  <div class="card-body">
+    <ul class="nav nav-pills mb-3" id="tabProg" role="tablist">
+      <li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#progGen"  type="button">Toutes</button></li>
+      <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#progInv" type="button" style="color:#C0392B;">Investissement</button></li>
+      <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#progFct" type="button" style="color:#1A7245;">Fonctionnement</button></li>
+    </ul>
+    <div class="tab-content">
+      <div class="tab-pane fade show active" id="progGen">
+        {{ table_prog(stats_par_programme, nb_activites, nb_taches,
+                      total_rp, total_fa, total_fn, total_ap, total_af, total_budget) }}
+      </div>
+      <div class="tab-pane fade" id="progInv">
+        {% if stats_par_programme_invest %}
+          {{ table_prog(stats_par_programme_invest, nb_activites_invest, nb_taches_invest,
+                        inv_rp, inv_fa, inv_fn, inv_ap, inv_af, inv_budget, '#FDEBD0') }}
+        {% else %}
+          <p class="text-muted">Aucune activité d'investissement.</p>
+        {% endif %}
+      </div>
+      <div class="tab-pane fade" id="progFct">
+        {% if stats_par_programme_fonct %}
+          {{ table_prog(stats_par_programme_fonct, nb_activites_fonct, nb_taches_fonct,
+                        fct_rp, fct_fa, fct_fn, fct_ap, fct_af, fct_budget, '#D5F5E3') }}
+        {% else %}
+          <p class="text-muted">Aucune activité de fonctionnement.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ── Section 3 : Activités et tâches par direction ────────────────────────── #}
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-header bg-success text-white fw-bold">
+    <i class="fas fa-building me-2"></i>Activités et tâches par direction
+  </div>
+  <div class="card-body">
+    <ul class="nav nav-pills mb-3" id="tabDir" role="tablist">
+      <li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#dirGen"  type="button">Toutes</button></li>
+      <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#dirInv" type="button" style="color:#C0392B;">Investissement</button></li>
+      <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#dirFct" type="button" style="color:#1A7245;">Fonctionnement</button></li>
+    </ul>
+    <div class="tab-content">
+      <div class="tab-pane fade show active" id="dirGen">
+        <div class="table-responsive">
+          {{ table_dirs(stats_directions, nb_activites, nb_taches) }}
+        </div>
+      </div>
+      <div class="tab-pane fade" id="dirInv">
+        <div class="table-responsive">
+          {{ table_dirs(stats_directions_invest, nb_activites_invest, nb_taches_invest) }}
+        </div>
+      </div>
+      <div class="tab-pane fade" id="dirFct">
+        <div class="table-responsive">
+          {{ table_dirs(stats_directions_fonct, nb_activites_fonct, nb_taches_fonct) }}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# Graphique directions — général #}
+{% if stats_directions %}
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-header fw-bold bg-light">
+    <i class="fas fa-bar-chart me-2"></i>Répartition des activités et tâches par direction (toutes)
+  </div>
+  <div class="card-body">
+    <canvas id="chartDirections" style="max-height:320px;"></canvas>
+  </div>
+</div>
+{% endif %}
+
+{# ── Section 4 : Liste des activités d'investissement ────────────────────── #}
+{% if activites_investissement %}
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-header fw-bold text-white" style="background:#C0392B;">
+    <i class="fas fa-hard-hat me-2"></i>Activités d'investissement
+    <span class="badge bg-light text-dark ms-2">{{ nb_activites_invest }}</span>
+    <span class="badge bg-warning text-dark ms-1">{{ inv_budget|milliers }} F CFA</span>
+  </div>
+  <div class="card-body p-2">
+    <div class="mb-2">
+      <input type="text" class="form-control form-control-sm"
+             placeholder="Filtrer par code, intitulé, direction…"
+             id="filterInvest" oninput="filtrerInvest(this.value)">
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm table-bordered align-middle mb-0" style="font-size:.78rem;" id="tblInvest">
+        <thead>
+          <tr class="text-center" style="background:#C0392B; color:#fff;">
+            <th rowspan="2" class="align-middle">Code</th>
+            <th rowspan="2" class="align-middle text-start">Désignation</th>
+            <th rowspan="2" class="align-middle">Dir.<br>resp.</th>
+            <th rowspan="2" class="align-middle">Période</th>
+            <th rowspan="2" class="align-middle">Poids<br>(%)</th>
+            <th rowspan="2" class="align-middle">Tâches</th>
+            <th colspan="5">Sources de financement (F CFA)</th>
+            <th rowspan="2" class="align-middle">Total (F CFA)</th>
+          </tr>
+          <tr class="text-center" style="background:#E8A0A0; font-size:.72rem;">
+            <th>RP</th><th>FA</th><th>FNA</th><th>PTFs</th><th>Autres</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for a in activites_investissement %}
+          <tr>
+            <td class="text-center fw-semibold">{{ a.code }}</td>
+            <td title="{{ a.nom }}">{{ a.nom }}</td>
+            <td class="text-center" title="{{ a.direction_nom }}">{{ a.direction }}</td>
+            <td class="text-center text-nowrap">{{ a.periode }}</td>
+            <td class="text-center">{{ a.poids|pct_nat }}</td>
+            <td class="text-center">{{ a.nb_taches }}</td>
+            <td class="text-end">{{ a.rp|milliers }}</td>
+            <td class="text-end">{{ a.fa|milliers }}</td>
+            <td class="text-end">{{ a.fn|milliers }}</td>
+            <td class="text-end">{{ a.ap|milliers }}</td>
+            <td class="text-end">{{ a.af|milliers }}</td>
+            <td class="text-end fw-bold">{{ a.budget|milliers }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot style="background:#AED6F1; font-weight:bold;">
+          <tr>
+            <td colspan="6" class="text-center">TOTAL</td>
+            <td class="text-end">{{ inv_rp|milliers }}</td>
+            <td class="text-end">{{ inv_fa|milliers }}</td>
+            <td class="text-end">{{ inv_fn|milliers }}</td>
+            <td class="text-end">{{ inv_ap|milliers }}</td>
+            <td class="text-end">{{ inv_af|milliers }}</td>
+            <td class="text-end">{{ inv_budget|milliers }}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{# ── Section 5 : Cibles trimestrielles ───────────────────────────────────── #}
+{% if cibles %}
+{% macro cbg(v) %}{% if v >= 75 %}#1A7245{% elif v >= 50 %}#27AE60{% elif v >= 25 %}#5DADE2{% elif v > 0 %}#D6EAF8{% else %}#f0f0f0{% endif %}{% endmacro %}
+{% macro ctc(v) %}{% if v >= 50 %}#fff{% else %}#222{% endif %}{% endmacro %}
+{% macro cible_cell(v) %}
+<td class="text-center p-1">
+  <div style="background:{{ cbg(v) }};color:{{ ctc(v) }};border-radius:4px;padding:3px 5px;font-weight:bold;font-size:.82rem;">
+    {{ v|pct_nat }}&nbsp;%
+  </div>
+  <div class="progress mt-1" style="height:4px;">
+    <div class="progress-bar" style="width:{{ v }}%;background:{{ cbg(v) }};"></div>
+  </div>
+</td>
+{% endmacro %}
+
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-header text-white fw-bold" style="background:#1A5276;">
+    <i class="fas fa-bullseye me-2"></i>Cibles trimestrielles d'exécution
+    <small class="fw-normal ms-2" style="font-size:.78rem;">
+      — Taux attendu si chaque tâche est réalisée à 100 % dans ses délais
+    </small>
+  </div>
+  <div class="card-body p-2">
+
+    {# Onglets #}
+    <ul class="nav nav-pills mb-2 px-1" id="tabCibles" role="tablist">
+      <li class="nav-item">
+        <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#ciblesProgProj" type="button">
+          <i class="fas fa-sitemap me-1"></i>Par Programme / Projet
+        </button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link" data-bs-toggle="pill" data-bs-target="#ciblesDir" type="button">
+          <i class="fas fa-building me-1"></i>Par Direction
+        </button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link" data-bs-toggle="pill" data-bs-target="#ciblesSvc" type="button">
+          <i class="fas fa-users me-1"></i>Par Service
+        </button>
+      </li>
+    </ul>
+
+    <div class="tab-content">
+
+      {# ── Onglet 1 : Par Programme / Projet ── #}
+      <div class="tab-pane fade show active" id="ciblesProgProj">
+        <div class="d-flex justify-content-end mb-1">
+          <button class="btn btn-sm btn-outline-secondary" id="btnToggleAll" onclick="toggleAllProjects()">
+            <i class="fas fa-compress-alt me-1"></i>Réduire tout
+          </button>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm table-bordered align-middle mb-0" style="font-size:.83rem;" id="tblCibles">
+            <thead>
+              <tr class="text-center text-white" style="background:#1A5276;">
+                <th class="text-start align-middle" style="min-width:260px;">Niveau</th>
+                <th style="width:13%">T1<br><small class="fw-normal">fin Mars</small></th>
+                <th style="width:13%">T2<br><small class="fw-normal">fin Juin</small></th>
+                <th style="width:13%">T3<br><small class="fw-normal">fin Sept.</small></th>
+                <th style="width:13%">T4<br><small class="fw-normal">fin Déc.</small></th>
+              </tr>
+            </thead>
+            <tbody>
+
+              {# PTA Global #}
+              <tr style="background:#FFFF99;font-weight:bold;">
+                <td><i class="fas fa-globe me-2 text-primary"></i>PTA Global</td>
+                {{ cible_cell(cibles['global'][1]) }}
+                {{ cible_cell(cibles['global'][2]) }}
+                {{ cible_cell(cibles['global'][3]) }}
+                {{ cible_cell(cibles['global'][4]) }}
+              </tr>
+
+              {# Programmes et leurs projets #}
+              {% for prog in cibles['programmes'] %}
+              <tr class="cible-prog" style="background:#D4E6F1;font-weight:bold;cursor:pointer;"
+                  onclick="toggleProjets('pg{{ prog['code'] }}', this)"
+                  title="Cliquer pour afficher/masquer les projets">
+                <td>
+                  <i class="fas fa-chevron-down caret me-1" style="font-size:.7rem;transition:transform .2s;"></i>
+                  <span class="fw-semibold">Programme {{ prog['code'] }}</span>
+                  — {{ prog['nom'] }}
+                </td>
+                {{ cible_cell(prog['cibles'][1]) }}
+                {{ cible_cell(prog['cibles'][2]) }}
+                {{ cible_cell(prog['cibles'][3]) }}
+                {{ cible_cell(prog['cibles'][4]) }}
+              </tr>
+              {% for proj in prog['projets'] %}
+              <tr class="cible-proj pg{{ prog['code'] }}" style="background:#EBF5FB;">
+                <td class="ps-4" style="font-size:.8rem;">
+                  <i class="fas fa-folder-open me-1 text-info" style="font-size:.72rem;"></i>
+                  <span class="text-muted">{{ proj['code'] }}</span> — {{ proj['nom'] }}
+                </td>
+                {{ cible_cell(proj['cibles'][1]) }}
+                {{ cible_cell(proj['cibles'][2]) }}
+                {{ cible_cell(proj['cibles'][3]) }}
+                {{ cible_cell(proj['cibles'][4]) }}
+              </tr>
+              {% endfor %}
+              {% endfor %}
+
+            </tbody>
+            <tfoot style="background:#AED6F1;font-size:.74rem;">
+              <tr>
+                <td colspan="5" class="text-muted px-2 py-1">
+                  <i class="fas fa-info-circle me-1"></i>
+                  Pro-ratisation mensuelle sur [période_début → période_fin] de chaque tâche.
+                  Tâches sans période : réparties uniformément sur l'année (25 % / 50 % / 75 % / 100 %).
+                  Cliquer sur une ligne programme pour afficher ou masquer ses projets.
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>{# fin onglet 1 #}
+
+      {# ── Onglet 2 : Par Direction ── #}
+      <div class="tab-pane fade" id="ciblesDir">
+        {% if cibles_directions %}
+        <div class="table-responsive">
+          <table class="table table-sm table-bordered align-middle mb-0" style="font-size:.83rem;">
+            <thead>
+              <tr class="text-center text-white" style="background:#1A5276;">
+                <th class="text-start align-middle" style="min-width:280px;">Direction</th>
+                <th style="width:13%">T1<br><small class="fw-normal">fin Mars</small></th>
+                <th style="width:13%">T2<br><small class="fw-normal">fin Juin</small></th>
+                <th style="width:13%">T3<br><small class="fw-normal">fin Sept.</small></th>
+                <th style="width:13%">T4<br><small class="fw-normal">fin Déc.</small></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for d in cibles_directions %}
+              <tr>
+                <td>
+                  <span class="badge bg-secondary me-1" style="font-size:.72rem;">{{ d.code }}</span>
+                  {{ d.nom }}
+                  <small class="text-muted ms-1">({{ d.nb_taches }} tâche{{ 's' if d.nb_taches > 1 else '' }})</small>
+                </td>
+                {{ cible_cell(d.cibles[1]) }}
+                {{ cible_cell(d.cibles[2]) }}
+                {{ cible_cell(d.cibles[3]) }}
+                {{ cible_cell(d.cibles[4]) }}
+              </tr>
+              {% endfor %}
+            </tbody>
+            <tfoot style="background:#AED6F1;font-size:.74rem;">
+              <tr>
+                <td colspan="5" class="text-muted px-2 py-1">
+                  <i class="fas fa-info-circle me-1"></i>
+                  Cible calculée d'après les poids des tâches assignées à chaque direction.
+                  Pro-ratisation mensuelle sur la période de chaque tâche.
+                  Seules les directions ayant au moins une tâche assignée sont affichées.
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+        {% else %}
+        <p class="text-muted p-3">Aucune direction n'a de tâches assignées dans le PTA.</p>
+        {% endif %}
+      </div>{# fin onglet 2 #}
+
+      {# ── Onglet 3 : Par Service ── #}
+      <div class="tab-pane fade" id="ciblesSvc">
+        {% if cibles_services %}
+        <div class="table-responsive">
+          <table class="table table-sm table-bordered align-middle mb-0" style="font-size:.83rem;">
+            <thead>
+              <tr class="text-center text-white" style="background:#1A5276;">
+                <th class="text-start align-middle" style="min-width:60px;">Direction</th>
+                <th class="text-start align-middle" style="min-width:240px;">Service</th>
+                <th style="width:13%">T1<br><small class="fw-normal">fin Mars</small></th>
+                <th style="width:13%">T2<br><small class="fw-normal">fin Juin</small></th>
+                <th style="width:13%">T3<br><small class="fw-normal">fin Sept.</small></th>
+                <th style="width:13%">T4<br><small class="fw-normal">fin Déc.</small></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for sv in cibles_services %}
+              <tr>
+                <td class="text-center">
+                  <span class="badge bg-primary" style="font-size:.7rem;">{{ sv.direction_code }}</span>
+                </td>
+                <td>
+                  <span class="badge bg-secondary me-1" style="font-size:.72rem;">{{ sv.code }}</span>
+                  {{ sv.nom }}
+                  <small class="text-muted ms-1">({{ sv.nb_taches }} tâche{{ 's' if sv.nb_taches > 1 else '' }})</small>
+                </td>
+                {{ cible_cell(sv.cibles[1]) }}
+                {{ cible_cell(sv.cibles[2]) }}
+                {{ cible_cell(sv.cibles[3]) }}
+                {{ cible_cell(sv.cibles[4]) }}
+              </tr>
+              {% endfor %}
+            </tbody>
+            <tfoot style="background:#AED6F1;font-size:.74rem;">
+              <tr>
+                <td colspan="6" class="text-muted px-2 py-1">
+                  <i class="fas fa-info-circle me-1"></i>
+                  Cible calculée d'après les poids des tâches assignées à chaque service.
+                  Pro-ratisation mensuelle sur la période de chaque tâche.
+                  Seuls les services ayant au moins une tâche assignée sont affichés.
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+        {% else %}
+        <p class="text-muted p-3">Aucun service n'a de tâches assignées dans le PTA.</p>
+        {% endif %}
+      </div>{# fin onglet 3 #}
+
+    </div>{# fin tab-content #}
+  </div>
+</div>
+
+<script>
+function toggleProjets(groupId, row) {
+  var rows = document.querySelectorAll('tr.' + groupId);
+  var caret = row.querySelector('.caret');
+  var isOpen = !rows[0] || rows[0].style.display !== 'none';
+  rows.forEach(function(r) { r.style.display = isOpen ? 'none' : ''; });
+  if (caret) {
+    caret.style.transform = isOpen ? 'rotate(-90deg)' : '';
+  }
+}
+
+function toggleAllProjects() {
+  var btn = document.getElementById('btnToggleAll');
+  var allProjs = document.querySelectorAll('tr.cible-proj');
+  var anyVisible = Array.from(allProjs).some(function(r){ return r.style.display !== 'none'; });
+  allProjs.forEach(function(r){ r.style.display = anyVisible ? 'none' : ''; });
+  document.querySelectorAll('tr.cible-prog .caret').forEach(function(c){
+    c.style.transform = anyVisible ? 'rotate(-90deg)' : '';
+  });
+  btn.innerHTML = anyVisible
+    ? '<i class="fas fa-expand-alt me-1"></i>Développer tout'
+    : '<i class="fas fa-compress-alt me-1"></i>Réduire tout';
+}
+</script>
+{% endif %}
+
+{% endif %}{# end if annee #}
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+{% if annee %}
+
+var COLORS = ['#1F4E79','#2E86AB','#3BB273','#E9C46A','#E76F51'];
+var SRC_LABELS = ['Fonds Propres (RP)','FADEC Affecté (FA)','FADEC Non Affecté (FNA)','PTFs / Partenaires','Autres Fonds'];
+
+function makeDonut(canvasId, values) {
+  var ctx = document.getElementById(canvasId);
+  if (!ctx) return;
+  var hasData = values.some(function(v){ return v > 0; });
+  if (!hasData) {
+    ctx.parentElement.innerHTML = '<p class="text-muted text-center py-3">Aucune donnée.</p>';
+    return;
+  }
+  var pairs = SRC_LABELS.map(function(l,i){ return {l:l,v:values[i],c:COLORS[i]}; }).filter(function(p){ return p.v > 0; });
+  new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: pairs.map(function(p){ return p.l; }),
+      datasets: [{ data: pairs.map(function(p){ return p.v; }),
+                   backgroundColor: pairs.map(function(p){ return p.c; }),
+                   borderWidth: 2, borderColor: '#fff' }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'bottom', labels: { font:{ size:10 }, padding:10 } },
+        tooltip: { callbacks: { label: function(c) {
+          var total = c.dataset.data.reduce(function(a,b){ return a+b; }, 0);
+          var pct = total > 0 ? (c.raw/total*100).toFixed(1) : '0.0';
+          return ' ' + c.raw.toLocaleString('fr-FR') + ' F (' + pct + '%)';
+        }}}
+      }
+    }
+  });
+}
+
+// Initialiser les graphiques sources dans les tabs
+makeDonut('chartSrcGen', [{{ total_rp }}, {{ total_fa }}, {{ total_fn }}, {{ total_ap }}, {{ total_af }}]);
+
+document.querySelectorAll('#tabSrc button').forEach(function(btn) {
+  btn.addEventListener('shown.bs.tab', function(e) {
+    var target = e.target.getAttribute('data-bs-target');
+    if (target === '#srcInv') makeDonut('chartSrcInv', [{{ inv_rp }}, {{ inv_fa }}, {{ inv_fn }}, {{ inv_ap }}, {{ inv_af }}]);
+    if (target === '#srcFct') makeDonut('chartSrcFct', [{{ fct_rp }}, {{ fct_fa }}, {{ fct_fn }}, {{ fct_ap }}, {{ fct_af }}]);
+  });
+});
+
+// Graphique directions général
+(function() {
+  var ctx = document.getElementById('chartDirections');
+  if (!ctx) return;
+  var labels = [{% for d in stats_directions %}"{{ d.code }}"{% if not loop.last %},{% endif %}{% endfor %}];
+  var dataAct = [{% for d in stats_directions %}{{ d.nb_activites }}{% if not loop.last %},{% endif %}{% endfor %}];
+  var dataTch = [{% for d in stats_directions %}{{ d.nb_taches }}{% if not loop.last %},{% endif %}{% endfor %}];
+  var fullNames = [{% for d in stats_directions %}"{{ d.nom }}"{% if not loop.last %},{% endif %}{% endfor %}];
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        { label:'Activités', data:dataAct, backgroundColor:'rgba(31,78,121,0.75)', borderColor:'#1F4E79', borderWidth:1 },
+        { label:'Tâches',    data:dataTch, backgroundColor:'rgba(59,178,115,0.75)', borderColor:'#3BB273', borderWidth:1 }
+      ]
+    },
+    options: {
+      responsive: true,
+      scales: { x:{ ticks:{ font:{size:10} } }, y:{ beginAtZero:true, ticks:{ stepSize:1 } } },
+      plugins: {
+        legend: { position:'top' },
+        tooltip: { callbacks: { title: function(items) { return fullNames[items[0].dataIndex]; } } }
+      }
+    }
+  });
+})();
+
+// Filtre activités d'investissement
+function filtrerInvest(val) {
+  var filter = val.toLowerCase();
+  var rows = document.querySelectorAll('#tblInvest tbody tr');
+  rows.forEach(function(row) {
+    var text = row.textContent.toLowerCase();
+    row.style.display = text.includes(filter) ? '' : 'none';
+  });
+}
+
+{% endif %}
+</script>
+{% endblock %}

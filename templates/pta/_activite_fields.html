@@ -1,0 +1,366 @@
+{# Champs formulaire activité — utilisé en mode ajout (act=none) et édition (act=objet) #}
+{% set uid = act.id if act else 'new' %}
+{% set nb_svcs = services|length %}
+{% set nb_dirs = directions|length %}
+{% if act %}
+  {% set nb_s = act.services_intervenants|length %}
+  {% set nb_d = act.directions_associees|length %}
+  {% if nb_svcs > 0 and nb_s == nb_svcs and nb_dirs > 0 and nb_d == nb_dirs %}
+    {% set struct_mode = 'tous_sd' %}
+  {% elif nb_svcs > 0 and nb_s == nb_svcs and nb_d == 0 %}
+    {% set struct_mode = 'tous_services' %}
+  {% elif nb_s == 0 and nb_dirs > 0 and nb_d == nb_dirs %}
+    {% set struct_mode = 'toutes_directions' %}
+  {% elif nb_s == 0 and nb_d == 0 %}
+    {% set struct_mode = 'aucun' %}
+  {% else %}
+    {% set struct_mode = 'manuel' %}
+  {% endif %}
+{% else %}
+  {% set struct_mode = 'aucun' %}
+{% endif %}
+
+{# ── Nom ── #}
+<div class="col-md-8">
+  <label class="form-label fw-semibold">Désignation / Nom de l'activité *</label>
+  <input type="text" name="nom" class="form-control"
+         value="{{ act.nom if act else '' }}">
+  <div class="invalid-feedback">Ce champ est obligatoire.</div>
+</div>
+<div class="col-md-4">
+  <label class="form-label fw-semibold">Poids (%)</label>
+  <input type="number" name="poids" class="form-control"
+         value="{{ act.poids if act else 0 }}" step="0.01" min="0" max="100">
+</div>
+
+{# ── Imputation budgétaire ── #}
+<div class="col-12">
+  <label class="form-label fw-semibold">Imputation budgétaire</label>
+  <div class="d-flex gap-3 align-items-center mb-1">
+    <div class="form-check">
+      <input class="form-check-input" type="radio" name="imputation_type" value="neant"
+             id="a_imp_neant_{{ uid }}"
+             {% if not act or not act.imputation_budgetaire or act.imputation_budgetaire == 'NÉANT' %}checked{% endif %}
+             onchange="toggleImpActivite(this)">
+      <label class="form-check-label" for="a_imp_neant_{{ uid }}">NÉANT</label>
+    </div>
+    <div class="form-check">
+      <input class="form-check-input" type="radio" name="imputation_type" value="ligne"
+             id="a_imp_ligne_{{ uid }}"
+             {% if act and act.imputation_budgetaire and act.imputation_budgetaire != 'NÉANT' %}checked{% endif %}
+             onchange="toggleImpActivite(this)">
+      <label class="form-check-label" for="a_imp_ligne_{{ uid }}">Saisir la ligne budgétaire</label>
+    </div>
+  </div>
+  <input type="text" name="imputation_budgetaire" class="form-control"
+         id="imp_act_text_{{ uid }}"
+         value="{{ act.imputation_budgetaire if act and act.imputation_budgetaire and act.imputation_budgetaire != 'NÉANT' else '' }}"
+         placeholder="Ex: 6.3.1 — Fonctionnement"
+         {% if not act or not act.imputation_budgetaire or act.imputation_budgetaire == 'NÉANT' %}style="display:none;"{% endif %}>
+  <small class="text-muted">Si NÉANT ici, toutes les tâches seront aussi NÉANT.</small>
+</div>
+
+{# ── Période d'exécution ── #}
+{% set mois = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'] %}
+<div class="col-md-4">
+  <label class="form-label fw-semibold">Période de début *</label>
+  <select name="periode_debut" class="form-select">
+    <option value="">— Choisir —</option>
+    {% for m in mois %}
+    <option value="{{ m }}" {% if act and act.periode_debut == m %}selected{% endif %}>{{ m }}</option>
+    {% endfor %}
+  </select>
+  <div class="invalid-feedback">Ce champ est obligatoire.</div>
+</div>
+<div class="col-md-4">
+  <label class="form-label fw-semibold">Période de fin *</label>
+  <select name="periode_fin" class="form-select">
+    <option value="">— Choisir —</option>
+    {% for m in mois %}
+    <option value="{{ m }}" {% if act and act.periode_fin == m %}selected{% endif %}>{{ m }}</option>
+    {% endfor %}
+  </select>
+  <div class="invalid-feedback">Ce champ est obligatoire.</div>
+</div>
+
+{# ── Mode d'exécution ── #}
+<div class="col-md-4">
+  <label class="form-label fw-semibold">Mode d'exécution</label>
+  <select name="mode_execution" class="form-select">
+    {% for mode in modes_execution %}
+    <option value="{{ mode }}"
+            {% if (act and act.mode_execution == mode) or (not act and mode == 'Direct') or (act and not act.mode_execution and mode == 'Direct') %}selected{% endif %}>
+      {{ mode }}
+    </option>
+    {% endfor %}
+  </select>
+</div>
+
+{# ── Type d'activité ── #}
+<div class="col-12">
+  <label class="form-label fw-semibold">Type d'activité *</label>
+  <div class="d-flex gap-4">
+    <div class="form-check">
+      <input class="form-check-input" type="radio" name="type_activite"
+             id="ta_fonct_{{ uid }}" value="Activité de fonctionnement"
+             {% if not act or act.type_activite == 'Activité de fonctionnement' %}checked{% endif %}
+             required>
+      <label class="form-check-label" for="ta_fonct_{{ uid }}">Activité de fonctionnement</label>
+    </div>
+    <div class="form-check">
+      <input class="form-check-input" type="radio" name="type_activite"
+             id="ta_invest_{{ uid }}" value="Activité d'investissement"
+             {% if act and act.type_activite == "Activité d'investissement" %}checked{% endif %}>
+      <label class="form-check-label" for="ta_invest_{{ uid }}">Activité d'investissement</label>
+    </div>
+  </div>
+</div>
+
+{# ── Direction responsable ── #}
+<div class="col-md-6">
+  <label class="form-label fw-semibold">Direction responsable *</label>
+  <select name="direction_responsable_id" class="form-select">
+    <option value="">— Choisir —</option>
+    {% for d in directions %}
+    <option value="{{ d.id }}"
+            {% if act and act.direction_responsable_id == d.id %}selected{% endif %}>
+      {{ d.code }} — {{ d.nom }}
+    </option>
+    {% endfor %}
+  </select>
+  <div class="invalid-feedback">Ce champ est obligatoire.</div>
+</div>
+
+{# ── Structures associées ── #}
+<div class="col-md-6">
+  <label class="form-label fw-semibold">Structures associées *</label>
+  <select name="structures_mode" class="form-select" id="struct_mode_{{ uid }}"
+          onchange="toggleStructMode('{{ uid }}')">
+    <option value="aucun" {% if struct_mode == 'aucun' %}selected{% endif %}>Aucun</option>
+    <option value="tous_services" {% if struct_mode == 'tous_services' %}selected{% endif %}>Tous les services</option>
+    <option value="toutes_directions" {% if struct_mode == 'toutes_directions' %}selected{% endif %}>Toutes les directions</option>
+    <option value="tous_sd" {% if struct_mode == 'tous_sd' %}selected{% endif %}>Tous les services et directions</option>
+    <option value="manuel" {% if struct_mode == 'manuel' %}selected{% endif %}>Sélection manuelle…</option>
+  </select>
+</div>
+<div id="struct_manual_{{ uid }}" class="col-12"
+     {% if struct_mode != 'manuel' %}style="display:none;"{% endif %}>
+  <div class="row g-2">
+    <div class="col-md-6">
+      <label class="form-label fw-semibold">Services intervenants</label>
+      <select name="services_intervenants" class="form-select" multiple size="4">
+        {% for s in services %}
+        <option value="{{ s.id }}"
+                {% if act and s in act.services_intervenants %}selected{% endif %}>
+          {{ s.code }} — {{ s.nom }}
+        </option>
+        {% endfor %}
+      </select>
+      <small class="text-muted">Maintenez Ctrl pour sélectionner plusieurs</small>
+    </div>
+    <div class="col-md-6">
+      <label class="form-label fw-semibold">Directions associées</label>
+      <select name="directions_associees" class="form-select" multiple size="4">
+        {% for d in directions %}
+        <option value="{{ d.id }}"
+                {% if act and d in act.directions_associees %}selected{% endif %}>
+          {{ d.code }} — {{ d.nom }}
+        </option>
+        {% endfor %}
+      </select>
+      <small class="text-muted">Maintenez Ctrl pour sélectionner plusieurs</small>
+    </div>
+  </div>
+</div>
+
+{# ── Détails financement ── #}
+<div class="col-md-6">
+  <label class="form-label fw-semibold">Détails / Remarques financement</label>
+  <textarea name="details_financement" class="form-control" rows="2"
+            placeholder="RAS">{{ act.details_financement or '' if act else '' }}</textarea>
+</div>
+
+{# ── Acteurs externes (texte libre) ── #}
+<div class="col-md-6">
+  <label class="form-label fw-semibold">Acteurs externes (texte libre)</label>
+  <textarea name="acteurs_externes" class="form-control" rows="2"
+            placeholder="ONG, partenaires techniques, entreprises prestataires…">{{ act.acteurs_externes or '' if act else '' }}</textarea>
+</div>
+
+{# ── Structures externes (liste pré-configurée) ── #}
+<div class="col-12">
+  <label class="form-label fw-semibold">Structures externes associées</label>
+  <select name="structures_externes" class="form-select" multiple size="4">
+    {% for se in structures_externes %}
+    <option value="{{ se.id }}"
+            {% if act and se in act.structures_externes %}selected{% endif %}>
+      {% if se.type_org %}[{{ se.type_org }}] {% endif %}{{ se.nom }}
+    </option>
+    {% endfor %}
+  </select>
+  <small class="text-muted">Maintenez Ctrl pour sélectionner plusieurs — gérez la liste dans <a href="{{ url_for('admin.structures_externes') }}" target="_blank">Administration</a></small>
+</div>
+
+{# ── Description ── #}
+<div class="col-12">
+  <label class="form-label fw-semibold">Description</label>
+  <textarea name="description" class="form-control" rows="2"
+            placeholder="Description détaillée de l'activité…">{{ act.description or '' if act else '' }}</textarea>
+</div>
+
+{# ── Observations (Contribution ODD…) ── #}
+<div class="col-12">
+  <label class="form-label fw-semibold">Observations <small class="text-muted">(Contribution ODD et cibles prioritaires…)</small></label>
+  <textarea name="observations" class="form-control" rows="2"
+            placeholder="Ex : ODD 2 – Faim zéro, cible 2.3…">{{ act.observations or '' if act else '' }}</textarea>
+</div>
+
+{# ── Import tâches (ajout uniquement) ── #}
+{% if not act %}
+{% set pid = projet.id if projet is defined else 'new' %}
+<div class="col-12 mt-1">
+  <hr class="my-2">
+  <label class="form-label fw-semibold mb-1">
+    <i class="fas fa-file-import me-1 text-primary"></i>Importer des tâches (optionnel)
+  </label>
+  <input type="hidden" name="import_source" id="imp_src_{{ pid }}" value="">
+  <input type="hidden" name="import_id" id="imp_id_{{ pid }}" value="">
+  <div class="d-flex flex-wrap gap-2 mb-2">
+    <button type="button" class="btn btn-sm btn-outline-primary"
+            onclick="showImportSection('pta','{{ pid }}')">
+      <i class="fas fa-clipboard-list me-1"></i>Depuis le PTA
+    </button>
+    <button type="button" class="btn btn-sm btn-outline-info"
+            onclick="showImportSection('biblio','{{ pid }}')">
+      <i class="fas fa-book me-1"></i>Depuis la bibliothèque
+    </button>
+    <button type="button" class="btn btn-sm btn-outline-secondary btn-sm"
+            onclick="clearImportSection('{{ pid }}')">
+      <i class="fas fa-times me-1"></i>Aucun import
+    </button>
+  </div>
+  <div id="impPTA_{{ pid }}" style="display:none;">
+    <input type="text" class="form-control form-control-sm mb-1"
+           placeholder="Filtrer par nom ou code…"
+           oninput="filterBiblioSel(this, 'pta_sel_{{ pid }}')">
+    <select class="form-select mb-1" id="pta_sel_{{ pid }}"
+            onchange="setImportId('{{ pid }}', this.value)">
+      <option value="">— Sélectionner une activité du PTA —</option>
+      {% for prog in programmes %}
+        {% for pj in prog.projets %}
+          {% for a in pj.activites %}
+          <option value="{{ a.id }}">{{ a.code }} — {{ a.nom }}</option>
+          {% endfor %}
+        {% endfor %}
+      {% endfor %}
+    </select>
+    <small class="text-muted">Tâches importées avec tous leurs détails — les champs déjà remplis ci-dessus ne seront pas écrasés</small>
+  </div>
+  <div id="impBiblio_{{ pid }}" style="display:none;">
+    <input type="text" class="form-control form-control-sm mb-1"
+           placeholder="Filtrer par nom…"
+           oninput="filterBiblioSel(this, 'biblio_sel_{{ pid }}')">
+    <select class="form-select mb-1" id="biblio_sel_{{ pid }}"
+            onchange="setImportId('{{ pid }}', this.value)">
+      <option value="">— Sélectionner dans la bibliothèque —</option>
+      {% for ba in biblio_activites %}
+      <option value="{{ ba.id }}">{{ ba.nom }}</option>
+      {% endfor %}
+    </select>
+    <small class="text-muted">Toutes les données seront importées pour les champs laissés vides ci-dessus</small>
+  </div>
+</div>
+{% endif %}
+
+<script>
+function setImportId(pid, val) {
+  var el = document.getElementById('imp_id_' + pid);
+  if (el) el.value = val;
+}
+function showImportSection(src, pid) {
+  document.getElementById('imp_src_' + pid).value = src;
+  document.getElementById('imp_id_' + pid).value = '';
+  document.getElementById('impPTA_' + pid).style.display = (src === 'pta') ? '' : 'none';
+  document.getElementById('impBiblio_' + pid).style.display = (src === 'biblio') ? '' : 'none';
+}
+function clearImportSection(pid) {
+  document.getElementById('imp_src_' + pid).value = '';
+  document.getElementById('imp_id_' + pid).value = '';
+  document.getElementById('impPTA_' + pid).style.display = 'none';
+  document.getElementById('impBiblio_' + pid).style.display = 'none';
+}
+// Validation manuelle : appelée par le bouton Ajouter (le form a novalidate)
+function validerFormActivite(formId) {
+  var form = document.getElementById(formId);
+  if (!form) return true;
+  var impId  = form.querySelector('[name="import_id"]');
+  var impSrc = form.querySelector('[name="import_source"]');
+  // Si un import est sélectionné, pas de validation obligatoire côté client
+  if (impId && impSrc && impId.value && impSrc.value) return true;
+  // Sinon, vérifier les champs obligatoires manuellement
+  var reqFields = ['nom', 'periode_debut', 'periode_fin', 'direction_responsable_id'];
+  var ok = true;
+  reqFields.forEach(function(name) {
+    var el = form.querySelector('[name="' + name + '"]');
+    if (el && !el.value.trim()) {
+      el.classList.add('is-invalid');
+      ok = false;
+    } else if (el) {
+      el.classList.remove('is-invalid');
+    }
+  });
+  if (!ok) {
+    form.querySelector('.is-invalid').focus();
+    return false;
+  }
+  return true;
+}
+function toggleStructMode(uid) {
+  var sel = document.getElementById('struct_mode_' + uid);
+  var manual = document.getElementById('struct_manual_' + uid);
+  if (manual) manual.style.display = (sel.value === 'manuel') ? '' : 'none';
+}
+function filterBiblioSel(input, selId) {
+  var filter = input.value.toLowerCase();
+  var sel = document.getElementById(selId);
+  if (!sel) return;
+  Array.from(sel.options).forEach(function(opt) {
+    if (!opt.value) return;
+    opt.hidden = !opt.text.toLowerCase().includes(filter);
+  });
+}
+</script>
+
+<script>
+function toggleImpActivite(radio) {
+  var modal = radio.closest('.modal-body') || radio.parentElement.parentElement;
+  var txtInputs = modal.querySelectorAll('[name="imputation_budgetaire"]');
+  txtInputs.forEach(function(el) {
+    el.style.display = (radio.value === 'ligne') ? '' : 'none';
+    if (radio.value === 'neant') el.value = '';
+  });
+}
+
+// Validation : période fin >= période début
+(function() {
+  var MOIS = ['Janvier','Février','Mars','Avril','Mai','Juin',
+              'Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+  var modal = document.currentScript.closest('.modal-content') || document.currentScript.parentElement;
+  var selDebut = modal.querySelector('[name="periode_debut"]');
+  var selFin   = modal.querySelector('[name="periode_fin"]');
+  if (!selDebut || !selFin) return;
+
+  function validerPeriode() {
+    var idxD = MOIS.indexOf(selDebut.value);
+    var idxF = MOIS.indexOf(selFin.value);
+    if (idxD >= 0 && idxF >= 0 && idxF < idxD) {
+      selFin.setCustomValidity('La période de fin doit être ≥ à la période de début.');
+      selFin.reportValidity();
+    } else {
+      selFin.setCustomValidity('');
+    }
+  }
+  selDebut.addEventListener('change', validerPeriode);
+  selFin.addEventListener('change', validerPeriode);
+})();
+</script>

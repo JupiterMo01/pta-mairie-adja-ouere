@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}Sauvegardes PTA{% endblock %}
+{% block page_title %}<i class="fas fa-database me-2"></i>Sauvegardes PTA{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center gap-3 mt-2 mb-3">
+  <a href="{{ url_for('admin.index') }}" class="btn btn-sm btn-outline-secondary">
+    <i class="fas fa-arrow-left me-1"></i>Administration
+  </a>
+  <span class="text-muted small">{{ sauvegardes|length }} sauvegarde(s) disponible(s)</span>
+</div>
+
+{% if not sauvegardes %}
+<div class="alert alert-info">
+  <i class="fas fa-info-circle me-2"></i>
+  Aucune sauvegarde. Les sauvegardes sont créées automatiquement lorsque vous réinitialisez un PTA.
+</div>
+{% else %}
+<div class="table-responsive">
+  <table class="table table-bordered table-hover align-middle">
+    <thead class="table-dark">
+      <tr>
+        <th>#</th>
+        <th>Année PTA</th>
+        <th>Date de création</th>
+        <th>Créé par</th>
+        <th class="text-center">Programmes</th>
+        <th class="text-center">Activités</th>
+        <th class="text-center">Tâches</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for b in sauvegardes %}
+      <tr>
+        <td class="text-muted small">{{ b.id }}</td>
+        <td><span class="badge bg-primary fs-6">{{ b.annee_label }}</span></td>
+        <td>{{ b.created_at.strftime('%d/%m/%Y à %H:%M') }}</td>
+        <td>{{ b.created_by.prenom ~ ' ' ~ b.created_by.nom if b.created_by else '—' }}</td>
+        <td class="text-center fw-bold">{{ b.nb_programmes }}</td>
+        <td class="text-center">{{ b.nb_activites }}</td>
+        <td class="text-center">{{ b.nb_taches }}</td>
+        <td>
+          {% if current_user.role == 'admin_editeur' %}
+          <!-- Restaurer -->
+          <button class="btn btn-sm btn-success me-1"
+                  data-bs-toggle="modal"
+                  data-bs-target="#modalRestore{{ b.id }}"
+                  title="Restaurer ce backup">
+            <i class="fas fa-undo me-1"></i>Restaurer
+          </button>
+          <!-- Supprimer -->
+          <form method="POST" action="{{ url_for('admin.backup_delete', backup_id=b.id) }}"
+                class="d-inline"
+                onsubmit="return confirm('Supprimer définitivement cette sauvegarde ?')">
+            <button type="submit" class="btn btn-sm btn-outline-danger" title="Supprimer ce backup">
+              <i class="fas fa-trash"></i>
+            </button>
+          </form>
+          {% else %}
+          <span class="text-muted small fst-italic">Lecture seule</span>
+          {% endif %}
+        </td>
+      </tr>
+
+      <!-- Modal restauration -->
+      {% if current_user.role == 'admin_editeur' %}
+      <div class="modal fade" id="modalRestore{{ b.id }}" tabindex="-1">
+        <div class="modal-dialog">
+          <div class="modal-content border-success">
+            <div class="modal-header bg-success text-white">
+              <h5 class="modal-title"><i class="fas fa-undo me-2"></i>Restaurer la sauvegarde #{{ b.id }}</h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <div class="alert alert-warning py-2 mb-3">
+                <strong>Condition :</strong> Le PTA {{ b.annee_label }} doit être <strong>vide</strong> (réinitialisé) avant de restaurer.
+                S'il contient déjà des données, la restauration sera refusée.
+              </div>
+              <p>Cette action va recréer :</p>
+              <ul>
+                <li><strong>{{ b.nb_programmes }}</strong> programme(s)</li>
+                <li><strong>{{ b.nb_activites }}</strong> activité(s)</li>
+                <li><strong>{{ b.nb_taches }}</strong> tâche(s)</li>
+              </ul>
+              <p class="text-muted small">Sauvegarde du {{ b.created_at.strftime('%d/%m/%Y à %H:%M') }}</p>
+              <form method="POST" action="{{ url_for('admin.backup_restore', backup_id=b.id) }}"
+                    id="formRestore{{ b.id }}">
+                <label class="form-label fw-semibold">Confirmez avec votre mot de passe</label>
+                <input type="password" name="password" class="form-control mb-3"
+                       placeholder="Mot de passe de connexion" required>
+                <div class="d-flex justify-content-end gap-2">
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                  <button type="submit" class="btn btn-success fw-bold">
+                    <i class="fas fa-undo me-1"></i>Restaurer le PTA {{ b.annee_label }}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}

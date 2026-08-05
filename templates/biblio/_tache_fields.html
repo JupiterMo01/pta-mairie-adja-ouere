@@ -1,0 +1,213 @@
+{# Champs formulaire tâche bibliothèque — tache=objet en édition, tache=none en ajout #}
+{% set tid = tache.id if tache else (form_uid|default('new')) %}
+{% set nb_svcs = services|length %}
+{% set nb_dirs = directions|length %}
+{% if tache %}
+  {% set nb_s = tache.services_concernes|length %}
+  {% set nb_d = tache.directions_associees|length %}
+  {% if nb_svcs > 0 and nb_s == nb_svcs and nb_dirs > 0 and nb_d == nb_dirs %}
+    {% set struct_mode = 'tous_sd' %}
+  {% elif nb_svcs > 0 and nb_s == nb_svcs and nb_d == 0 %}
+    {% set struct_mode = 'tous_services' %}
+  {% elif nb_s == 0 and nb_dirs > 0 and nb_d == nb_dirs %}
+    {% set struct_mode = 'toutes_directions' %}
+  {% elif nb_s == 0 and nb_d == 0 %}
+    {% set struct_mode = 'aucun' %}
+  {% else %}
+    {% set struct_mode = 'manuel' %}
+  {% endif %}
+{% else %}
+  {% set struct_mode = 'aucun' %}
+{% endif %}
+
+{# ── Nom + Poids ── #}
+<div class="col-md-8">
+  <label class="form-label fw-semibold">Nom de la tâche *</label>
+  <input type="text" name="nom" class="form-control"
+         value="{{ tache.nom if tache else '' }}" required>
+</div>
+<div class="col-md-4">
+  <label class="form-label fw-semibold">Poids (%)</label>
+  <input type="number" name="poids" class="form-control"
+         value="{{ tache.poids if tache else 0 }}" step="0.01" min="0" max="100">
+</div>
+
+{# ── Mode d'exécution ── #}
+<div class="col-md-4">
+  <label class="form-label fw-semibold">Mode d'exécution</label>
+  <select name="mode_execution" class="form-select">
+    {% for mode in modes_execution %}
+    <option value="{{ mode }}"
+            {% if (tache and tache.mode_execution == mode) or (not tache and mode == 'Direct') or (tache and not tache.mode_execution and mode == 'Direct') %}selected{% endif %}>
+      {{ mode }}
+    </option>
+    {% endfor %}
+  </select>
+</div>
+<div class="col-md-8"></div>
+
+{# ── Imputation budgétaire ── #}
+<div class="col-12">
+  <label class="form-label fw-semibold">Imputation budgétaire</label>
+  <div class="d-flex gap-3 align-items-center mb-1">
+    <div class="form-check">
+      <input class="form-check-input" type="radio" name="imputation_type" value="neant"
+             id="bt_imp_neant_{{ tid }}"
+             {% if not tache or not tache.imputation_budgetaire or tache.imputation_budgetaire == 'NÉANT' %}checked{% endif %}
+             onchange="btToggleImp(this,'{{ tid }}')">
+      <label class="form-check-label" for="bt_imp_neant_{{ tid }}">NÉANT</label>
+    </div>
+    <div class="form-check">
+      <input class="form-check-input" type="radio" name="imputation_type" value="ligne"
+             id="bt_imp_ligne_{{ tid }}"
+             {% if tache and tache.imputation_budgetaire and tache.imputation_budgetaire != 'NÉANT' %}checked{% endif %}
+             onchange="btToggleImp(this,'{{ tid }}')">
+      <label class="form-check-label" for="bt_imp_ligne_{{ tid }}">Saisir la ligne budgétaire</label>
+    </div>
+  </div>
+  <input type="text" name="imputation_budgetaire" class="form-control"
+         id="bt_imp_text_{{ tid }}"
+         value="{{ tache.imputation_budgetaire if tache and tache.imputation_budgetaire and tache.imputation_budgetaire != 'NÉANT' else '' }}"
+         placeholder="Ex: 6.3.1 — Fonctionnement"
+         {% if not tache or not tache.imputation_budgetaire or tache.imputation_budgetaire == 'NÉANT' %}style="display:none;"{% endif %}>
+</div>
+
+{# ── Responsable (service OU direction) ── #}
+<div class="col-md-6">
+  <label class="form-label fw-semibold">Responsable * <small class="text-muted">(service ou direction)</small></label>
+  <select name="responsable_ref" class="form-select" required>
+    <option value="">— Choisir —</option>
+    <optgroup label="Services">
+    {% for s in services %}
+    <option value="s_{{ s.id }}" {% if tache and tache.service_responsable_id == s.id %}selected{% endif %}>
+      {{ s.code }} — {{ s.nom }}
+    </option>
+    {% endfor %}
+    </optgroup>
+    <optgroup label="Directions">
+    {% for d in directions %}
+    <option value="d_{{ d.id }}" {% if tache and tache.direction_responsable_id == d.id %}selected{% endif %}>
+      {{ d.code }} — {{ d.nom }}
+    </option>
+    {% endfor %}
+    </optgroup>
+  </select>
+</div>
+
+{# ── Structures associées ── #}
+<div class="col-md-6">
+  <label class="form-label fw-semibold">Structures associées *</label>
+  <select name="structures_mode" class="form-select" id="btstruct_mode_{{ tid }}"
+          onchange="toggleBTStructMode('{{ tid }}')">
+    <option value="aucun" {% if struct_mode == 'aucun' %}selected{% endif %}>Aucun</option>
+    <option value="tous_services" {% if struct_mode == 'tous_services' %}selected{% endif %}>Tous les services</option>
+    <option value="toutes_directions" {% if struct_mode == 'toutes_directions' %}selected{% endif %}>Toutes les directions</option>
+    <option value="tous_sd" {% if struct_mode == 'tous_sd' %}selected{% endif %}>Tous les services et directions</option>
+    <option value="manuel" {% if struct_mode == 'manuel' %}selected{% endif %}>Sélection manuelle…</option>
+  </select>
+</div>
+<div id="btstruct_manual_{{ tid }}" class="col-12"
+     {% if struct_mode != 'manuel' %}style="display:none;"{% endif %}>
+  <div class="row g-2">
+    <div class="col-md-6">
+      <label class="form-label fw-semibold">Services associés</label>
+      <select name="services_concernes" class="form-select" multiple size="3">
+        {% for s in services %}
+        <option value="{{ s.id }}" {% if tache and s in tache.services_concernes %}selected{% endif %}>
+          {{ s.code }} — {{ s.nom }}
+        </option>
+        {% endfor %}
+      </select>
+      <small class="text-muted">Ctrl+clic pour sélection multiple</small>
+    </div>
+    <div class="col-md-6">
+      <label class="form-label fw-semibold">Directions associées</label>
+      <select name="directions_associees" class="form-select" multiple size="3">
+        {% for d in directions %}
+        <option value="{{ d.id }}" {% if tache and d in tache.directions_associees %}selected{% endif %}>
+          {{ d.code }} — {{ d.nom }}
+        </option>
+        {% endfor %}
+      </select>
+      <small class="text-muted">Ctrl+clic pour sélection multiple</small>
+    </div>
+  </div>
+</div>
+
+{# ── Sources de financement ── #}
+<div class="col-12 mt-1">
+  <label class="form-label fw-semibold">Sources de financement (F CFA)</label>
+  <div class="row g-2">
+    <div class="col-md-4">
+      <label class="form-label small">Ressources propres</label>
+      <input type="text" inputmode="decimal" name="ressources_propres" class="form-control form-control-sm montant-input"
+             value="{{ tache.ressources_propres if tache else 0 }}">
+    </div>
+    <div class="col-md-4">
+      <label class="form-label small">FADeC Affecté</label>
+      <input type="text" inputmode="decimal" name="fadec_affecte" class="form-control form-control-sm montant-input"
+             value="{{ tache.fadec_affecte if tache else 0 }}">
+    </div>
+    <div class="col-md-4">
+      <label class="form-label small">FADeC Non Affecté</label>
+      <input type="text" inputmode="decimal" name="fadec_non_affecte" class="form-control form-control-sm montant-input"
+             value="{{ tache.fadec_non_affecte if tache else 0 }}">
+    </div>
+    <div class="col-md-4">
+      <label class="form-label small">Autres Partenaires</label>
+      <input type="text" inputmode="decimal" name="autres_partenaires" class="form-control form-control-sm montant-input"
+             value="{{ tache.autres_partenaires if tache else 0 }}">
+    </div>
+    <div class="col-md-4">
+      <label class="form-label small">Autres Fonds</label>
+      <input type="text" inputmode="decimal" name="autres_fonds" class="form-control form-control-sm montant-input"
+             value="{{ tache.autres_fonds if tache else 0 }}">
+    </div>
+  </div>
+</div>
+
+{# ── Détails financement + Acteurs ── #}
+<div class="col-md-6">
+  <label class="form-label fw-semibold">Détails de financement</label>
+  <textarea name="details_financement" class="form-control" rows="2"
+            placeholder="RAS">{{ tache.details_financement or '' if tache else '' }}</textarea>
+</div>
+<div class="col-md-6">
+  <label class="form-label fw-semibold">Acteurs externes (texte libre)</label>
+  <textarea name="acteurs_externes" class="form-control" rows="2"
+            placeholder="ONG, prestataires…">{{ tache.acteurs_externes or '' if tache else '' }}</textarea>
+</div>
+
+{# ── Structures externes (liste pré-configurée) ── #}
+<div class="col-12">
+  <label class="form-label fw-semibold">Structures externes associées</label>
+  <select name="structures_externes" class="form-select" multiple size="4">
+    {% for se in structures_externes %}
+    <option value="{{ se.id }}"
+            {% if tache and se in tache.structures_externes %}selected{% endif %}>
+      {% if se.type_org %}[{{ se.type_org }}] {% endif %}{{ se.nom }}
+    </option>
+    {% endfor %}
+  </select>
+  <small class="text-muted">Ctrl+clic — gérez dans <a href="{{ url_for('admin.structures_externes') }}" target="_blank">Administration</a></small>
+</div>
+
+{# ── Description ── #}
+<div class="col-12">
+  <label class="form-label fw-semibold">Description</label>
+  <textarea name="description" class="form-control" rows="2">{{ tache.description or '' if tache else '' }}</textarea>
+</div>
+
+<script>
+function btToggleImp(radio, tid) {
+  var txt = document.getElementById('bt_imp_text_' + tid);
+  if (!txt) return;
+  txt.style.display = (radio.value === 'ligne') ? '' : 'none';
+  if (radio.value === 'neant') txt.value = '';
+}
+function toggleBTStructMode(tid) {
+  var sel = document.getElementById('btstruct_mode_' + tid);
+  var manual = document.getElementById('btstruct_manual_' + tid);
+  if (manual) manual.style.display = (sel.value === 'manuel') ? '' : 'none';
+}
+</script>

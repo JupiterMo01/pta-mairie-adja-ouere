@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block title %}Structures externes{% endblock %}
+{% block page_title %}<i class="fas fa-handshake me-2"></i>Structures externes{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mt-2 mb-3">
+  <span class="text-muted">{{ items|length }} structure(s) externe(s)</span>
+  {% if current_user.role == 'admin_editeur' %}
+  <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#modalAdd">
+    <i class="fas fa-plus me-1"></i>Nouvelle structure externe
+  </button>
+  {% endif %}
+</div>
+
+<div class="card border-0 shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-dark">
+        <tr>
+          <th>Nom</th>
+          <th>Type</th>
+          <th>Description</th>
+          {% if current_user.role == 'admin_editeur' %}<th>Actions</th>{% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for se in items %}
+        <tr>
+          <td class="fw-semibold">{{ se.nom }}</td>
+          <td>
+            {% if se.type_org %}
+            <span class="badge bg-secondary">{{ se.type_org }}</span>
+            {% else %}<span class="text-muted fst-italic small">—</span>{% endif %}
+          </td>
+          <td class="text-muted small">{{ se.description or '—' }}</td>
+          {% if current_user.role == 'admin_editeur' %}
+          <td>
+            <button class="btn btn-sm btn-outline-primary me-1"
+                    data-bs-toggle="modal" data-bs-target="#modalEdit{{ se.id }}">
+              <i class="fas fa-edit"></i>
+            </button>
+            <form method="POST" action="{{ url_for('admin.struct_ext_delete', se_id=se.id) }}" class="d-inline"
+                  onsubmit="return confirm('Supprimer « {{ se.nom }} » ?')">
+              <button class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button>
+            </form>
+          </td>
+          {% endif %}
+        </tr>
+        {% if current_user.role == 'admin_editeur' %}
+        <div class="modal fade" id="modalEdit{{ se.id }}" tabindex="-1">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">Modifier {{ se.nom }}</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+              </div>
+              <form method="POST" action="{{ url_for('admin.struct_ext_edit', se_id=se.id) }}">
+                <div class="modal-body">
+                  <div class="mb-3">
+                    <label class="form-label fw-semibold">Nom *</label>
+                    <input type="text" name="nom" class="form-control" value="{{ se.nom }}" required>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label fw-semibold">Type</label>
+                    <select name="type_org" class="form-select">
+                      <option value="">— Aucun —</option>
+                      {% for t in ['ONG','Prestataire','Partenaire technique','Bailleur','Institution publique','Autre'] %}
+                      <option value="{{ t }}" {% if se.type_org == t %}selected{% endif %}>{{ t }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label fw-semibold">Description</label>
+                    <textarea name="description" class="form-control" rows="2">{{ se.description or '' }}</textarea>
+                  </div>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                  <button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i>Enregistrer</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+        {% if not items %}
+        <tr><td colspan="4" class="text-center text-muted py-4">
+          Aucune structure externe enregistrée. Cliquez sur « Nouvelle structure externe » pour commencer.
+        </td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if current_user.role == 'admin_editeur' %}
+<!-- Modal Ajout -->
+<div class="modal fade" id="modalAdd" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title"><i class="fas fa-plus me-2"></i>Nouvelle structure externe</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" action="{{ url_for('admin.struct_ext_add') }}">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Nom *</label>
+            <input type="text" name="nom" class="form-control" required
+                   placeholder="Ex : ONG Aide et Action, Cabinet XYZ…">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Type</label>
+            <select name="type_org" class="form-select">
+              <option value="">— Aucun —</option>
+              {% for t in ['ONG','Prestataire','Partenaire technique','Bailleur','Institution publique','Autre'] %}
+              <option value="{{ t }}">{{ t }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Description</label>
+            <textarea name="description" class="form-control" rows="2"
+                      placeholder="Courte description (optionnel)"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-success"><i class="fas fa-save me-1"></i>Ajouter</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

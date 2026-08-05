@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% block title %}Utilisateurs{% endblock %}
+{% block page_title %}<i class="fas fa-users me-2"></i>Utilisateurs{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mt-2 mb-3">
+  <span class="text-muted">{{ users|length }} utilisateur(s)</span>
+  {% if current_user.role == 'admin_editeur' %}
+  <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalAddUser">
+    <i class="fas fa-plus me-1"></i>Nouvel utilisateur
+  </button>
+  {% endif %}
+</div>
+
+<div class="card border-0 shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-dark">
+        <tr>
+          <th>Nom complet</th>
+          <th>Identifiant</th>
+          <th>Profil</th>
+          <th>Rattachement</th>
+          <th>Statut</th>
+          {% if current_user.role == 'admin_editeur' %}<th>Actions</th>{% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr class="{% if not u.actif %}table-secondary text-muted{% endif %}">
+          <td class="fw-semibold">{{ u.prenom }} {{ u.nom }}</td>
+          <td><code>{{ u.login }}</code></td>
+          <td>
+            {% if u.role == 'admin_editeur' %}<span class="badge bg-danger">Admin Éditeur</span>
+            {% elif u.role == 'admin_lecteur' %}<span class="badge bg-secondary">Admin Lecteur</span>
+            {% elif u.role == 'direction' %}<span class="badge bg-primary">Direction</span>
+            {% elif u.role == 'service' %}<span class="badge bg-success">Service</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if u.direction %}{{ u.direction.code }} — {{ u.direction.nom[:30] }}{% endif %}
+            {% if u.service %}{{ u.service.code }} — {{ u.service.nom[:30] }}{% endif %}
+            {% if not u.direction and not u.service %}<span class="text-muted">—</span>{% endif %}
+          </td>
+          <td>
+            {% if u.actif %}<span class="badge bg-success-subtle text-success border border-success">Actif</span>
+            {% else %}<span class="badge bg-secondary-subtle text-secondary border">Inactif</span>
+            {% endif %}
+          </td>
+          {% if current_user.role == 'admin_editeur' %}
+          <td>
+            <a href="{{ url_for('admin.user_edit', user_id=u.id) }}" class="btn btn-sm btn-outline-primary me-1">
+              <i class="fas fa-edit"></i>
+            </a>
+            <form method="POST" action="{{ url_for('admin.user_toggle', user_id=u.id) }}" class="d-inline">
+              <button type="submit" class="btn btn-sm btn-outline-{{ 'warning' if u.actif else 'success' }}"
+                      title="{{ 'Désactiver' if u.actif else 'Activer' }}">
+                <i class="fas fa-{{ 'ban' if u.actif else 'check' }}"></i>
+                {{ 'Désactiver' if u.actif else 'Activer' }}
+              </button>
+            </form>
+            {% if u.login != 'admin' and u.id != current_user.id %}
+            <form method="POST" action="{{ url_for('admin.user_delete', user_id=u.id) }}" class="d-inline ms-1"
+                  onsubmit="return confirm('Supprimer définitivement {{ u.prenom }} {{ u.nom }} ?')">
+              <button type="submit" class="btn btn-sm btn-outline-danger">
+                <i class="fas fa-trash me-1"></i>Supprimer
+              </button>
+            </form>
+            {% endif %}
+          </td>
+          {% endif %}
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="text-center text-muted py-4">Aucun utilisateur</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal Ajout utilisateur -->
+{% if current_user.role == 'admin_editeur' %}
+<div class="modal fade" id="modalAddUser" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title"><i class="fas fa-user-plus me-2"></i>Nouvel utilisateur</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" action="{{ url_for('admin.user_add') }}">
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Prénom *</label>
+              <input type="text" name="prenom" class="form-control" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Nom *</label>
+              <input type="text" name="nom" class="form-control" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Identifiant *</label>
+              <input type="text" name="login" class="form-control" required placeholder="ex: jdupont">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Mot de passe *</label>
+              <input type="password" name="password" class="form-control" required>
+            </div>
+            <div class="col-md-12">
+              <label class="form-label fw-semibold">Profil *</label>
+              <select name="role" class="form-select" required id="roleSelect">
+                <option value="">-- Choisir --</option>
+                <option value="admin_editeur">Admin Éditeur</option>
+                <option value="admin_lecteur">Admin Lecteur</option>
+                <option value="direction">Direction</option>
+                <option value="service">Service</option>
+              </select>
+            </div>
+            <div class="col-md-6" id="directionField">
+              <label class="form-label fw-semibold">Direction</label>
+              <select name="direction_id" class="form-select">
+                <option value="">-- Aucune --</option>
+                {% for d in directions %}
+                <option value="{{ d.id }}">{{ d.code }} — {{ d.nom }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6" id="serviceField">
+              <label class="form-label fw-semibold">Service</label>
+              <select name="service_id" class="form-select">
+                <option value="">-- Aucun --</option>
+                {% for s in services %}
+                <option value="{{ s.id }}">{{ s.code }} — {{ s.nom }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i>Créer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

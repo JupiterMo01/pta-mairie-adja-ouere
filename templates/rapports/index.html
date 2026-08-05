@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+{% block title %}Rapports d'évaluation{% endblock %}
+{% block page_title %}<i class="fas fa-chart-bar me-2"></i>Rapports d'évaluation{% endblock %}
+
+{% block content %}
+<!-- Filtres -->
+<div class="d-flex flex-wrap align-items-center gap-3 mt-2 mb-3">
+  <span class="fw-semibold text-muted">Trimestre :</span>
+  {% for t in trimestres %}
+  <a href="{{ url_for('rapports.index', trimestre=t,
+                      service_id=filtre_service_id or '',
+                      direction_id=filtre_direction_id or '') }}"
+     class="btn btn-sm {% if trimestre == t %}btn-primary{% else %}btn-outline-primary{% endif %}">
+    T{{ t }}
+  </a>
+  {% endfor %}
+
+  {% if current_user.role in ['admin_editeur', 'admin_lecteur'] %}
+  <div class="ms-auto d-flex gap-2">
+    <select class="form-select form-select-sm" id="filtreDir" style="min-width:180px;">
+      <option value="">Toutes les directions</option>
+      {% for d in directions %}
+      <option value="{{ d.id }}" {% if filtre_direction_id == d.id %}selected{% endif %}>{{ d.code }} — {{ d.nom[:30] }}</option>
+      {% endfor %}
+    </select>
+    <select class="form-select form-select-sm" id="filtreSvc" style="min-width:180px;">
+      <option value="">Tous les services</option>
+      {% for s in services %}
+      <option value="{{ s.id }}" {% if filtre_service_id == s.id %}selected{% endif %}>{{ s.code }} — {{ s.nom[:30] }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn btn-sm btn-outline-secondary" onclick="applyFiltre()">
+      <i class="fas fa-filter"></i>
+    </button>
+  </div>
+  {% endif %}
+
+  {% if annee %}
+  <a href="{{ url_for('rapports.export_rapport_excel', trimestre=trimestre,
+                      service_id=filtre_service_id or '',
+                      direction_id=filtre_direction_id or '') }}"
+     class="btn btn-sm btn-success {% if current_user.role in ['admin_editeur','admin_lecteur'] %}{% else %}ms-auto{% endif %}">
+    <i class="fas fa-file-excel me-1"></i>Exporter Excel
+  </a>
+  {% endif %}
+</div>
+
+<!-- Taux global -->
+{% if global_taux is not none %}
+<div class="card border-0 shadow-sm mb-4" style="background:linear-gradient(135deg,#1F4E79,#2E75B6);color:#fff;">
+  <div class="card-body d-flex align-items-center gap-4 py-3">
+    <div>
+      <div class="small opacity-75">Taux global d'exécution — T{{ trimestre }} {{ annee.annee if annee }}</div>
+      <div class="display-5 fw-bold">{{ global_taux|round(2) }} %</div>
+    </div>
+    <div class="flex-grow-1">
+      <div class="progress" style="height:20px;border-radius:10px;">
+        <div class="progress-bar
+          {% if global_taux >= 75 %}bg-success{% elif global_taux >= 50 %}bg-warning{% else %}bg-danger{% endif %}"
+             style="width:{{ global_taux }}%;border-radius:10px;">
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if not data %}
+<div class="alert alert-info">
+  <i class="fas fa-info-circle me-2"></i>Aucune donnée de suivi pour ce trimestre.
+</div>
+{% endif %}
+
+<!-- Hiérarchie avec taux -->
+{% for pd in data %}
+{% set prog = pd.programme %}
+<div class="card border-0 shadow-sm mb-3">
+  <!-- Programme -->
+  <div class="card-header d-flex align-items-center gap-2 py-2" style="background:#1F4E79;color:#fff;">
+    <button class="btn btn-sm btn-link text-white p-0" data-bs-toggle="collapse"
+            data-bs-target="#rprog{{ prog.id }}">
+      <i class="fas fa-chevron-down"></i>
+    </button>
+    <span class="fw-bold flex-grow-1">Programme {{ prog.code }} — {{ prog.nom }}</span>
+    <span class="badge bg-warning text-dark">{{ prog.poids }}%</span>
+    {% if pd.taux is not none %}
+    <span class="badge ms-2 fs-6
+      {% if pd.taux >= 75 %}bg-success{% elif pd.taux >= 50 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+      {{ pd.taux|round(2) }} %
+    </span>
+    {% else %}
+    <span class="badge bg-secondary ms-2">N/A</span>
+    {% endif %}
+  </div>
+
+  <div class="collapse show" id="rprog{{ prog.id }}">
+    {% for pjd in pd.projets %}
+    {% set proj = pjd.projet %}
+    <div class="mx-3 mt-2 mb-2 border rounded">
+      <!-- Projet -->
+      <div class="d-flex align-items-center gap-2 px-3 py-2 rounded-top" style="background:#2E75B6;color:#fff;">
+        <button class="btn btn-sm btn-link text-white p-0" data-bs-toggle="collapse"
+                data-bs-target="#rproj{{ proj.id }}">
+          <i class="fas fa-chevron-down"></i>
+        </button>
+        <span class="fw-semibold flex-grow-1">Projet {{ proj.code }} — {{ proj.nom }}</span>
+        <span class="badge bg-warning text-dark">{{ proj.poids }}%</span>
+        {% if pjd.taux is not none %}
+        <span class="badge ms-2
+          {% if pjd.taux >= 75 %}bg-success{% elif pjd.taux >= 50 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+          {{ pjd.taux|round(2) }} %
+        </span>
+        {% endif %}
+      </div>
+
+      <div class="collapse show" id="rproj{{ proj.id }}">
+        <div class="table-responsive">
+          <table class="table table-sm table-bordered mb-0" style="font-size:.85rem;">
+            <thead style="background:#9DC3E6;">
+              <tr>
+                <th>Code</th>
+                <th>Désignation</th>
+                <th>Poids</th>
+                <th>Statut</th>
+                <th>Taux</th>
+                <th>Observation</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for ad in pjd.activites %}
+              {% set act = ad.activite %}
+              <!-- Activité -->
+              <tr style="background:#DEEAF1;font-weight:600;">
+                <td>{{ act.code }}</td>
+                <td>{{ act.nom }}</td>
+                <td class="text-center">{{ act.poids }}%</td>
+                <td></td>
+                <td class="text-center fw-bold
+                  {% if ad.taux is not none %}
+                    {% if ad.taux >= 75 %}text-success{% elif ad.taux >= 50 %}text-warning{% else %}text-danger{% endif %}
+                  {% endif %}">
+                  {{ ad.taux|round(2)|string + ' %' if ad.taux is not none else 'N/A' }}
+                </td>
+                <td></td>
+              </tr>
+              <!-- Tâches -->
+              {% for td in ad.taches %}
+              {% set tache = td.tache %}
+              {% set suivi = td.suivi %}
+              {% set statut = suivi.statut if suivi else 'non_execute' %}
+              <tr>
+                <td class="ps-4 text-muted">{{ tache.code }}</td>
+                <td class="ps-4">
+                  <i class="fas fa-angle-right text-muted me-1"></i>{{ tache.nom }}
+                  {% if tache.service_responsable %}
+                  <span class="badge bg-success ms-1">{{ tache.service_responsable.code }}</span>
+                  {% endif %}
+                </td>
+                <td class="text-center text-muted">{{ tache.poids }}%</td>
+                <td>
+                  {% if statut == 'execute' %}
+                  <span class="badge bg-success"><i class="fas fa-check me-1"></i>Exécuté</span>
+                  {% elif statut == 'en_cours' %}
+                  <span class="badge bg-warning text-dark"><i class="fas fa-spinner me-1"></i>En cours</span>
+                  {% else %}
+                  <span class="badge bg-secondary"><i class="fas fa-times me-1"></i>Non exécuté</span>
+                  {% endif %}
+                </td>
+                <td class="text-center fw-bold {{ 'text-success' if td.taux == 100 else 'text-danger' }}">
+                  {{ td.taux|int }} %
+                </td>
+                <td class="text-muted small fst-italic">
+                  {{ suivi.observation if suivi and suivi.observation else '' }}
+                </td>
+              </tr>
+              {% endfor %}
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endfor %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+function applyFiltre() {
+  const svc = document.getElementById('filtreSvc').value;
+  const dir = document.getElementById('filtreDir').value;
+  const t = {{ trimestre }};
+  let url = "{{ url_for('rapports.index') }}?trimestre=" + t;
+  if (svc) url += "&service_id=" + svc;
+  if (dir) url += "&direction_id=" + dir;
+  window.location.href = url;
+}
+</script>
+{% endblock %}

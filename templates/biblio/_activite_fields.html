@@ -1,0 +1,222 @@
+{# Champs formulaire activité bibliothèque — act=objet en édition, act=none en ajout #}
+{% set aid = act.id if act else 'new' %}
+{% set mois = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'] %}
+{% set nb_svcs = services|length %}
+{% set nb_dirs = directions|length %}
+{% if act %}
+  {% set nb_s = act.services_associes|length %}
+  {% set nb_d = act.directions_associees|length %}
+  {% if nb_svcs > 0 and nb_s == nb_svcs and nb_dirs > 0 and nb_d == nb_dirs %}
+    {% set struct_mode = 'tous_sd' %}
+  {% elif nb_svcs > 0 and nb_s == nb_svcs and nb_d == 0 %}
+    {% set struct_mode = 'tous_services' %}
+  {% elif nb_s == 0 and nb_dirs > 0 and nb_d == nb_dirs %}
+    {% set struct_mode = 'toutes_directions' %}
+  {% elif nb_s == 0 and nb_d == 0 %}
+    {% set struct_mode = 'aucun' %}
+  {% else %}
+    {% set struct_mode = 'manuel' %}
+  {% endif %}
+{% else %}
+  {% set struct_mode = 'aucun' %}
+{% endif %}
+
+{# ── Nom + Poids ── #}
+<div class="col-md-8">
+  <label class="form-label fw-semibold">Nom de l'activité *</label>
+  <input type="text" name="nom" class="form-control"
+         value="{{ act.nom if act else '' }}" required
+         placeholder="Ex : Organisation de la fête nationale">
+</div>
+<div class="col-md-4">
+  <label class="form-label fw-semibold">Poids (%)</label>
+  <input type="number" name="poids" class="form-control"
+         value="{{ act.poids if act else 0 }}" step="0.01" min="0" max="100">
+</div>
+
+{# ── Imputation budgétaire ── #}
+<div class="col-12">
+  <label class="form-label fw-semibold">Imputation budgétaire</label>
+  <div class="d-flex gap-3 align-items-center mb-1">
+    <div class="form-check">
+      <input class="form-check-input" type="radio" name="imputation_type" value="neant"
+             id="ba_imp_neant_{{ aid }}"
+             {% if not act or not act.imputation_budgetaire or act.imputation_budgetaire == 'NÉANT' %}checked{% endif %}
+             onchange="bToggleImp(this,'{{ aid }}')">
+      <label class="form-check-label" for="ba_imp_neant_{{ aid }}">NÉANT</label>
+    </div>
+    <div class="form-check">
+      <input class="form-check-input" type="radio" name="imputation_type" value="ligne"
+             id="ba_imp_ligne_{{ aid }}"
+             {% if act and act.imputation_budgetaire and act.imputation_budgetaire != 'NÉANT' %}checked{% endif %}
+             onchange="bToggleImp(this,'{{ aid }}')">
+      <label class="form-check-label" for="ba_imp_ligne_{{ aid }}">Saisir la ligne budgétaire</label>
+    </div>
+  </div>
+  <input type="text" name="imputation_budgetaire" class="form-control"
+         id="ba_imp_text_{{ aid }}"
+         value="{{ act.imputation_budgetaire if act and act.imputation_budgetaire and act.imputation_budgetaire != 'NÉANT' else '' }}"
+         placeholder="Ex: 6.3.1 — Fonctionnement"
+         {% if not act or not act.imputation_budgetaire or act.imputation_budgetaire == 'NÉANT' %}style="display:none;"{% endif %}>
+</div>
+
+{# ── Période + Mode ── #}
+<div class="col-md-3">
+  <label class="form-label fw-semibold">Période de début *</label>
+  <select name="periode_debut" class="form-select" required>
+    <option value="">— Choisir —</option>
+    {% for m in mois %}
+    <option value="{{ m }}" {% if act and act.periode_debut == m %}selected{% endif %}>{{ m }}</option>
+    {% endfor %}
+  </select>
+</div>
+<div class="col-md-3">
+  <label class="form-label fw-semibold">Période de fin *</label>
+  <select name="periode_fin" class="form-select" required>
+    <option value="">— Choisir —</option>
+    {% for m in mois %}
+    <option value="{{ m }}" {% if act and act.periode_fin == m %}selected{% endif %}>{{ m }}</option>
+    {% endfor %}
+  </select>
+</div>
+<div class="col-md-6">
+  <label class="form-label fw-semibold">Mode d'exécution</label>
+  <select name="mode_execution" class="form-select">
+    {% for mode in modes_execution %}
+    <option value="{{ mode }}"
+            {% if (act and act.mode_execution == mode) or (not act and mode == 'Direct') or (act and not act.mode_execution and mode == 'Direct') %}selected{% endif %}>{{ mode }}</option>
+    {% endfor %}
+  </select>
+</div>
+
+{# ── Direction responsable ── #}
+<div class="col-md-6">
+  <label class="form-label fw-semibold">Direction responsable *</label>
+  <select name="direction_responsable_id" class="form-select" required>
+    <option value="">— Choisir —</option>
+    {% for d in directions %}
+    <option value="{{ d.id }}" {% if act and act.direction_responsable_id == d.id %}selected{% endif %}>
+      {{ d.code }} — {{ d.nom }}
+    </option>
+    {% endfor %}
+  </select>
+</div>
+
+{# ── Structures associées ── #}
+<div class="col-md-6">
+  <label class="form-label fw-semibold">Structures associées *</label>
+  <select name="structures_mode" class="form-select" id="bstruct_mode_{{ aid }}"
+          onchange="toggleBStructMode('{{ aid }}')">
+    <option value="aucun" {% if struct_mode == 'aucun' %}selected{% endif %}>Aucun</option>
+    <option value="tous_services" {% if struct_mode == 'tous_services' %}selected{% endif %}>Tous les services</option>
+    <option value="toutes_directions" {% if struct_mode == 'toutes_directions' %}selected{% endif %}>Toutes les directions</option>
+    <option value="tous_sd" {% if struct_mode == 'tous_sd' %}selected{% endif %}>Tous les services et directions</option>
+    <option value="manuel" {% if struct_mode == 'manuel' %}selected{% endif %}>Sélection manuelle…</option>
+  </select>
+</div>
+<div id="bstruct_manual_{{ aid }}" class="col-12"
+     {% if struct_mode != 'manuel' %}style="display:none;"{% endif %}>
+  <div class="row g-2">
+    <div class="col-md-6">
+      <label class="form-label fw-semibold">Services intervenants</label>
+      <select name="services_associes" class="form-select" multiple size="3">
+        {% for s in services %}
+        <option value="{{ s.id }}" {% if act and s in act.services_associes %}selected{% endif %}>
+          {{ s.code }} — {{ s.nom }}
+        </option>
+        {% endfor %}
+      </select>
+      <small class="text-muted">Ctrl+clic pour sélection multiple</small>
+    </div>
+    <div class="col-md-6">
+      <label class="form-label fw-semibold">Directions associées</label>
+      <select name="directions_associees" class="form-select" multiple size="3">
+        {% for d in directions %}
+        <option value="{{ d.id }}" {% if act and d in act.directions_associees %}selected{% endif %}>
+          {{ d.code }} — {{ d.nom }}
+        </option>
+        {% endfor %}
+      </select>
+      <small class="text-muted">Ctrl+clic pour sélection multiple</small>
+    </div>
+  </div>
+</div>
+
+{# ── Sources de financement ── #}
+<div class="col-12 mt-1">
+  <label class="form-label fw-semibold">Sources de financement (F CFA)</label>
+  <div class="row g-2">
+    <div class="col-md-4">
+      <label class="form-label small">Ressources propres</label>
+      <input type="text" inputmode="decimal" name="ressources_propres" class="form-control form-control-sm montant-input"
+             value="{{ act.ressources_propres if act else 0 }}">
+    </div>
+    <div class="col-md-4">
+      <label class="form-label small">FADeC Affecté</label>
+      <input type="text" inputmode="decimal" name="fadec_affecte" class="form-control form-control-sm montant-input"
+             value="{{ act.fadec_affecte if act else 0 }}">
+    </div>
+    <div class="col-md-4">
+      <label class="form-label small">FADeC Non Affecté</label>
+      <input type="text" inputmode="decimal" name="fadec_non_affecte" class="form-control form-control-sm montant-input"
+             value="{{ act.fadec_non_affecte if act else 0 }}">
+    </div>
+    <div class="col-md-4">
+      <label class="form-label small">Autres Partenaires</label>
+      <input type="text" inputmode="decimal" name="autres_partenaires" class="form-control form-control-sm montant-input"
+             value="{{ act.autres_partenaires if act else 0 }}">
+    </div>
+    <div class="col-md-4">
+      <label class="form-label small">Autres Fonds</label>
+      <input type="text" inputmode="decimal" name="autres_fonds" class="form-control form-control-sm montant-input"
+             value="{{ act.autres_fonds if act else 0 }}">
+    </div>
+  </div>
+</div>
+
+{# ── Détails financement + Acteurs externes ── #}
+<div class="col-md-6">
+  <label class="form-label fw-semibold">Détails de financement</label>
+  <textarea name="details_financement" class="form-control" rows="2"
+            placeholder="RAS">{{ act.details_financement or '' if act else '' }}</textarea>
+</div>
+<div class="col-md-6">
+  <label class="form-label fw-semibold">Acteurs externes (texte libre)</label>
+  <textarea name="acteurs_externes" class="form-control" rows="2"
+            placeholder="ONG, partenaires techniques, entreprises prestataires…">{{ act.acteurs_externes or '' if act else '' }}</textarea>
+</div>
+
+{# ── Structures externes (liste pré-configurée) ── #}
+<div class="col-12">
+  <label class="form-label fw-semibold">Structures externes associées</label>
+  <select name="structures_externes" class="form-select" multiple size="4">
+    {% for se in structures_externes %}
+    <option value="{{ se.id }}"
+            {% if act and se in act.structures_externes %}selected{% endif %}>
+      {% if se.type_org %}[{{ se.type_org }}] {% endif %}{{ se.nom }}
+    </option>
+    {% endfor %}
+  </select>
+  <small class="text-muted">Ctrl+clic pour plusieurs — gérez la liste dans <a href="{{ url_for('admin.structures_externes') }}" target="_blank">Administration</a></small>
+</div>
+
+{# ── Description ── #}
+<div class="col-12">
+  <label class="form-label fw-semibold">Description / Observations</label>
+  <textarea name="description" class="form-control" rows="2"
+            placeholder="Description détaillée de l'activité…">{{ act.description or '' if act else '' }}</textarea>
+</div>
+
+<script>
+function bToggleImp(radio, aid) {
+  var txt = document.getElementById('ba_imp_text_' + aid);
+  if (!txt) return;
+  txt.style.display = (radio.value === 'ligne') ? '' : 'none';
+  if (radio.value === 'neant') txt.value = '';
+}
+function toggleBStructMode(aid) {
+  var sel = document.getElementById('bstruct_mode_' + aid);
+  var manual = document.getElementById('bstruct_manual_' + aid);
+  if (manual) manual.style.display = (sel.value === 'manuel') ? '' : 'none';
+}
+</script>

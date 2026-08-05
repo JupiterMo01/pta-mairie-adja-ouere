@@ -1,0 +1,34 @@
+{# Fragment modal — copier activité vers un autre projet — chargé via AJAX #}
+<div class="modal-dialog">
+  <div class="modal-content">
+    <div class="modal-header bg-secondary text-white">
+      <h5 class="modal-title">
+        <i class="fas fa-share-square me-2"></i>Copier « {{ act.nom[:40] }}{% if act.nom|length > 40 %}…{% endif %} » vers…
+      </h5>
+      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+    </div>
+    <form method="POST" action="{{ url_for('pta.activite_copy_to', act_id=act.id) }}">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+      <div class="modal-body">
+        <label class="form-label fw-semibold">Projet de destination</label>
+        <select name="projet_id" class="form-select" required>
+          <option value="">— Sélectionner —</option>
+          {% for prog in programmes %}
+          <optgroup label="Programme {{ prog.code }} : {{ prog.nom }}">
+            {% for pj in prog.projets %}
+            <option value="{{ pj.id }}">Projet {{ pj.code }} : {{ pj.nom }}</option>
+            {% endfor %}
+          </optgroup>
+          {% endfor %}
+        </select>
+        <small class="text-muted d-block mt-1">Le poids et les tâches sont conservés dans le projet de destination.</small>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+        <button type="submit" class="btn btn-primary fw-bold">
+          <i class="fas fa-share-square me-1"></i>Copier ici
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

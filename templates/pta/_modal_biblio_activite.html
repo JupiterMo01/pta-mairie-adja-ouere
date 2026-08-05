@@ -1,0 +1,27 @@
+{# Fragment modal — exporter activité vers la bibliothèque — chargé via AJAX #}
+<div class="modal-dialog">
+  <div class="modal-content">
+    <div class="modal-header bg-info text-white">
+      <h5 class="modal-title"><i class="fas fa-book me-2"></i>Exporter vers la bibliothèque</h5>
+      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+    </div>
+    <form method="POST" action="{{ url_for('pta.activite_export_biblio', act_id=act.id) }}">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+      <div class="modal-body">
+        <label class="form-label fw-semibold">Nom dans la bibliothèque</label>
+        <input type="text" name="nom" class="form-control mb-2" value="{{ act.nom }}" required>
+        <div class="alert alert-info py-2 small mb-0">
+          <i class="fas fa-info-circle me-1"></i>
+          Activité + <strong>{{ act.taches|length }}</strong> tâche(s) exportées.
+          Tous les champs conservés intégralement (budget, période, structures, responsables, imputation…).
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+        <button type="submit" class="btn btn-info text-white fw-bold">
+          <i class="fas fa-book me-1"></i>Exporter
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

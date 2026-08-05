@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}Services{% endblock %}
+{% block page_title %}<i class="fas fa-sitemap me-2"></i>Services{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mt-2 mb-3">
+  <span class="text-muted">{{ services|length }} service(s)</span>
+  {% if current_user.role == 'admin_editeur' %}
+  <button class="btn btn-info btn-sm text-white" data-bs-toggle="modal" data-bs-target="#modalAdd">
+    <i class="fas fa-plus me-1"></i>Nouveau service
+  </button>
+  {% endif %}
+</div>
+
+<div class="card border-0 shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-dark">
+        <tr>
+          <th>Code</th>
+          <th>Nom</th>
+          <th>Direction</th>
+          {% if current_user.role == 'admin_editeur' %}<th>Actions</th>{% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in services %}
+        <tr>
+          <td><span class="badge bg-info text-dark fs-6">{{ s.code }}</span></td>
+          <td class="fw-semibold">{{ s.nom }}</td>
+          <td>
+            <span class="badge bg-primary">{{ s.direction.code }}</span>
+            <span class="text-muted small ms-1">{{ s.direction.nom[:40] }}</span>
+          </td>
+          {% if current_user.role == 'admin_editeur' %}
+          <td>
+            <button class="btn btn-sm btn-outline-primary me-1"
+                    data-bs-toggle="modal" data-bs-target="#modalEdit{{ s.id }}">
+              <i class="fas fa-edit"></i>
+            </button>
+            <form method="POST" action="{{ url_for('admin.service_delete', svc_id=s.id) }}" class="d-inline"
+                  onsubmit="return confirm('Supprimer le service {{ s.code }} ?')">
+              <button class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button>
+            </form>
+          </td>
+          {% endif %}
+        </tr>
+        {% if current_user.role == 'admin_editeur' %}
+        <div class="modal fade" id="modalEdit{{ s.id }}" tabindex="-1">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">Modifier {{ s.code }}</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+              </div>
+              <form method="POST" action="{{ url_for('admin.service_edit', svc_id=s.id) }}">
+                <div class="modal-body">
+                  <div class="mb-3">
+                    <label class="form-label fw-semibold">Code *</label>
+                    <input type="text" name="code" class="form-control" value="{{ s.code }}" required>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label fw-semibold">Nom *</label>
+                    <input type="text" name="nom" class="form-control" value="{{ s.nom }}" required>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label fw-semibold">Direction *</label>
+                    <select name="direction_id" class="form-select" required>
+                      {% for d in directions %}
+                      <option value="{{ d.id }}" {% if s.direction_id == d.id %}selected{% endif %}>
+                        {{ d.code }} — {{ d.nom }}
+                      </option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                  <button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i>Enregistrer</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+        {% else %}
+        <tr><td colspan="4" class="text-center text-muted py-4">Aucun service</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if current_user.role == 'admin_editeur' %}
+<div class="modal fade" id="modalAdd" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-info text-white">
+        <h5 class="modal-title"><i class="fas fa-sitemap me-2"></i>Nouveau service</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" action="{{ url_for('admin.service_add') }}">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Code *</label>
+            <input type="text" name="code" class="form-control" required placeholder="ex: SDPF">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Nom *</label>
+            <input type="text" name="nom" class="form-control" required placeholder="ex: Service de la Planification Financière">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Direction *</label>
+            <select name="direction_id" class="form-select" required>
+              <option value="">-- Choisir une direction --</option>
+              {% for d in directions %}
+              <option value="{{ d.id }}">{{ d.code }} — {{ d.nom }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-info text-white"><i class="fas fa-plus me-1"></i>Créer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>PTA {{ service.code }} {{ annee.annee }} — Mairie d'Adja-Ouèrè</title>
+  <style>
+    @page {
+      size: A4 landscape;
+      margin: 1.8cm 1cm 2.2cm 1cm;
+      @bottom-left  { content: "Mairie d'Adja-Ouèrè — PTA {{ annee.annee }} — {{ service.code }}"; font-size:7pt; color:#555; font-weight:bold; }
+      @bottom-center{ content: ""; }
+      @bottom-right { content: "Page " counter(page) " / " counter(pages); font-size:7pt; color:#555; font-weight:bold; }
+    }
+    * {
+      box-sizing:border-box; margin:0; padding:0;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    body { font-family:Arial,Helvetica,sans-serif; font-size:7.5pt; color:#000; background:#fff; }
+
+    .screen-bar {
+      background:#1a1a2e; color:#fff; padding:10px 20px;
+      display:flex; align-items:center; gap:12px;
+    }
+    .screen-bar span { font-size:14px; font-weight:bold; flex:1; }
+    .screen-bar button {
+      padding:7px 18px; border:none; border-radius:4px;
+      cursor:pointer; font-size:13px; font-weight:bold;
+    }
+    .btn-p { background:#28a745; color:#fff; }
+    .btn-c { background:#6c757d; color:#fff; }
+    @media print { .screen-bar { display:none !important; } }
+
+    .entete {
+      display:flex; justify-content:space-between; align-items:center;
+      margin-bottom:6px; border-bottom:2px solid #333; padding-bottom:6px;
+    }
+    .entete-gauche img { height:72px; width:auto; }
+    .entete-centre { text-align:center; width:24%; font-size:7.5pt; line-height:2.0; }
+    .entete-droite { text-align:right; }
+    .entete-droite img { height:72px; width:auto; }
+
+    .titre-pta {
+      text-align:center; margin:7px 0 5px 0;
+      border:2.5px solid #1A7245; border-radius:4px;
+      padding:6px 0; background:#D5F5E3;
+    }
+    .titre-pta-h1 { font-size:14pt; font-weight:bold; letter-spacing:2px; text-transform:uppercase; }
+    .titre-pta-h2 { font-size:10pt; font-weight:bold; color:#1A7245; margin-top:3px; }
+    .titre-pta-h3 { font-size:9pt; font-weight:bold; color:#145A32; margin-top:2px; }
+    .titre-pta-h4 { font-size:8pt; color:#555; margin-top:2px; }
+    .obj-gen {
+      border:1px solid #888; border-radius:3px; padding:4px 8px;
+      margin-bottom:6px; font-size:7.5pt; background:#f8f9fa; font-weight:bold;
+    }
+
+    table { width:100%; border-collapse:collapse; font-size:6.8pt; table-layout:fixed; }
+    col.c-code  { width:4.5%; }
+    col.c-nom   { width:20%; }
+    col.c-imp   { width:5%; }
+    col.c-rp    { width:5.5%; }
+    col.c-fa    { width:5%; }
+    col.c-fn    { width:5%; }
+    col.c-ap    { width:5.5%; }
+    col.c-af    { width:5.5%; }
+    col.c-tot   { width:6.5%; }
+    col.c-per   { width:6%; }
+    col.c-pds   { width:3%; }
+    col.c-resp  { width:5.5%; }
+    col.c-assoc { width:9%; }
+    col.c-mode  { width:5.5%; }
+    col.c-obs   { width:8%; }
+
+    thead { display:table-header-group; }
+    tfoot { display:table-footer-group; }
+
+    th {
+      background:#FF69B4; border:1px solid #555;
+      padding:2px 3px; text-align:center;
+      font-size:6.5pt; font-weight:bold; vertical-align:middle; word-wrap:break-word;
+    }
+    td { border:1px solid #888; padding:2px 3px; vertical-align:middle; word-wrap:break-word; }
+    td.r { text-align:right; }
+    td.c { text-align:center; }
+    td.l { text-align:left; }
+
+    tr.prog td { background:#FFFF99; font-weight:bold; }
+    tr.proj td { background:#FFB6C1; font-weight:bold; }
+    tr.act  td { background:#D3D3D3; font-weight:bold; }
+    tr.tach td { background:#fff; }
+    tr.os   td { background:#FFFACD; font-style:italic; font-weight:bold; }
+    tr.tot  td { background:#1F4E79; color:#fff; font-weight:bold; text-align:center; }
+
+    tfoot td {
+      font-size:6.5pt; color:#444; border:none; font-weight:bold;
+      border-top:1px solid #bbb; padding:2px 4px; background:#f5f5f5;
+    }
+  </style>
+</head>
+<body>
+
+<div class="screen-bar">
+  <span>📄 PTA {{ annee.annee }} — Service : {{ service.code }} — {{ service.nom }}</span>
+  <button class="btn-p" onclick="window.print()">🖨️ Imprimer / Enregistrer PDF</button>
+  <button class="btn-c" onclick="window.close()">✕ Fermer</button>
+</div>
+
+<div style="padding:8px 10px;">
+
+{# ── En-tête officiel ── #}
+<div class="entete">
+  <div class="entete-gauche">
+    <img src="{{ url_for('static', filename='img/bandeau.png') }}" alt="Bandeau officiel">
+  </div>
+  <div class="entete-centre">
+    <strong>BP 02 Adja-Ouèrè</strong><br>
+    <strong>Tél&nbsp;: +229 01 61 91 96 12</strong><br>
+    <strong>Email&nbsp;: contact.adjaouere@mairie.bj</strong>
+  </div>
+  <div class="entete-droite">
+    <img src="{{ url_for('static', filename='img/logo_commune.png') }}" alt="Logo Commune">
+  </div>
+</div>
+
+<div class="titre-pta">
+  <div class="titre-pta-h1">PLAN DE TRAVAIL ANNUEL</div>
+  <div class="titre-pta-h2">Exercice {{ annee.annee }}</div>
+  <div class="titre-pta-h3">Service : {{ service.code }} — {{ service.nom }}</div>
+  <div class="titre-pta-h4">Direction parente : {{ service.direction.code }} — {{ service.direction.nom }}</div>
+</div>
+
+{% if annee.objectif_general %}
+<div class="obj-gen"><strong>Objectif général :</strong> {{ annee.objectif_general }}</div>
+{% endif %}
+
+{# ── Tableau (15 colonnes) ── #}
+<table>
+  <colgroup>
+    <col class="c-code"><col class="c-nom"><col class="c-imp">
+    <col class="c-rp"><col class="c-fa"><col class="c-fn"><col class="c-ap"><col class="c-af">
+    <col class="c-tot"><col class="c-per"><col class="c-pds">
+    <col class="c-resp"><col class="c-assoc"><col class="c-mode"><col class="c-obs">
+  </colgroup>
+
+  <thead>
+    <tr>
+      <th rowspan="3">Code</th>
+      <th rowspan="3">Objectifs/Résultats/<br>Actions/Activités/Tâches</th>
+      <th rowspan="3">Imputation<br>budgétaire</th>
+      <th colspan="6">Sources de financement (F CFA)</th>
+      <th rowspan="3">Période<br>d'exécution</th>
+      <th rowspan="3">Poids<br>(%)</th>
+      <th rowspan="3">Service/<br>Unité Resp.</th>
+      <th rowspan="3">Structures associées /<br>Unité Admi. Associée</th>
+      <th rowspan="3">Mode<br>d'exécution</th>
+      <th rowspan="3">Observations<br>(ODD…)</th>
+    </tr>
+    <tr>
+      <th colspan="5">Source de financement</th>
+      <th rowspan="2">Total</th>
+    </tr>
+    <tr>
+      <th>Fonds Propres</th><th>FA</th><th>FNA</th>
+      <th>PTFs</th><th>Autres Fonds</th>
+    </tr>
+  </thead>
+
+  <tfoot>
+    <tr>
+      <td colspan="7" id="ft-date">Imprimé le …</td>
+      <td colspan="8" style="text-align:right;">Direction du Développement Local et de la Planification (DDLP)</td>
+    </tr>
+  </tfoot>
+
+  <tbody>
+
+  {% set nb_services   = services|length %}
+  {% set nb_directions = directions|length %}
+
+  {% for pd in data %}
+
+  {# ── Objectif spécifique ── #}
+  {% if pd['programme'].objectif_specifique %}
+  <tr class="os">
+    <td colspan="15">Objectif {{ pd['code'] }}/Résultat {{ pd['code'] }} : {{ pd['programme'].objectif_specifique }}</td>
+  </tr>
+  {% endif %}
+
+  {# Totaux programme #}
+  {% set p = namespace(rp=0,fa=0,fn=0,ap=0,af=0) %}
+  {% for pjd in pd['projets'] %}{% for ad in pjd['activites'] %}{% for td in ad['taches'] %}
+    {% set t = td['tache'] %}
+    {% set p.rp = p.rp + (t.ressources_propres or 0) %}
+    {% set p.fa = p.fa + (t.fadec_affecte      or 0) %}
+    {% set p.fn = p.fn + (t.fadec_non_affecte  or 0) %}
+    {% set p.ap = p.ap + (t.autres_partenaires or 0) %}
+    {% set p.af = p.af + (t.autres_fonds       or 0) %}
+  {% endfor %}{% endfor %}{% endfor %}
+
+  <tr class="prog">
+    <td class="c">{{ pd['code'] }}</td>
+    <td>Programme {{ pd['code'] }} : {{ pd['programme'].nom }}</td>
+    <td></td>
+    <td class="c">{{ "{:,.0f}".format(p.rp).replace(',', ' ') }}</td>
+    <td class="c">{{ "{:,.0f}".format(p.fa).replace(',', ' ') }}</td>
+    <td class="c">{{ "{:,.0f}".format(p.fn).replace(',', ' ') }}</td>
+    <td class="c">{{ "{:,.0f}".format(p.ap).replace(',', ' ') }}</td>
+    <td class="c">{{ "{:,.0f}".format(p.af).replace(',', ' ') }}</td>
+    <td class="c">{{ "{:,.0f}".format(p.rp+p.fa+p.fn+p.ap+p.af).replace(',', ' ') }}</td>
+    <td></td>
+    <td class="c">{{ pd['new_poids']|pct_nat }}</td>
+    <td></td><td></td><td></td><td></td>
+  </tr>
+
+  {% for pjd in pd['projets'] %}
+
+  {# Totaux projet #}
+  {% set j = namespace(rp=0,fa=0,fn=0,ap=0,af=0) %}
+  {% for ad in pjd['activites'] %}{% for td in ad['taches'] %}
+    {% set t = td['tache'] %}
+    {% set j.rp = j.rp + (t.ressources_propres or 0) %}
+    {% set j.fa = j.fa + (t.fadec_affecte      or 0) %}
+    {% set j.fn = j.fn + (t.fadec_non_affecte  or 0) %}
+    {% set j.ap = j.ap + (t.autres_partenaires or 0) %}
+    {% set j.af = j.af + (t.autres_fonds       or 0) %}
+  {% endfor %}{% endfor %}
+
+  <tr class="proj">
+    <td class="c">{{ pjd['code'] }}</td>
+    <td>Projet {{ pjd['code'] }} : {{ pjd['projet'].nom }}</td>
+    <td></td>
+    <td class="c">{{ "{:,.0f}".format(j.rp).replace(',', ' ') }}</td>
+    <td class="c">{{ "{:,.0f}".format(j.fa).replace(',', ' ') }}</td>
+    <td class="c">{{ "{:,.0f}".format(j.fn).replace(',', ' ') }}</td>
+    <td class="c">{{ "{:,.0f}".format(j.ap).replace(',', ' ') }}</td>
+    <td class="c">{{ "{:,.0f}".format(j.af).replace(',', ' ') }}</td>
+    <td class="c">{{ "{:,.0f}".format(j.rp+j.fa+j.fn+j.ap+j.af).replace(',', ' ') }}</td>
+    <td></td>
+    <td class="c">{{ pjd['new_poids']|pct_nat }}</td>
+    <td></td><td></td><td></td><td></td>
+  </tr>
+
+  {% for ad in pjd['activites'] %}
+  {% set act = ad['activite'] %}
+
+  {# Totaux activité #}
+  {% set a = namespace(rp=0,fa=0,fn=0,ap=0,af=0) %}
+  {% for td in ad['taches'] %}
+    {% set t = td['tache'] %}
+    {% set a.rp = a.rp + (t.ressources_propres or 0) %}
+    {% set a.fa = a.fa + (t.fadec_affecte      or 0) %}
+    {% set a.fn = a.fn + (t.fadec_non_affecte  or 0) %}
+    {% set a.ap = a.ap + (t.autres_partenaires or 0) %}
+    {% set a.af = a.af + (t.autres_fonds       or 0) %}
+  {% endfor %}
+
+  {# Structures associées activité — label "Tous" sur count original, affichage sans le service courant #}
+  {% set nb_s = act.services_intervenants | length %}
+  {% set nb_d = act.directions_associees | length %}
+  {% set other_svcs_a = act.services_intervenants | rejectattr('id', 'equalto', service.id) | list %}
+  {% set ns_a = namespace(assoc='') %}
+  {% if nb_services > 0 and nb_s == nb_services and nb_directions > 0 and nb_d == nb_directions %}
+    {% set ns_a.assoc = 'Tous services et directions' %}
+  {% elif nb_services > 0 and nb_s == nb_services %}
+    {% set ns_a.assoc = 'Tous les services' %}
+  {% elif nb_directions > 0 and nb_d == nb_directions %}
+    {% set ns_a.assoc = 'Toutes les directions' %}
+  {% else %}
+    {% set ns_a.assoc = (other_svcs_a|map(attribute='code')|list
+                       + act.directions_associees|map(attribute='code')|list
+                       + act.structures_externes|map(attribute='nom')|list)|join(', ') %}
+    {% if act.acteurs_externes and act.acteurs_externes.strip() %}
+      {% set ns_a.assoc = (ns_a.assoc + (', ' if ns_a.assoc else '') + act.acteurs_externes) %}
+    {% endif %}
+    {% if not ns_a.assoc %}{% set ns_a.assoc = 'Aucun' %}{% endif %}
+  {% endif %}
+
+  {# Période activité #}
+  {% if act.periode_debut and act.periode_fin and act.periode_debut != act.periode_fin %}
+    {% set per_a = act.periode_debut|mois_court ~ ' - ' ~ act.periode_fin|mois_court %}
+  {% elif act.periode_debut %}
+    {% set per_a = act.periode_debut|mois_court %}
+  {% elif act.periode_fin %}
+    {% set per_a = act.periode_fin|mois_court %}
+  {% else %}
+    {% set per_a = '' %}
+  {% endif %}
+
+  <tr class="act">
+    <td class="c">{{ ad['code'] }}</td>
+    <td>{{ act.nom }}</td>
+    <td class="c">{{ act.imputation_budgetaire or 'NÉANT' }}</td>
+    <td class="c">{{ "{:,.0f}".format(a.rp).replace(',', ' ') }}</td>
+    <td class="c">{{ "{:,.0f}".format(a.fa).replace(',', ' ') }}</td>
+    <td class="c">{{ "{:,.0f}".format(a.fn).replace(',', ' ') }}</td>
+    <td class="c">{{ "{:,.0f}".format(a.ap).replace(',', ' ') }}</td>
+    <td class="c">{{ "{:,.0f}".format(a.af).replace(',', ' ') }}</td>
+    <td class="c">{{ "{:,.0f}".format(a.rp+a.fa+a.fn+a.ap+a.af).replace(',', ' ') }}</td>
+    <td class="c">{{ per_a }}</td>
+    <td class="c">{{ ad['new_poids']|pct_nat }}</td>
+    <td class="c">{{ service.code }}</td>
+    <td class="c">{{ ns_a.assoc }}</td>
+    <td class="c">{{ act.mode_execution or 'Direct' }}</td>
+    <td class="c">{{ act.observations or '' }}</td>
+  </tr>
+
+  {% for td in ad['taches'] %}
+  {% set t = td['tache'] %}
+
+  {# Structures associées tâche — label "Tous" sur count original, affichage sans le service courant #}
+  {% set nb_st = t.services_concernes | length %}
+  {% set nb_dt = t.directions_associees | length %}
+  {% set other_svcs_t = t.services_concernes | rejectattr('id', 'equalto', service.id) | list %}
+  {% set ns_t = namespace(assoc='') %}
+  {% if nb_services > 0 and nb_st == nb_services and nb_directions > 0 and nb_dt == nb_directions %}
+    {% set ns_t.assoc = 'Tous services et directions' %}
+  {% elif nb_services > 0 and nb_st == nb_services %}
+    {% set ns_t.assoc = 'Tous les services' %}
+  {% elif nb_directions > 0 and nb_dt == nb_directions %}
+    {% set ns_t.assoc = 'Toutes les directions' %}
+  {% else %}
+    {% set ns_t.assoc = (other_svcs_t|map(attribute='code')|list
+                       + t.directions_associees|map(attribute='code')|list
+                       + t.structures_externes|map(attribute='nom')|list)|join(', ') %}
+    {% if t.acteurs_externes and t.acteurs_externes.strip() %}
+      {% set ns_t.assoc = (ns_t.assoc + (', ' if ns_t.assoc else '') + t.acteurs_externes) %}
+    {% endif %}
+    {% if not ns_t.assoc %}{% set ns_t.assoc = 'Aucun' %}{% endif %}
+  {% endif %}
+
+  {# Période tâche #}
+  {% if t.periode_debut and t.periode_fin and t.periode_debut != t.periode_fin %}
+    {% set per_t = t.periode_debut|mois_court ~ ' - ' ~ t.periode_fin|mois_court %}
+  {% elif t.periode_debut %}
+    {% set per_t = t.periode_debut|mois_court %}
+  {% elif t.periode_fin %}
+    {% set per_t = t.periode_fin|mois_court %}
+  {% else %}
+    {% set per_t = '' %}
+  {% endif %}
+
+  {% set rp_t = t.ressources_propres or 0 %}{% set fa_t = t.fadec_affecte or 0 %}
+  {% set fn_t = t.fadec_non_affecte or 0 %}{% set ap_t = t.autres_partenaires or 0 %}
+  {% set af_t = t.autres_fonds or 0 %}{% set bt_t = rp_t+fa_t+fn_t+ap_t+af_t %}
+
+  <tr class="tach">
+    <td class="c">{{ td['num'] }}</td>
+    <td style="padding-left:10px;">{{ t.nom }}</td>
+    <td class="c">{{ t.imputation_budgetaire or 'NÉANT' }}</td>
+    <td class="c">{{ "{:,.0f}".format(rp_t).replace(',', ' ') }}</td>
+    <td class="c">{{ "{:,.0f}".format(fa_t).replace(',', ' ') }}</td>
+    <td class="c">{{ "{:,.0f}".format(fn_t).replace(',', ' ') }}</td>
+    <td class="c">{{ "{:,.0f}".format(ap_t).replace(',', ' ') }}</td>
+    <td class="c">{{ "{:,.0f}".format(af_t).replace(',', ' ') }}</td>
+    <td class="c">{{ "{:,.0f}".format(bt_t).replace(',', ' ') }}</td>
+    <td class="c">{{ per_t }}</td>
+    <td class="c">{{ td['new_poids']|pct_nat }}</td>
+    <td class="c">{{ service.code }}</td>
+    <td class="c">{{ ns_t.assoc }}</td>
+    <td class="c">{{ t.mode_execution or 'Direct' }}</td>
+    <td class="c">{{ t.observations or '' }}</td>
+  </tr>
+  {% endfor %}{# taches #}
+
+  {% endfor %}{# activites #}
+  {% endfor %}{# projets #}
+  {% endfor %}{# programmes #}
+
+  {# ── Total général ── #}
+  {% set tg = namespace(rp=0,fa=0,fn=0,ap=0,af=0) %}
+  {% for pd in data %}{% for pjd in pd['projets'] %}{% for ad in pjd['activites'] %}{% for td in ad['taches'] %}
+    {% set t = td['tache'] %}
+    {% set tg.rp = tg.rp + (t.ressources_propres or 0) %}
+    {% set tg.fa = tg.fa + (t.fadec_affecte      or 0) %}
+    {% set tg.fn = tg.fn + (t.fadec_non_affecte  or 0) %}
+    {% set tg.ap = tg.ap + (t.autres_partenaires or 0) %}
+    {% set tg.af = tg.af + (t.autres_fonds       or 0) %}
+  {% endfor %}{% endfor %}{% endfor %}{% endfor %}
+
+  <tr class="tot">
+    <td></td><td>TOTAL GÉNÉRAL</td><td></td>
+    <td>{{ "{:,.0f}".format(tg.rp).replace(',', ' ') }}</td>
+    <td>{{ "{:,.0f}".format(tg.fa).replace(',', ' ') }}</td>
+    <td>{{ "{:,.0f}".format(tg.fn).replace(',', ' ') }}</td>
+    <td>{{ "{:,.0f}".format(tg.ap).replace(',', ' ') }}</td>
+    <td>{{ "{:,.0f}".format(tg.af).replace(',', ' ') }}</td>
+    <td>{{ "{:,.0f}".format(tg.rp+tg.fa+tg.fn+tg.ap+tg.af).replace(',', ' ') }}</td>
+    <td></td><td>100</td><td></td><td></td><td></td><td></td>
+  </tr>
+  </tbody>
+</table>
+</div>
+
+<script>
+(function() {
+  var now = new Date();
+  var p = function(n){ return n < 10 ? '0'+n : ''+n; };
+  var s = p(now.getDate())+'/'+p(now.getMonth()+1)+'/'+now.getFullYear()
+        +' à '+p(now.getHours())+':'+p(now.getMinutes())+':'+p(now.getSeconds());
+  var el = document.getElementById('ft-date');
+  if (el) el.textContent = 'Imprimé le ' + s;
+})();
+window.addEventListener('load', function(){ setTimeout(function(){ window.print(); }, 500); });
+</script>
+</body>
+</html>

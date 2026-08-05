@@ -1,0 +1,365 @@
+{% extends "base.html" %}
+{% block title %}PTA — {{ direction.code if direction else 'Direction' }} — {{ annee.annee if annee }}{% endblock %}
+{% block page_title %}
+  <i class="fas fa-building me-2 text-info"></i>PTA par Direction
+  {% if annee %}<span class="badge bg-primary ms-1">{{ annee.annee }}</span>{% endif %}
+  {% if annee %}
+  <span class="ms-3 d-inline-flex gap-2">
+    {% if direction and data %}
+    <a href="{{ url_for('dirpta.export_excel', direction_id=direction.id) }}"
+       class="btn btn-sm btn-outline-success" title="Exporter la direction en Excel">
+      <i class="fas fa-file-excel me-1"></i>Excel — {{ direction.code }}
+    </a>
+    <a href="{{ url_for('dirpta.print_view', direction_id=direction.id) }}"
+       target="_blank" class="btn btn-sm btn-outline-secondary" title="Imprimer le PTA de cette direction">
+      <i class="fas fa-print me-1"></i>Imprimer
+    </a>
+    {% endif %}
+    <a href="{{ url_for('dirpta.export_excel_all') }}"
+       class="btn btn-sm btn-success" title="Télécharger le PTA de toutes les directions (1 feuille par direction)">
+      <i class="fas fa-file-excel me-1"></i>Toutes les directions
+    </a>
+  </span>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+{% if not annee %}
+<div class="alert alert-warning">Aucune année active.</div>
+{% else %}
+
+{# ── Sélecteur de direction ── #}
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-body py-2">
+    <form method="GET" action="{{ url_for('dirpta.index') }}" class="d-flex align-items-center gap-3 flex-wrap">
+      <label class="fw-semibold text-nowrap mb-0">
+        <i class="fas fa-building me-1 text-info"></i>Direction :
+      </label>
+      <select name="direction_id" class="form-select form-select-sm" style="max-width:400px;"
+              onchange="this.form.submit()">
+        <option value="">— Choisir une direction —</option>
+        {% for d in directions %}
+        <option value="{{ d.id }}" {% if direction and direction.id == d.id %}selected{% endif %}>
+          {{ d.code }} — {{ d.nom }}
+        </option>
+        {% endfor %}
+      </select>
+      {% if direction and data %}
+      <span class="badge bg-info text-dark ms-2">
+        <i class="fas fa-building me-1"></i>{{ direction.code }} — {{ direction.nom }}
+      </span>
+      {% endif %}
+    </form>
+  </div>
+</div>
+
+{% if not direction %}
+<div class="alert alert-info">
+  <i class="fas fa-info-circle me-2"></i>
+  Sélectionnez une direction pour afficher son PTA extrait et renuméroté.
+</div>
+
+{% elif not data %}
+<div class="alert alert-warning">
+  <i class="fas fa-exclamation-triangle me-2"></i>
+  La direction <strong>{{ direction.code }} — {{ direction.nom }}</strong>
+  n'a aucune tâche assignée dans le PTA {{ annee.annee }}.
+</div>
+
+{% else %}
+
+{# ── Objectif général ── #}
+{% if annee.objectif_general %}
+<div class="alert alert-light border fw-semibold mb-3 py-2">
+  <i class="fas fa-bullseye text-primary me-2"></i>
+  <strong>Objectif général :</strong> {{ annee.objectif_general }}
+</div>
+{% endif %}
+
+{# ── Tableau ── #}
+<style>
+#tblDirPTA thead th {
+  word-break:break-word; overflow-wrap:break-word;
+  vertical-align:middle; line-height:1.2; padding:2px 3px !important;
+}
+</style>
+<div style="font-size:.72rem;max-height:calc(100vh - 210px);overflow-y:auto;overflow-x:hidden;width:100%;">
+<table class="table table-bordered table-sm align-middle mb-0" id="tblDirPTA"
+       style="width:100%;table-layout:fixed;">
+  <colgroup>
+    <col style="width:3.5%">
+    <col style="width:18%">
+    <col style="width:4.5%">
+    <col style="width:5%">
+    <col style="width:3.5%">
+    <col style="width:3.5%">
+    <col style="width:4.5%">
+    <col style="width:4.5%">
+    <col style="width:5.5%">
+    <col style="width:5%">
+    <col style="width:3%">
+    <col style="width:6%">
+    <col style="width:9%">
+    <col style="width:5%">
+    <col style="width:7.5%">
+  </colgroup>
+  <thead style="position:sticky;top:0;z-index:5;">
+    <tr style="background:#FF69B4;color:#000;text-align:center;font-weight:700;font-size:.68rem;">
+      <th rowspan="3" style="position:sticky;top:0;background:#FF69B4;">Code</th>
+      <th rowspan="3" style="position:sticky;top:0;background:#FF69B4;">Objectifs/Résultats/<br>Actions/Activités/Tâches</th>
+      <th rowspan="3" style="position:sticky;top:0;background:#FF69B4;">Imputation<br>budg.</th>
+      <th colspan="6" style="position:sticky;top:0;background:#FF69B4;">SOURCES DE FINANCEMENT</th>
+      <th rowspan="3" style="position:sticky;top:0;background:#FF69B4;">Période<br>d'exécution</th>
+      <th rowspan="3" style="position:sticky;top:0;background:#FF69B4;">Poids<br>(%)</th>
+      <th rowspan="3" style="position:sticky;top:0;background:#FF69B4;" title="Direction ou Unité Administrative Responsable">Direction/<br>Unité Resp.</th>
+      <th rowspan="3" style="position:sticky;top:0;background:#FF69B4;" title="Structures associées / Unité Administrative Associée">Structures<br>associées</th>
+      <th rowspan="3" style="position:sticky;top:0;background:#FF69B4;">Mode<br>d'exécution</th>
+      <th rowspan="3" style="position:sticky;top:0;background:#FF69B4;">Observations<br>(ODD…)</th>
+    </tr>
+    <tr style="background:#FF69B4;color:#000;text-align:center;font-weight:700;font-size:.68rem;">
+      <th colspan="5" style="position:sticky;top:0;background:#FF69B4;">Source de financement</th>
+      <th rowspan="2" style="position:sticky;top:0;background:#FF69B4;">Total</th>
+    </tr>
+    <tr style="background:#FF69B4;color:#000;text-align:center;font-weight:700;font-size:.68rem;">
+      <th style="position:sticky;top:0;background:#FF69B4;">Fds<br>Propres</th>
+      <th style="position:sticky;top:0;background:#FF69B4;">FA</th>
+      <th style="position:sticky;top:0;background:#FF69B4;">FNA</th>
+      <th style="position:sticky;top:0;background:#FF69B4;">PTFs</th>
+      <th style="position:sticky;top:0;background:#FF69B4;">Autres<br>Fonds</th>
+    </tr>
+  </thead>
+  <tbody>
+
+  {% set tg = namespace(rp=0,fa=0,fn=0,ap=0,af=0) %}
+  {% set nb_services   = services|length %}
+  {% set nb_directions = directions|length %}
+
+  {% for pd in data %}
+
+  {# ── Objectif spécifique du programme ── #}
+  {% if pd['programme'].objectif_specifique %}
+  <tr style="background:#FFFACD;">
+    <td colspan="15" class="fst-italic fw-semibold px-2 py-1">
+      <i class="fas fa-crosshairs text-warning me-2"></i>
+      Objectif {{ pd['code'] }}/Résultat {{ pd['code'] }} : {{ pd['programme'].objectif_specifique }}
+    </td>
+  </tr>
+  {% endif %}
+
+  {# Totaux programme (somme des tâches filtrées) #}
+  {% set p = namespace(rp=0,fa=0,fn=0,ap=0,af=0) %}
+  {% for pjd in pd['projets'] %}{% for ad in pjd['activites'] %}{% for td in ad['taches'] %}
+    {% set t = td['tache'] %}
+    {% set p.rp = p.rp + (t.ressources_propres or 0) %}
+    {% set p.fa = p.fa + (t.fadec_affecte      or 0) %}
+    {% set p.fn = p.fn + (t.fadec_non_affecte  or 0) %}
+    {% set p.ap = p.ap + (t.autres_partenaires or 0) %}
+    {% set p.af = p.af + (t.autres_fonds       or 0) %}
+  {% endfor %}{% endfor %}{% endfor %}
+
+  {# ── Ligne Programme ── #}
+  <tr style="background:#FFFF99;font-weight:700;border-top:2px solid #aaa;">
+    <td class="text-center">{{ pd['code'] }}</td>
+    <td>Programme {{ pd['code'] }} : {{ pd['programme'].nom }}</td>
+    <td class="text-center"></td>
+    <td class="text-center">{{ p.rp|milliers }}</td>
+    <td class="text-center">{{ p.fa|milliers }}</td>
+    <td class="text-center">{{ p.fn|milliers }}</td>
+    <td class="text-center">{{ p.ap|milliers }}</td>
+    <td class="text-center">{{ p.af|milliers }}</td>
+    <td class="text-center fw-bold">{{ (p.rp+p.fa+p.fn+p.ap+p.af)|milliers }}</td>
+    <td class="text-center"></td>
+    <td class="text-center">{{ pd['new_poids']|pct }}%</td>
+    <td class="text-center"></td><td class="text-center"></td><td class="text-center"></td><td class="text-center"></td>
+  </tr>
+
+  {% for pjd in pd['projets'] %}
+
+  {# Totaux projet #}
+  {% set j = namespace(rp=0,fa=0,fn=0,ap=0,af=0) %}
+  {% for ad in pjd['activites'] %}{% for td in ad['taches'] %}
+    {% set t = td['tache'] %}
+    {% set j.rp = j.rp + (t.ressources_propres or 0) %}
+    {% set j.fa = j.fa + (t.fadec_affecte      or 0) %}
+    {% set j.fn = j.fn + (t.fadec_non_affecte  or 0) %}
+    {% set j.ap = j.ap + (t.autres_partenaires or 0) %}
+    {% set j.af = j.af + (t.autres_fonds       or 0) %}
+  {% endfor %}{% endfor %}
+
+  {# ── Ligne Projet ── #}
+  <tr style="background:#FFB6C1;font-weight:700;">
+    <td class="text-center">{{ pjd['code'] }}</td>
+    <td>Projet {{ pjd['code'] }} : {{ pjd['projet'].nom }}</td>
+    <td class="text-center"></td>
+    <td class="text-center">{{ j.rp|milliers }}</td>
+    <td class="text-center">{{ j.fa|milliers }}</td>
+    <td class="text-center">{{ j.fn|milliers }}</td>
+    <td class="text-center">{{ j.ap|milliers }}</td>
+    <td class="text-center">{{ j.af|milliers }}</td>
+    <td class="text-center fw-bold">{{ (j.rp+j.fa+j.fn+j.ap+j.af)|milliers }}</td>
+    <td class="text-center"></td>
+    <td class="text-center">{{ pjd['new_poids']|pct }}%</td>
+    <td class="text-center"></td><td class="text-center"></td><td class="text-center"></td><td class="text-center"></td>
+  </tr>
+
+  {% for ad in pjd['activites'] %}
+  {% set act = ad['activite'] %}
+
+  {# Totaux activité depuis tâches filtrées #}
+  {% set a = namespace(rp=0,fa=0,fn=0,ap=0,af=0) %}
+  {% for td in ad['taches'] %}
+    {% set t = td['tache'] %}
+    {% set a.rp = a.rp + (t.ressources_propres or 0) %}
+    {% set a.fa = a.fa + (t.fadec_affecte      or 0) %}
+    {% set a.fn = a.fn + (t.fadec_non_affecte  or 0) %}
+    {% set a.ap = a.ap + (t.autres_partenaires or 0) %}
+    {% set a.af = a.af + (t.autres_fonds       or 0) %}
+  {% endfor %}
+
+  {# Structures associées activité #}
+  {% set nb_s = act.services_intervenants|length %}
+  {% set nb_d = act.directions_associees|length %}
+  {% set all_s = (nb_services > 0 and nb_s == nb_services) %}
+  {% set all_d = (nb_directions > 0 and nb_d == nb_directions) %}
+
+  {# Période activité #}
+  {% if act.periode_debut and act.periode_fin and act.periode_debut != act.periode_fin %}
+    {% set per_a = act.periode_debut|mois_court ~ ' - ' ~ act.periode_fin|mois_court %}
+  {% elif act.periode_debut %}
+    {% set per_a = act.periode_debut|mois_court %}
+  {% elif act.periode_fin %}
+    {% set per_a = act.periode_fin|mois_court %}
+  {% else %}
+    {% set per_a = '' %}
+  {% endif %}
+
+  {# ── Ligne Activité ── #}
+  <tr style="background:#D3D3D3;font-weight:700;">
+    <td class="text-center">{{ ad['code'] }}</td>
+    <td>{{ act.nom }}</td>
+    <td class="text-center small">{{ act.imputation_budgetaire or 'NÉANT' }}</td>
+    <td class="text-center">{{ a.rp|milliers }}</td>
+    <td class="text-center">{{ a.fa|milliers }}</td>
+    <td class="text-center">{{ a.fn|milliers }}</td>
+    <td class="text-center">{{ a.ap|milliers }}</td>
+    <td class="text-center">{{ a.af|milliers }}</td>
+    <td class="text-center fw-bold">{{ (a.rp+a.fa+a.fn+a.ap+a.af)|milliers }}</td>
+    <td class="small text-center">{{ per_a }}</td>
+    <td class="text-center">{{ ad['new_poids']|pct }}%</td>
+    <td class="text-center small">
+      <span class="badge bg-primary">{{ direction.code }}</span>
+    </td>
+    <td class="small text-center">
+      {% if all_s and all_d %}
+        <span class="badge bg-success">Tous services et directions</span>
+      {% elif all_s %}
+        <span class="badge bg-secondary">Tous les services</span>
+      {% elif all_d %}
+        <span class="badge bg-info text-dark">Toutes les directions</span>
+      {% elif nb_s == 0 and nb_d == 0 and not act.acteurs_externes and act.structures_externes|length == 0 %}
+        <span class="text-muted fst-italic small">Aucun</span>
+      {% else %}
+        {% for s in act.services_intervenants %}<span class="badge bg-secondary me-1">{{ s.code }}</span>{% endfor %}
+        {% for d in act.directions_associees %}<span class="badge bg-info text-dark me-1">{{ d.code }}</span>{% endfor %}
+        {% if act.acteurs_externes %}<span class="text-muted fst-italic" style="font-size:.75rem;">{{ act.acteurs_externes }}</span>{% endif %}
+        {% for se in act.structures_externes %}<span class="badge bg-warning text-dark me-1" title="{{ se.type_org or '' }}">{{ se.nom[:20] }}</span>{% endfor %}
+      {% endif %}
+    </td>
+    <td class="small text-center">{{ act.mode_execution or 'Direct' }}</td>
+    <td class="small text-center">{{ act.observations or '' }}</td>
+  </tr>
+
+  {% for td in ad['taches'] %}
+  {% set t = td['tache'] %}
+  {% set rp = t.ressources_propres or 0 %}{% set fa = t.fadec_affecte or 0 %}
+  {% set fn = t.fadec_non_affecte or 0 %}{% set ap = t.autres_partenaires or 0 %}
+  {% set af = t.autres_fonds or 0 %}{% set bt = rp+fa+fn+ap+af %}
+  {% set tg.rp = tg.rp+rp %}{% set tg.fa = tg.fa+fa %}
+  {% set tg.fn = tg.fn+fn %}{% set tg.ap = tg.ap+ap %}{% set tg.af = tg.af+af %}
+
+  {# Structures associées tâche #}
+  {% set nb_st = t.services_concernes|length %}
+  {% set nb_dt = t.directions_associees|length %}
+  {% set all_st = (nb_services > 0 and nb_st == nb_services) %}
+  {% set all_dt = (nb_directions > 0 and nb_dt == nb_directions) %}
+
+  {# Période tâche #}
+  {% if t.periode_debut and t.periode_fin and t.periode_debut != t.periode_fin %}
+    {% set per_t = t.periode_debut|mois_court ~ ' - ' ~ t.periode_fin|mois_court %}
+  {% elif t.periode_debut %}
+    {% set per_t = t.periode_debut|mois_court %}
+  {% elif t.periode_fin %}
+    {% set per_t = t.periode_fin|mois_court %}
+  {% else %}
+    {% set per_t = '' %}
+  {% endif %}
+
+  {# ── Ligne Tâche ── #}
+  <tr>
+    <td class="ps-3 text-muted text-center">{{ td['num'] }}</td>
+    <td class="ps-3">
+      <i class="fas fa-angle-right text-muted me-1"></i>{{ t.nom }}
+    </td>
+    <td class="text-center small text-muted">{{ t.imputation_budgetaire or 'NÉANT' }}</td>
+    <td class="text-center">{{ rp|milliers }}</td>
+    <td class="text-center">{{ fa|milliers }}</td>
+    <td class="text-center">{{ fn|milliers }}</td>
+    <td class="text-center">{{ ap|milliers }}</td>
+    <td class="text-center">{{ af|milliers }}</td>
+    <td class="text-center fw-semibold">{{ bt|milliers }}</td>
+    <td class="small text-center">{{ per_t }}</td>
+    <td class="text-center">{{ td['new_poids']|pct }}%</td>
+    <td class="text-center small">
+      {% if t.service_responsable %}
+        <span class="badge bg-success" title="{{ t.service_responsable.nom }}">{{ t.service_responsable.code }}</span>
+      {% else %}
+        <span class="badge bg-primary">{{ direction.code }}</span>
+      {% endif %}
+    </td>
+    <td class="small text-center">
+      {% if all_st and all_dt %}
+        <span class="badge bg-success">Tous services et directions</span>
+      {% elif all_st %}
+        <span class="badge bg-secondary">Tous les services</span>
+      {% elif all_dt %}
+        <span class="badge bg-info text-dark">Toutes les directions</span>
+      {% elif nb_st == 0 and nb_dt == 0 and not t.acteurs_externes and t.structures_externes|length == 0 %}
+        <span class="text-muted fst-italic small">Aucun</span>
+      {% else %}
+        {% for s in t.services_concernes %}<span class="badge bg-secondary me-1">{{ s.code }}</span>{% endfor %}
+        {% for d in t.directions_associees %}<span class="badge bg-info text-dark me-1">{{ d.code }}</span>{% endfor %}
+        {% if t.acteurs_externes %}<span class="text-muted fst-italic" style="font-size:.75rem;">{{ t.acteurs_externes }}</span>{% endif %}
+        {% for se in t.structures_externes %}<span class="badge bg-warning text-dark me-1" title="{{ se.type_org or '' }}">{{ se.nom[:20] }}</span>{% endfor %}
+      {% endif %}
+    </td>
+    <td class="small text-center">{{ t.mode_execution or 'Direct' }}</td>
+    <td class="small text-center">{{ t.observations or '' }}</td>
+  </tr>
+  {% endfor %}{# taches #}
+
+  {% endfor %}{# activites #}
+  {% endfor %}{# projets #}
+  {% endfor %}{# programmes #}
+
+  {# ── Total général ── #}
+  <tr style="background:#1F4E79;color:#fff;font-weight:800;">
+    <td></td>
+    <td>TOTAL GÉNÉRAL</td>
+    <td></td>
+    <td class="text-end">{{ tg.rp|milliers }}</td>
+    <td class="text-end">{{ tg.fa|milliers }}</td>
+    <td class="text-end">{{ tg.fn|milliers }}</td>
+    <td class="text-end">{{ tg.ap|milliers }}</td>
+    <td class="text-end">{{ tg.af|milliers }}</td>
+    <td class="text-end">{{ (tg.rp+tg.fa+tg.fn+tg.ap+tg.af)|milliers }}</td>
+    <td></td>
+    <td class="text-center">100%</td>
+    <td></td><td></td><td></td><td></td>
+  </tr>
+  </tbody>
+</table>
+</div>
+
+{% endif %}{# data #}
+{% endif %}{# annee #}
+{% endblock %}

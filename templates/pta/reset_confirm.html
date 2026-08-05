@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Réinitialiser PTA {{ annee.annee }}{% endblock %}
+{% block page_title %}<i class="fas fa-exclamation-triangle text-danger me-2"></i>Réinitialisation du PTA{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-4">
+  <div class="col-lg-7">
+
+    <div class="alert alert-danger border-2 shadow-sm" style="border-left:6px solid #dc3545 !important;">
+      <h5 class="fw-bold"><i class="fas fa-skull-crossbones me-2"></i>Action irréversible</h5>
+      <p class="mb-1">Vous êtes sur le point de <strong>supprimer définitivement</strong> tout le contenu du PTA <strong>{{ annee.annee }}</strong> :</p>
+      <ul class="mb-2">
+        <li><strong>{{ nb_progs }}</strong> programme(s)</li>
+        <li><strong>{{ nb_acts }}</strong> activité(s)</li>
+        <li><strong>{{ nb_taches }}</strong> tâche(s) (avec leurs données de suivi)</li>
+      </ul>
+      <p class="mb-0 fw-semibold text-danger">
+        <i class="fas fa-shield-alt me-1"></i>
+        Un backup complet sera créé automatiquement avant la suppression.
+        Il sera récupérable depuis <strong>Administration › Sauvegardes</strong>.
+      </p>
+    </div>
+
+    <div class="card shadow-sm border-danger">
+      <div class="card-header bg-danger text-white fw-bold">
+        <i class="fas fa-key me-2"></i>Confirmer avec votre mot de passe
+      </div>
+      <div class="card-body">
+        <form method="POST" action="{{ url_for('pta.pta_reset') }}">
+          <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Mot de passe de connexion</label>
+            <input type="password" name="password" class="form-control"
+                   placeholder="Entrez votre mot de passe pour confirmer"
+                   autofocus required>
+            <div class="form-text text-muted">Ce mot de passe est exigé comme confirmation de votre identité.</div>
+          </div>
+          <div class="d-flex gap-3">
+            <a href="{{ url_for('pta.global_pta') }}" class="btn btn-secondary">
+              <i class="fas fa-arrow-left me-1"></i>Annuler
+            </a>
+            <button type="submit" class="btn btn-danger fw-bold ms-auto">
+              <i class="fas fa-trash-alt me-1"></i>Supprimer le PTA {{ annee.annee }} définitivement
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

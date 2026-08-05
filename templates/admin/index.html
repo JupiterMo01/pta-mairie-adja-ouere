@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}Administration{% endblock %}
+{% block page_title %}<i class="fas fa-cog me-2"></i>Administration{% endblock %}
+
+{% block content %}
+<div class="row g-4 mt-1">
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm text-white bg-primary">
+      <div class="card-body d-flex align-items-center gap-3">
+        <i class="fas fa-users fa-2x opacity-75"></i>
+        <div>
+          <div class="fs-3 fw-bold">{{ stats.users }}</div>
+          <div class="small">Utilisateurs</div>
+        </div>
+      </div>
+      <a href="{{ url_for('admin.users') }}" class="stretched-link"></a>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm text-white bg-success">
+      <div class="card-body d-flex align-items-center gap-3">
+        <i class="fas fa-building fa-2x opacity-75"></i>
+        <div>
+          <div class="fs-3 fw-bold">{{ stats.directions }}</div>
+          <div class="small">Directions</div>
+        </div>
+      </div>
+      <a href="{{ url_for('admin.directions') }}" class="stretched-link"></a>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm text-white bg-info">
+      <div class="card-body d-flex align-items-center gap-3">
+        <i class="fas fa-sitemap fa-2x opacity-75"></i>
+        <div>
+          <div class="fs-3 fw-bold">{{ stats.services }}</div>
+          <div class="small">Services</div>
+        </div>
+      </div>
+      <a href="{{ url_for('admin.services') }}" class="stretched-link"></a>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm text-white bg-warning">
+      <div class="card-body d-flex align-items-center gap-3">
+        <i class="fas fa-calendar-alt fa-2x opacity-75"></i>
+        <div>
+          <div class="fs-3 fw-bold">{{ stats.annees }}</div>
+          <div class="small">Années PTA</div>
+        </div>
+      </div>
+      <a href="{{ url_for('admin.annees') }}" class="stretched-link"></a>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4 mt-2">
+  <div class="col-md-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-white fw-bold border-0">
+        <i class="fas fa-tools me-2 text-primary"></i>Actions rapides
+      </div>
+      <div class="card-body d-flex flex-column gap-2">
+        <a href="{{ url_for('admin.users') }}" class="btn btn-outline-primary">
+          <i class="fas fa-user-plus me-2"></i>Gérer les utilisateurs
+        </a>
+        <a href="{{ url_for('admin.directions') }}" class="btn btn-outline-success">
+          <i class="fas fa-building me-2"></i>Gérer les directions
+        </a>
+        <a href="{{ url_for('admin.services') }}" class="btn btn-outline-info">
+          <i class="fas fa-sitemap me-2"></i>Gérer les services
+        </a>
+        <a href="{{ url_for('admin.annees') }}" class="btn btn-outline-warning">
+          <i class="fas fa-calendar me-2"></i>Gérer les années PTA
+        </a>
+        <a href="{{ url_for('admin.structures_externes') }}" class="btn btn-outline-secondary">
+          <i class="fas fa-handshake me-2"></i>Gérer les structures externes
+        </a>
+        <a href="{{ url_for('admin.backups') }}" class="btn btn-outline-dark">
+          <i class="fas fa-database me-2"></i>Sauvegardes PTA
+        </a>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-white fw-bold border-0">
+        <i class="fas fa-info-circle me-2 text-primary"></i>Profils utilisateurs
+      </div>
+      <div class="card-body">
+        <table class="table table-sm table-borderless">
+          <tr>
+            <td><span class="badge bg-danger">Admin Éditeur</span></td>
+            <td class="text-muted small">Création et modification du PTA global, gestion des utilisateurs</td>
+          </tr>
+          <tr>
+            <td><span class="badge bg-secondary">Admin Lecteur</span></td>
+            <td class="text-muted small">Lecture de tous les PTA et rapports, sans modification</td>
+          </tr>
+          <tr>
+            <td><span class="badge bg-primary">Direction</span></td>
+            <td class="text-muted small">Lecture du PTA de sa direction et de tous ses services</td>
+          </tr>
+          <tr>
+            <td><span class="badge bg-success">Service</span></td>
+            <td class="text-muted small">Suivi de ses tâches, lecture des PTA de sa direction</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

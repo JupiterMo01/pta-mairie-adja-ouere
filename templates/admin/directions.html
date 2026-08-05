@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}Directions{% endblock %}
+{% block page_title %}<i class="fas fa-building me-2"></i>Directions{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mt-2 mb-3">
+  <span class="text-muted">{{ directions|length }} direction(s)</span>
+  {% if current_user.role == 'admin_editeur' %}
+  <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#modalAdd">
+    <i class="fas fa-plus me-1"></i>Nouvelle direction
+  </button>
+  {% endif %}
+</div>
+
+<div class="card border-0 shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-dark">
+        <tr>
+          <th>Code</th>
+          <th>Nom</th>
+          <th>Nb. services</th>
+          {% if current_user.role == 'admin_editeur' %}<th>Actions</th>{% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for d in directions %}
+        <tr>
+          <td><span class="badge bg-primary fs-6">{{ d.code }}</span></td>
+          <td class="fw-semibold">{{ d.nom }}</td>
+          <td><span class="badge bg-light text-dark border">{{ d.services|length }}</span></td>
+          {% if current_user.role == 'admin_editeur' %}
+          <td>
+            <button class="btn btn-sm btn-outline-primary me-1"
+                    data-bs-toggle="modal" data-bs-target="#modalEdit{{ d.id }}">
+              <i class="fas fa-edit"></i>
+            </button>
+            <form method="POST" action="{{ url_for('admin.direction_delete', dir_id=d.id) }}" class="d-inline"
+                  onsubmit="return confirm('Supprimer {{ d.code }} ?')">
+              <button class="btn btn-sm btn-outline-danger">
+                <i class="fas fa-trash"></i>
+              </button>
+            </form>
+          </td>
+          {% endif %}
+        </tr>
+        <!-- Modal édition -->
+        {% if current_user.role == 'admin_editeur' %}
+        <div class="modal fade" id="modalEdit{{ d.id }}" tabindex="-1">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">Modifier {{ d.code }}</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+              </div>
+              <form method="POST" action="{{ url_for('admin.direction_edit', dir_id=d.id) }}">
+                <div class="modal-body">
+                  <div class="mb-3">
+                    <label class="form-label fw-semibold">Code *</label>
+                    <input type="text" name="code" class="form-control" value="{{ d.code }}" required>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label fw-semibold">Nom *</label>
+                    <input type="text" name="nom" class="form-control" value="{{ d.nom }}" required>
+                  </div>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                  <button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i>Enregistrer</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+        {% else %}
+        <tr><td colspan="4" class="text-center text-muted py-4">Aucune direction</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal ajout -->
+{% if current_user.role == 'admin_editeur' %}
+<div class="modal fade" id="modalAdd" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title"><i class="fas fa-building me-2"></i>Nouvelle direction</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" action="{{ url_for('admin.direction_add') }}">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Code *</label>
+            <input type="text" name="code" class="form-control" required placeholder="ex: DAF">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Nom complet *</label>
+            <input type="text" name="nom" class="form-control" required placeholder="ex: Direction des Affaires Financières">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-success"><i class="fas fa-plus me-1"></i>Créer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

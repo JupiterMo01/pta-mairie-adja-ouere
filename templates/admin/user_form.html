@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Modifier l'utilisateur{% endblock %}
+{% block page_title %}<i class="fas fa-user-edit me-2"></i>Modifier l'utilisateur{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-3">
+  <div class="col-md-8">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-primary text-white fw-bold">
+        {{ user.prenom }} {{ user.nom }}
+      </div>
+      <form method="POST" action="{{ url_for('admin.user_edit', user_id=user.id) }}">
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Prénom *</label>
+              <input type="text" name="prenom" class="form-control" value="{{ user.prenom }}" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Nom *</label>
+              <input type="text" name="nom" class="form-control" value="{{ user.nom }}" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Identifiant</label>
+              <input type="text" class="form-control bg-light" value="{{ user.login }}" disabled>
+              <small class="text-muted">L'identifiant ne peut pas être modifié.</small>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Nouveau mot de passe</label>
+              <input type="password" name="password" class="form-control" placeholder="Laisser vide pour ne pas changer">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Profil *</label>
+              <select name="role" class="form-select" required>
+                <option value="admin_editeur" {% if user.role=='admin_editeur' %}selected{% endif %}>Admin Éditeur</option>
+                <option value="admin_lecteur" {% if user.role=='admin_lecteur' %}selected{% endif %}>Admin Lecteur</option>
+                <option value="direction" {% if user.role=='direction' %}selected{% endif %}>Direction</option>
+                <option value="service" {% if user.role=='service' %}selected{% endif %}>Service</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Direction</label>
+              <select name="direction_id" class="form-select">
+                <option value="">-- Aucune --</option>
+                {% for d in directions %}
+                <option value="{{ d.id }}" {% if user.direction_id == d.id %}selected{% endif %}>
+                  {{ d.code }} — {{ d.nom }}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Service</label>
+              <select name="service_id" class="form-select">
+                <option value="">-- Aucun --</option>
+                {% for s in services %}
+                <option value="{{ s.id }}" {% if user.service_id == s.id %}selected{% endif %}>
+                  {{ s.code }} — {{ s.nom }}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-12">
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" name="actif" id="actifCheck"
+                       {% if user.actif %}checked{% endif %}>
+                <label class="form-check-label" for="actifCheck">Compte actif</label>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card-footer d-flex gap-2">
+          <button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i>Enregistrer</button>
+          <a href="{{ url_for('admin.users') }}" class="btn btn-secondary">Annuler</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

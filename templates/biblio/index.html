@@ -1,0 +1,356 @@
+{% extends "base.html" %}
+{% block title %}Bibliothèque des activités{% endblock %}
+{% block page_title %}<i class="fas fa-book me-2"></i>Bibliothèque des activités{% endblock %}
+
+{% set mois = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'] %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mt-2 mb-3">
+  <p class="text-muted mb-0 small">
+    Activités et tâches types réutilisables lors de la création du PTA.
+    Depuis le PTA, utilisez le bouton <i class="fas fa-book"></i> sur une activité pour l'exporter ici.
+  </p>
+  <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalAddActivite">
+    <i class="fas fa-plus me-1"></i>Nouvelle activité
+  </button>
+</div>
+
+{% if not activites %}
+<div class="alert alert-info">
+  <i class="fas fa-info-circle me-2"></i>La bibliothèque est vide. Ajoutez des activités types ou exportez-en depuis le PTA.
+</div>
+{% endif %}
+
+{% for activite in activites %}
+{% set poids_taches = activite.taches|sum(attribute='poids') if activite.taches else 0 %}
+<div class="card mb-4 shadow-sm" id="row-bact-{{ activite.id }}">
+
+  {# ── En-tête carte activité ── #}
+  <div class="card-header d-flex justify-content-between align-items-start py-2" style="background:#C8C8C8;">
+    <div>
+      <div class="d-flex flex-wrap align-items-center gap-1">
+        <span class="fw-bold me-1">{{ activite.nom }}</span>
+        {% if activite.poids %}<span class="badge bg-dark">Poids : {{ activite.poids|pct }}%</span>{% endif %}
+        <span class="badge bg-secondary">{{ activite.mode_execution or 'Direct' }}</span>
+        {% if activite.direction_responsable %}<span class="badge bg-primary">{{ activite.direction_responsable.code }}</span>{% endif %}
+        {% set nb_s = activite.services_associes|length %}
+        {% set nb_d = activite.directions_associees|length %}
+        {% if services|length > 0 and nb_s == services|length and directions|length > 0 and nb_d == directions|length %}
+          <span class="badge bg-success">Tous S&amp;D</span>
+        {% elif services|length > 0 and nb_s == services|length %}
+          <span class="badge bg-secondary">Tous services</span>
+        {% elif directions|length > 0 and nb_d == directions|length %}
+          <span class="badge bg-info text-dark">Toutes directions</span>
+        {% elif nb_s == 0 and nb_d == 0 %}
+          <span class="text-muted fst-italic small">Aucun</span>
+        {% else %}
+          {% for s in activite.services_associes %}<span class="badge bg-success">{{ s.code }}</span>{% endfor %}
+          {% for d in activite.directions_associees %}<span class="badge bg-info text-dark">{{ d.code }}</span>{% endfor %}
+        {% endif %}
+        {% for se in activite.structures_externes %}<span class="badge bg-warning text-dark" title="{{ se.type_org or '' }}">{{ se.nom[:15] }}</span>{% endfor %}
+        {% if activite.taches %}
+          {% if poids_taches == 100 %}
+            <span class="badge bg-success ms-1" style="font-size:.65rem;" title="Somme des poids des tâches">✓ 100%</span>
+          {% else %}
+            <span class="badge bg-danger ms-1" style="font-size:.65rem;" title="Somme des poids ≠ 100%">⚠ {{ poids_taches|pct }}%</span>
+          {% endif %}
+        {% endif %}
+      </div>
+      <div class="small text-muted mt-1 d-flex flex-wrap gap-3">
+        {% if activite.imputation_budgetaire and activite.imputation_budgetaire != 'NÉANT' %}
+          <span><i class="fas fa-tag me-1"></i>{{ activite.imputation_budgetaire }}</span>
+        {% endif %}
+        {% if activite.periode_debut or activite.periode_fin %}
+          <span><i class="fas fa-calendar me-1"></i>{{ activite.periode_debut or '?' }} → {{ activite.periode_fin or '?' }}</span>
+        {% endif %}
+        {% if activite.budget_total > 0 %}
+          <span class="text-success fw-semibold"><i class="fas fa-coins me-1"></i>{{ activite.budget_total|milliers }} F CFA</span>
+        {% endif %}
+        {% if activite.description %}
+          <span><i class="fas fa-info-circle me-1"></i>{{ activite.description }}</span>
+        {% endif %}
+      </div>
+    </div>
+    <div class="d-flex gap-1 ms-2 flex-shrink-0">
+      <button class="btn btn-xs btn-success" data-bs-toggle="modal"
+              data-bs-target="#addTacheBiblio{{ activite.id }}" title="Ajouter une tâche">
+        <i class="fas fa-plus"></i> Tâche
+      </button>
+      <button class="btn btn-xs btn-warning" data-bs-toggle="modal"
+              data-bs-target="#editActivite{{ activite.id }}" title="Modifier l'activité">
+        <i class="fas fa-edit"></i>
+      </button>
+      <form method="POST" action="{{ url_for('biblio.activite_delete', act_id=activite.id) }}"
+            class="d-inline" onsubmit="return confirm('Supprimer « {{ activite.nom }} » et toutes ses tâches ?')">
+        <button type="submit" class="btn btn-xs btn-danger" title="Supprimer">
+          <i class="fas fa-trash"></i>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  {# ── Table des tâches ── #}
+  {% if activite.taches %}
+  <style>
+  .biblio-tbl thead th {
+    word-break: break-word;
+    overflow-wrap: break-word;
+    overflow: hidden;
+    vertical-align: middle;
+    line-height: 1.2;
+    padding: 3px 3px !important;
+    font-size: .7rem;
+  }
+  .biblio-tbl td {
+    overflow: hidden;
+    word-break: break-word;
+  }
+  </style>
+  <div style="max-height:420px;overflow-y:auto;overflow-x:hidden;width:100%;">
+    <table class="table table-sm table-bordered mb-0 biblio-tbl" style="font-size:.72rem;width:100%;table-layout:fixed;">
+      <colgroup>
+        <col style="width:2.5%">
+        <col style="width:18%">
+        <col style="width:5.5%">
+        <col style="width:7%">
+        <col style="width:6.5%">
+        <col style="width:6.5%">
+        <col style="width:6.5%">
+        <col style="width:6.5%">
+        <col style="width:7%">
+        <col style="width:4%">
+        <col style="width:6%">
+        <col style="width:8%">
+        <col style="width:5.5%">
+        <col style="width:11%">
+      </colgroup>
+      <thead style="background:#e8e8e8;position:sticky;top:0;z-index:1;">
+        <tr>
+          <th rowspan="2" class="text-center">#</th>
+          <th rowspan="2">Tâche</th>
+          <th rowspan="2" class="text-center">Imp.<br>Budg.</th>
+          <th colspan="6" class="text-center" style="background:#ddeeff;">Montant prévisionnel (F CFA)</th>
+          <th rowspan="2" class="text-center">Poids<br>%</th>
+          <th rowspan="2">Resp.</th>
+          <th rowspan="2">Structures</th>
+          <th rowspan="2" class="text-center">Mode</th>
+          <th rowspan="2" class="text-center">Actions</th>
+        </tr>
+        <tr style="background:#ddeeff;">
+          <th class="text-center">Fds<br>Propres</th>
+          <th class="text-center">FA</th>
+          <th class="text-center">FNA</th>
+          <th class="text-center">PTFs</th>
+          <th class="text-center">Autres<br>Fonds</th>
+          <th class="text-center" style="font-weight:700;">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for tache in activite.taches|sort(attribute='numero') %}
+      <tr id="row-btache-{{ tache.id }}">
+        <td class="text-center text-muted">{{ tache.numero }}</td>
+        <td>
+          <span class="fw-semibold">{{ tache.nom }}</span>
+          {% if tache.description %}<br><small class="text-muted">{{ tache.description }}</small>{% endif %}
+          {% if tache.acteurs_externes %}<br><small class="text-info"><i class="fas fa-users me-1"></i>{{ tache.acteurs_externes }}</small>{% endif %}
+          {% if tache.details_financement %}<br><small class="text-secondary fst-italic">{{ tache.details_financement }}</small>{% endif %}
+        </td>
+        <td class="text-center small">
+          <span class="badge {% if tache.imputation_budgetaire == 'NÉANT' or not tache.imputation_budgetaire %}bg-secondary{% else %}bg-primary{% endif %}">
+            {{ tache.imputation_budgetaire or 'NÉANT' }}
+          </span>
+        </td>
+        <td class="text-end">{% if tache.ressources_propres %}{{ tache.ressources_propres|milliers }}{% else %}—{% endif %}</td>
+        <td class="text-end">{% if tache.fadec_affecte %}{{ tache.fadec_affecte|milliers }}{% else %}—{% endif %}</td>
+        <td class="text-end">{% if tache.fadec_non_affecte %}{{ tache.fadec_non_affecte|milliers }}{% else %}—{% endif %}</td>
+        <td class="text-end">{% if tache.autres_partenaires %}{{ tache.autres_partenaires|milliers }}{% else %}—{% endif %}</td>
+        <td class="text-end">{% if tache.autres_fonds %}{{ tache.autres_fonds|milliers }}{% else %}—{% endif %}</td>
+        <td class="text-end fw-semibold">{% if tache.budget_total %}{{ tache.budget_total|milliers }}{% else %}—{% endif %}</td>
+        <td class="text-center">{{ tache.poids|pct }}%</td>
+        <td class="small">
+          {% if tache.service_responsable %}
+          <span class="badge bg-success">{{ tache.service_responsable.code }}</span>
+          {% elif tache.direction_responsable %}
+          <span class="badge bg-primary">{{ tache.direction_responsable.code }}</span>
+          {% endif %}
+        </td>
+        <td class="small">
+          {% set nb_s = tache.services_concernes|length %}
+          {% set nb_d = tache.directions_associees|length %}
+          {% if services|length > 0 and nb_s == services|length and directions|length > 0 and nb_d == directions|length %}
+            <span class="badge bg-success">Tous S&amp;D</span>
+          {% elif services|length > 0 and nb_s == services|length %}
+            <span class="badge bg-secondary">Tous services</span>
+          {% elif directions|length > 0 and nb_d == directions|length %}
+            <span class="badge bg-info text-dark">Toutes directions</span>
+          {% elif nb_s == 0 and nb_d == 0 %}
+            <span class="text-muted fst-italic small">Aucun</span>
+          {% else %}
+            {% for s in tache.services_concernes %}<span class="badge bg-secondary me-1">{{ s.code }}</span>{% endfor %}
+            {% for d in tache.directions_associees %}<span class="badge bg-info text-dark me-1">{{ d.code }}</span>{% endfor %}
+          {% endif %}
+          {% for se in tache.structures_externes %}<span class="badge bg-warning text-dark" title="{{ se.type_org or '' }}">{{ se.nom[:15] }}</span>{% endfor %}
+        </td>
+        <td class="small text-center">{{ tache.mode_execution or 'Direct' }}</td>
+        <td class="text-center" style="padding:2px;">
+          <div class="d-flex flex-wrap gap-1 justify-content-center">
+          <form method="POST" action="{{ url_for('biblio.tache_move', tache_id=tache.id, direction='up') }}" class="d-inline">
+            <button type="submit" class="btn btn-xs btn-light border" title="Monter"><i class="fas fa-arrow-up"></i></button>
+          </form>
+          <form method="POST" action="{{ url_for('biblio.tache_move', tache_id=tache.id, direction='down') }}" class="d-inline">
+            <button type="submit" class="btn btn-xs btn-light border" title="Descendre"><i class="fas fa-arrow-down"></i></button>
+          </form>
+          <button class="btn btn-xs btn-warning" data-bs-toggle="modal"
+                  data-bs-target="#editTacheBiblio{{ tache.id }}" title="Modifier">
+            <i class="fas fa-edit"></i>
+          </button>
+          <form method="POST" action="{{ url_for('biblio.tache_duplicate', tache_id=tache.id) }}"
+                id="bdup{{ tache.id }}" class="d-inline">
+            <input type="hidden" name="placement" id="bdupP{{ tache.id }}" value="after">
+            <div class="btn-group">
+              <button type="submit" class="btn btn-xs btn-info" title="Dupliquer juste après">
+                <i class="fas fa-copy"></i>
+              </button>
+              <button type="button" class="btn btn-xs btn-info dropdown-toggle dropdown-toggle-split"
+                      data-bs-toggle="dropdown"></button>
+              <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                <li>
+                  <button type="button" class="dropdown-item"
+                          onclick="setAndSubmit('bdupP{{ tache.id }}','end','bdup{{ tache.id }}')">
+                    <i class="fas fa-angle-double-down me-2"></i>Dupliquer en bas
+                  </button>
+                </li>
+              </ul>
+            </div>
+          </form>
+          <form method="POST" action="{{ url_for('biblio.tache_delete', tache_id=tache.id) }}"
+                class="d-inline" onsubmit="return confirm('Supprimer cette tâche ?')">
+            <button type="submit" class="btn btn-xs btn-danger" title="Supprimer">
+              <i class="fas fa-trash"></i>
+            </button>
+          </form>
+          </div>
+        </td>
+      </tr>
+
+      {# ── Modal édition tâche ── #}
+      <div class="modal fade" id="editTacheBiblio{{ tache.id }}" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+          <div class="modal-content">
+            <div class="modal-header bg-warning">
+              <h5 class="modal-title fw-bold">Modifier tâche — {{ tache.nom[:50] }}</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('biblio.tache_edit', tache_id=tache.id) }}">
+              <div class="modal-body row g-2">
+                {% include 'biblio/_tache_fields.html' with context %}
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="submit" class="btn btn-warning fw-bold"><i class="fas fa-save me-1"></i>Enregistrer</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+
+      {# ── Ligne totaux ── #}
+      {% if activite.taches %}
+      <tr style="background:#f0f0f0;font-weight:600;">
+        <td colspan="3" class="text-end text-muted small">Totaux :</td>
+        <td class="text-end">{{ activite.src_rp|milliers }}</td>
+        <td class="text-end">{{ activite.src_fa|milliers }}</td>
+        <td class="text-end">{{ activite.src_fn|milliers }}</td>
+        <td class="text-end">{{ activite.src_ap|milliers }}</td>
+        <td class="text-end">{{ activite.src_af|milliers }}</td>
+        <td class="text-end">{{ activite.budget_total|milliers }}</td>
+        <td class="text-center">
+          {% if poids_taches == 100 %}
+            <span class="badge bg-success">✓ {{ poids_taches|pct }}%</span>
+          {% else %}
+            <span class="badge bg-danger">⚠ {{ poids_taches|pct }}%</span>
+          {% endif %}
+        </td>
+        <td colspan="3"></td>
+      </tr>
+      {% endif %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card-body py-2 px-3">
+    <span class="text-muted small fst-italic">Aucune tâche — cliquez <strong>+ Tâche</strong> pour en ajouter.</span>
+  </div>
+  {% endif %}
+</div>
+
+{# ── Modal ajout tâche ── #}
+<div class="modal fade" id="addTacheBiblio{{ activite.id }}" tabindex="-1">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title"><i class="fas fa-plus me-2"></i>Ajouter une tâche — {{ activite.nom[:50] }}</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" action="{{ url_for('biblio.tache_add', act_id=activite.id) }}">
+        <div class="modal-body row g-2">
+          {% set tache = none %}
+          {% set form_uid = 'act' ~ activite.id %}
+          {% include 'biblio/_tache_fields.html' with context %}
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-success fw-bold"><i class="fas fa-plus me-1"></i>Ajouter</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{# ── Modal édition activité ── #}
+<div class="modal fade" id="editActivite{{ activite.id }}" tabindex="-1">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header bg-warning">
+        <h5 class="modal-title fw-bold"><i class="fas fa-edit me-2"></i>Modifier — {{ activite.nom[:60] }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" action="{{ url_for('biblio.activite_edit', act_id=activite.id) }}">
+        <div class="modal-body row g-2">
+          {% set act = activite %}
+          {% include 'biblio/_activite_fields.html' with context %}
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-warning fw-bold"><i class="fas fa-save me-1"></i>Enregistrer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endfor %}
+
+{# ══ Modal nouvelle activité ══════════════════════════════════════════════ #}
+<div class="modal fade" id="modalAddActivite" tabindex="-1">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title"><i class="fas fa-plus me-2"></i>Nouvelle activité type</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" action="{{ url_for('biblio.activite_add') }}">
+        <div class="modal-body row g-2">
+          {% set act = none %}
+          {% include 'biblio/_activite_fields.html' with context %}
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-primary fw-bold"><i class="fas fa-plus me-1"></i>Créer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

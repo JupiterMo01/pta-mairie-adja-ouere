@@ -1,0 +1,25 @@
+{# Fragment modal — ajout activité — chargé via AJAX dans #ptaDynModalDialog #}
+<div class="modal-dialog modal-xl">
+  <div class="modal-content">
+    <div class="modal-header bg-success text-white">
+      <h5 class="modal-title"><i class="fas fa-plus me-2"></i>Ajouter une activité — Projet {{ projet.code }}</h5>
+      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+    </div>
+    <form method="POST" action="{{ url_for('pta.activite_add') }}" id="formAddActiviteDyn" novalidate>
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="projet_id" value="{{ projet.id }}">
+      <input type="hidden" name="insert_after" value="{{ insert_after }}">
+      {% set act = none %}
+      <div class="modal-body row g-2">
+        {% include 'pta/_activite_fields.html' with context %}
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+        <button type="submit" class="btn btn-success fw-bold"
+                onclick="return validerFormActivite('formAddActiviteDyn')">
+          <i class="fas fa-plus me-1"></i>Ajouter
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

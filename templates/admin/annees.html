@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Années PTA{% endblock %}
+{% block page_title %}<i class="fas fa-calendar-alt me-2"></i>Années PTA{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mt-2 mb-3">
+  <span class="text-muted">{{ annees|length }} année(s)</span>
+  {% if current_user.role == 'admin_editeur' %}
+  <button class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#modalAdd">
+    <i class="fas fa-plus me-1"></i>Nouvelle année
+  </button>
+  {% endif %}
+</div>
+
+<div class="row g-3">
+  {% for a in annees %}
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm text-center {% if a.actif %}border border-success border-2{% endif %}">
+      <div class="card-body py-4">
+        <div class="fs-1 fw-bold {{ 'text-success' if a.actif else 'text-muted' }}">
+          {{ a.annee }}
+        </div>
+
+        {% if a.actif %}
+          <span class="badge bg-success mt-1"><i class="fas fa-check-circle me-1"></i>Année active</span>
+        {% else %}
+          <span class="badge bg-light text-muted border mt-1">Inactive</span>
+        {% endif %}
+
+        {% if current_user.role == 'admin_editeur' %}
+        <div class="mt-3 d-flex flex-column gap-2">
+          {% if not a.actif %}
+          <!-- Activer -->
+          <form method="POST" action="{{ url_for('admin.annee_activate', ann_id=a.id) }}">
+            <button type="submit" class="btn btn-sm btn-success w-100">
+              <i class="fas fa-toggle-on me-1"></i>Activer
+            </button>
+          </form>
+          {% else %}
+          <!-- Désactiver -->
+          <form method="POST" action="{{ url_for('admin.annee_deactivate', ann_id=a.id) }}"
+                onsubmit="return confirm('Désactiver l\'année {{ a.annee }} ? Aucune année ne sera active.')">
+            <button type="submit" class="btn btn-sm btn-outline-warning w-100">
+              <i class="fas fa-toggle-off me-1"></i>Désactiver
+            </button>
+          </form>
+          {% endif %}
+
+          <!-- Supprimer (seulement si inactive et sans données) -->
+          {% if not a.actif %}
+          <form method="POST" action="{{ url_for('admin.annee_delete', ann_id=a.id) }}"
+                onsubmit="return confirm('Supprimer définitivement l\'année {{ a.annee }} ?')">
+            <button type="submit" class="btn btn-sm btn-outline-danger w-100">
+              <i class="fas fa-trash me-1"></i>Supprimer
+            </button>
+          </form>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="col-12 text-center text-muted py-5">Aucune année créée</div>
+  {% endfor %}
+</div>
+
+{% if current_user.role == 'admin_editeur' %}
+<div class="modal fade" id="modalAdd" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-warning">
+        <h5 class="modal-title fw-bold"><i class="fas fa-calendar me-2"></i>Nouvelle année PTA</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" action="{{ url_for('admin.annee_add') }}">
+        <div class="modal-body">
+          <label class="form-label fw-semibold">Année *</label>
+          <input type="number" name="annee" class="form-control form-control-lg text-center"
+                 min="2020" max="2050" placeholder="2026" required>
+          <small class="text-muted mt-2 d-block">L'année sera créée inactive. Activez-la ensuite.</small>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-warning fw-bold"><i class="fas fa-plus me-1"></i>Créer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

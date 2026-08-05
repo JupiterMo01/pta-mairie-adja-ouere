@@ -1,0 +1,882 @@
+{% extends "base.html" %}
+{% block title %}PTA Global{% endblock %}
+{% block page_title %}<i class="fas fa-clipboard-list me-2"></i>Plan de Travail Annuel{% endblock %}
+
+{% block content %}
+<!-- Barre d'outils -->
+<div class="d-flex flex-wrap gap-2 align-items-center mt-2 mb-3">
+  <div class="dropdown">
+    <button class="btn btn-outline-primary btn-sm dropdown-toggle" data-bs-toggle="dropdown">
+      <i class="fas fa-calendar me-1"></i>{{ annee.annee if annee else 'Choisir une année' }}
+    </button>
+    <ul class="dropdown-menu shadow">
+      {% for a in annees %}
+      <li>
+        <a class="dropdown-item {% if annee and annee.id == a.id %}active{% endif %}"
+           href="{{ url_for('pta.switch_annee', annee_id=a.id) }}">
+          {{ a.annee }} {% if a.actif %}<span class="badge bg-success ms-1">active</span>{% endif %}
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% if can_edit and annee %}
+  <button class="btn btn-primary btn-sm" onclick="openAddProg()"
+          data-bs-toggle="modal" data-bs-target="#modalAddProg">
+    <i class="fas fa-plus me-1"></i>Programme
+  </button>
+  <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#modalObjGen">
+    <i class="fas fa-bullseye me-1"></i>Objectif général
+  </button>
+  {% endif %}
+  {% if annee %}
+  <a href="{{ url_for('pta.export_excel') }}" class="btn btn-success btn-sm ms-auto">
+    <i class="fas fa-file-excel me-1"></i>Exporter Excel
+  </a>
+  <a href="{{ url_for('pta.print_view') }}" target="_blank"
+     class="btn btn-outline-secondary btn-sm">
+    <i class="fas fa-print me-1"></i>Imprimer
+  </a>
+  {% if can_edit %}
+  <form method="POST" action="{{ url_for('pta.pta_save_manual') }}" class="d-inline"
+        onsubmit="return confirm('Sauvegarder l\'état actuel du PTA {{ annee.annee }} ?\nUne copie sera créée dans Administration › Sauvegardes.')">
+    <button type="submit" class="btn btn-outline-success btn-sm"
+            title="Créer une sauvegarde du PTA sans le modifier">
+      <i class="fas fa-save me-1"></i>Sauvegarder
+    </button>
+  </form>
+  <a href="{{ url_for('pta.pta_reset') }}"
+     class="btn btn-outline-danger btn-sm"
+     title="Supprimer tout le contenu du PTA (un backup sera créé)">
+    <i class="fas fa-trash-alt me-1"></i>Réinitialiser
+  </a>
+  {% endif %}
+  {% endif %}
+</div>
+
+<!-- Objectif général -->
+{% if annee and annee.objectif_general %}
+<div class="alert alert-light border fw-semibold mb-3 py-2">
+  <i class="fas fa-bullseye text-primary me-2"></i>
+  <strong>Objectif général :</strong> {{ annee.objectif_general }}
+</div>
+{% endif %}
+
+{% if not annee %}
+<div class="alert alert-warning"><i class="fas fa-exclamation-triangle me-2"></i>
+  Aucune année active. Allez dans <a href="{{ url_for('admin.annees') }}">Administration &gt; Années</a>.
+</div>
+{% elif not programmes %}
+<div class="alert alert-info"><i class="fas fa-info-circle me-2"></i>
+  Le PTA {{ annee.annee }} est vide.{% if can_edit %} Cliquez sur <strong>Programme</strong> pour commencer.{% endif %}
+</div>
+{% endif %}
+
+<!-- ══ Tableau PTA ══════════════════════════════════════════════════════════ -->
+{% if programmes %}
+<!-- Barre de recherche -->
+<div class="d-flex align-items-center gap-2 mb-2 px-1 py-2 bg-light border rounded">
+  <i class="fas fa-search text-muted"></i>
+  <input type="text" id="ptaSearch" class="form-control form-control-sm"
+         placeholder="Rechercher (code, nom, structure, montant…)"
+         style="max-width:320px;" autocomplete="off">
+  <span id="searchCount" class="small fw-semibold ms-1"></span>
+  <button class="btn btn-xs btn-outline-secondary" id="prevMatch" title="Résultat précédent ↑">
+    <i class="fas fa-chevron-up"></i>
+  </button>
+  <button class="btn btn-xs btn-outline-secondary" id="nextMatch" title="Résultat suivant ↓">
+    <i class="fas fa-chevron-down"></i>
+  </button>
+  <button class="btn btn-xs btn-outline-danger" id="clearSearch" title="Effacer la recherche">
+    <i class="fas fa-times"></i>
+  </button>
+  <span class="text-muted small ms-2">Entrée = suivant • Échap = effacer</span>
+</div>
+<style>
+#tablePTA thead th {
+  word-break: break-word;
+  overflow-wrap: break-word;
+  overflow: hidden;
+  vertical-align: middle;
+  line-height: 1.2;
+  padding: 2px 3px !important;
+}
+</style>
+<div id="ptaContainer" style="font-size:.72rem;max-height:calc(100vh - 200px);overflow-y:auto;overflow-x:hidden;width:100%;">
+<table class="table table-bordered table-sm align-middle mb-0" id="tablePTA" style="width:100%;table-layout:fixed;">
+  <colgroup>
+    <col style="width:3.5%">
+    <col style="width:18%">
+    <col style="width:4.5%">
+    <col style="width:5%">
+    <col style="width:3.5%">
+    <col style="width:3.5%">
+    <col style="width:4.5%">
+    <col style="width:4.5%">
+    <col style="width:5.5%">
+    <col style="width:5%">
+    <col style="width:3%">
+    <col style="width:6%">
+    <col style="width:9%">
+    <col style="width:5%">
+    <col style="width:7.5%">
+    {% if can_edit %}<col style="width:7%">{% endif %}
+  </colgroup>
+  <thead style="position:sticky;top:0;z-index:5;">
+    <tr style="background:#FF69B4;color:#000;text-align:center;font-weight:700;font-size:.68rem;">
+      <th rowspan="3" style="position:sticky;top:0;background:#FF69B4;">Code</th>
+      <th rowspan="3" style="position:sticky;top:0;background:#FF69B4;">Objectifs/Résultats/<br>Actions/Activités/Tâches</th>
+      <th rowspan="3" style="position:sticky;top:0;background:#FF69B4;">Imputation<br>budg.</th>
+      <th colspan="6" style="position:sticky;top:0;background:#FF69B4;">SOURCES DE FINANCEMENT</th>
+      <th rowspan="3" style="position:sticky;top:0;background:#FF69B4;">Période<br>d'exécution</th>
+      <th rowspan="3" style="position:sticky;top:0;background:#FF69B4;">Poids<br>(%)</th>
+      <th rowspan="3" style="position:sticky;top:0;background:#FF69B4;" title="Directions ou Unité Administrative Responsables">Direction/<br>Unité Resp.</th>
+      <th rowspan="3" style="position:sticky;top:0;background:#FF69B4;" title="Structures associées / Unité Administrative Associée">Structures<br>associées</th>
+      <th rowspan="3" style="position:sticky;top:0;background:#FF69B4;">Mode<br>d'exécution</th>
+      <th rowspan="3" style="position:sticky;top:0;background:#FF69B4;">Observations<br>(ODD…)</th>
+      {% if can_edit %}<th rowspan="3" style="position:sticky;top:0;background:#FF69B4;">Actions</th>{% endif %}
+    </tr>
+    <tr style="background:#FF69B4;color:#000;text-align:center;font-weight:700;font-size:.68rem;">
+      <th colspan="5" style="position:sticky;top:0;background:#FF69B4;">Source de financement</th>
+      <th rowspan="2" style="position:sticky;top:0;background:#FF69B4;">Total</th>
+    </tr>
+    <tr style="background:#FF69B4;color:#000;text-align:center;font-weight:700;font-size:.68rem;">
+      <th style="position:sticky;top:0;background:#FF69B4;">Fds<br>Propres</th>
+      <th style="position:sticky;top:0;background:#FF69B4;">FA</th>
+      <th style="position:sticky;top:0;background:#FF69B4;">FNA</th>
+      <th style="position:sticky;top:0;background:#FF69B4;">PTFs</th>
+      <th style="position:sticky;top:0;background:#FF69B4;">Autres<br>Fonds</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for prog in programmes %}
+    <!-- ── OS / Objectif Spécifique ── -->
+    {% if prog.objectif_specifique %}
+    <tr style="background:#FFFACD;">
+      <td colspan="{{ 14 + (1 if can_edit else 0) }}" class="fst-italic fw-semibold px-2 py-1">
+        <i class="fas fa-crosshairs text-warning me-2"></i>
+        Objectif {{ prog.numero }}/Résultat {{ prog.numero }} : {{ prog.objectif_specifique }}
+      </td>
+    </tr>
+    {% endif %}
+
+    <!-- ── Ligne Programme ── -->
+    {% set p_rp = prog.ressources_propres %}
+    {% set p_fa = prog.fadec_affecte %}
+    {% set p_fn = prog.fadec_non_affecte %}
+    {% set p_ap = prog.autres_partenaires %}
+    {% set p_af = prog.autres_fonds %}
+    {% set p_tot = prog.budget_total %}
+    {% set poids_projets = prog.projets|sum(attribute='poids') %}
+    <tr id="row-prog-{{ prog.id }}" style="background:#FFFF99;font-weight:700;border-top:2px solid #aaa;">
+      <td class="text-center">{{ prog.code }}</td>
+      <td>Programme {{ prog.code }} : {{ prog.nom }}
+        {% if can_edit and poids_projets is defined %}
+        {% if poids_projets == 100 %}
+          <span class="badge bg-success ms-1" title="Somme poids projets">✓ 100%</span>
+        {% else %}
+          <span class="badge bg-danger ms-1" title="Somme poids projets ≠ 100%">⚠ {{ poids_projets|pct }}%</span>
+        {% endif %}
+        {% endif %}
+      </td>
+      <td class="text-center"></td>
+      <td class="text-center">{{ p_rp|milliers }}</td>
+      <td class="text-center">{{ p_fa|milliers }}</td>
+      <td class="text-center">{{ p_fn|milliers }}</td>
+      <td class="text-center">{{ p_ap|milliers }}</td>
+      <td class="text-center">{{ p_af|milliers }}</td>
+      <td class="text-center fw-bold">{{ p_tot|milliers }}</td>
+      <td class="text-center"></td>
+      <td class="text-center">{{ prog.poids|pct }}%</td>
+      <td class="text-center"></td><td class="text-center"></td><td class="text-center"></td><td class="text-center"></td>
+      {% if can_edit %}
+      <td>
+        <button class="btn btn-xs btn-warning me-1" data-bs-toggle="modal"
+                data-bs-target="#editProg{{ prog.id }}" title="Modifier">
+          <i class="fas fa-edit"></i>
+        </button>
+        <form method="POST" action="{{ url_for('pta.programme_delete', prog_id=prog.id) }}"
+              class="d-inline" onsubmit="return confirm('Supprimer le programme {{ prog.code }} ?')">
+          <button type="submit" class="btn btn-xs btn-danger me-1"><i class="fas fa-trash"></i></button>
+        </form>
+        <button class="btn btn-xs btn-primary" data-bs-toggle="modal"
+                data-bs-target="#addProjet{{ prog.id }}" title="Ajouter projet">
+          <i class="fas fa-plus"></i> Projet
+        </button>
+      </td>
+      {% endif %}
+    </tr>
+
+    <!-- Projets -->
+    {% for projet in prog.projets %}
+    {% set pj_rp = projet.ressources_propres %}
+    {% set pj_fa = projet.fadec_affecte %}
+    {% set pj_fn = projet.fadec_non_affecte %}
+    {% set pj_ap = projet.autres_partenaires %}
+    {% set pj_af = projet.autres_fonds %}
+    {% set pj_tot = projet.budget_total %}
+    {% set poids_acts = projet.activites|sum(attribute='poids') %}
+    <tr id="row-projet-{{ projet.id }}" style="background:#FFB6C1;font-weight:700;">
+      <td class="text-center">{{ projet.code }}</td>
+      <td>Projet {{ projet.code }} : {{ projet.nom }}
+        {% if can_edit %}
+        {% if poids_acts == 100 %}
+          <span class="badge bg-success ms-1">✓ 100%</span>
+        {% else %}
+          <span class="badge bg-danger ms-1">⚠ {{ poids_acts|pct }}%</span>
+        {% endif %}
+        {% endif %}
+      </td>
+      <td class="text-center"></td>
+      <td class="text-center">{{ pj_rp|milliers }}</td>
+      <td class="text-center">{{ pj_fa|milliers }}</td>
+      <td class="text-center">{{ pj_fn|milliers }}</td>
+      <td class="text-center">{{ pj_ap|milliers }}</td>
+      <td class="text-center">{{ pj_af|milliers }}</td>
+      <td class="text-center fw-bold">{{ pj_tot|milliers }}</td>
+      <td class="text-center"></td>
+      <td class="text-center">{{ projet.poids|pct }}%</td>
+      <td class="text-center"></td><td class="text-center"></td><td class="text-center"></td><td class="text-center"></td>
+      {% if can_edit %}
+      <td>
+        <button class="btn btn-xs btn-warning me-1" data-bs-toggle="modal"
+                data-bs-target="#editProjet{{ projet.id }}"><i class="fas fa-edit"></i></button>
+        <form method="POST" action="{{ url_for('pta.projet_delete', proj_id=projet.id) }}"
+              class="d-inline" onsubmit="return confirm('Supprimer le projet {{ projet.code }} ?')">
+          <button type="submit" class="btn btn-xs btn-danger me-1"><i class="fas fa-trash"></i></button>
+        </form>
+        <form method="POST" action="{{ url_for('pta.projet_clear_activites', proj_id=projet.id) }}"
+              class="d-inline" onsubmit="return confirm('Vider le projet {{ projet.code }} : supprimer TOUTES ses activités et tâches ?')">
+          <button type="submit" class="btn btn-xs btn-outline-danger me-1" title="Supprimer toutes les activités du projet">
+            <i class="fas fa-broom"></i>
+          </button>
+        </form>
+        {# ── AJAX : ouvre le modal ajout activité à la demande ── #}
+        <button class="btn btn-xs btn-primary"
+                onclick="openPtaModal('/pta/projet/{{ projet.id }}/modal-add-activite')">
+          <i class="fas fa-plus"></i> Activité
+        </button>
+      </td>
+      {% endif %}
+    </tr>
+
+    <!-- Activités -->
+    {% for act in projet.activites %}
+    {% set a_rp = act.taches|sum(attribute='ressources_propres') if act.taches else (act.ressources_propres or 0) %}
+    {% set a_fa = act.taches|sum(attribute='fadec_affecte') if act.taches else (act.fadec_affecte or 0) %}
+    {% set a_fn = act.taches|sum(attribute='fadec_non_affecte') if act.taches else (act.fadec_non_affecte or 0) %}
+    {% set a_ap = act.taches|sum(attribute='autres_partenaires') if act.taches else (act.autres_partenaires or 0) %}
+    {% set a_af = act.taches|sum(attribute='autres_fonds') if act.taches else (act.autres_fonds or 0) %}
+    {% set a_tot = a_rp + a_fa + a_fn + a_ap + a_af %}
+    {% set poids_taches = act.taches|sum(attribute='poids') if act.taches else 0 %}
+    <tr id="row-act-{{ act.id }}" style="background:#D3D3D3;font-weight:700;">
+      <td class="text-center">{{ act.code }}</td>
+      <td>{{ act.nom }}
+        {% if can_edit and act.taches %}
+        {% if poids_taches == 100 %}
+          <span class="badge bg-success ms-1" style="font-size:.65rem;">✓ 100%</span>
+        {% else %}
+          <span class="badge bg-danger ms-1" style="font-size:.65rem;">⚠ {{ poids_taches|pct }}%</span>
+        {% endif %}
+        {% endif %}
+      </td>
+      <td class="text-center small">{{ act.imputation_budgetaire or 'NÉANT' }}</td>
+      <td class="text-center">{{ a_rp|milliers }}</td>
+      <td class="text-center">{{ a_fa|milliers }}</td>
+      <td class="text-center">{{ a_fn|milliers }}</td>
+      <td class="text-center">{{ a_ap|milliers }}</td>
+      <td class="text-center">{{ a_af|milliers }}</td>
+      <td class="text-center fw-bold">{{ a_tot|milliers }}</td>
+      <td class="small text-center">
+        {% if act.periode_debut and act.periode_fin and act.periode_debut != act.periode_fin %}
+          {{ act.periode_debut|mois_court }} - {{ act.periode_fin|mois_court }}
+        {% elif act.periode_debut %}
+          {{ act.periode_debut|mois_court }}
+        {% elif act.periode_fin %}
+          {{ act.periode_fin|mois_court }}
+        {% endif %}
+      </td>
+      <td class="text-center">{{ act.poids|pct }}%</td>
+      <td class="text-center small">
+        {% if act.direction_responsable %}
+        <span class="badge bg-primary">{{ act.direction_responsable.code }}</span>
+        {% endif %}
+      </td>
+      <td class="small text-center">
+        {% set nb_s = act.services_intervenants|length %}
+        {% set nb_d = act.directions_associees|length %}
+        {% set all_s = (services|length > 0 and nb_s == services|length) %}
+        {% set all_d = (directions|length > 0 and nb_d == directions|length) %}
+        {% if all_s and all_d %}
+          <span class="badge bg-success">Tous services et directions</span>
+        {% elif all_s %}
+          <span class="badge bg-secondary">Tous les services</span>
+        {% elif all_d %}
+          <span class="badge bg-info text-dark">Toutes les directions</span>
+        {% elif nb_s == 0 and nb_d == 0 and not act.acteurs_externes and act.structures_externes|length == 0 %}
+          <span class="text-muted fst-italic small">Aucun</span>
+        {% else %}
+          {% for s in act.services_intervenants %}<span class="badge bg-secondary me-1">{{ s.code }}</span>{% endfor %}
+          {% for d in act.directions_associees %}<span class="badge bg-info text-dark me-1">{{ d.code }}</span>{% endfor %}
+          {% if act.acteurs_externes %}<span class="text-muted fst-italic" style="font-size:.75rem;">{{ act.acteurs_externes }}</span>{% endif %}
+          {% for se in act.structures_externes %}<span class="badge bg-warning text-dark me-1" title="{{ se.type_org or '' }}">{{ se.nom[:20] }}</span>{% endfor %}
+        {% endif %}
+      </td>
+      <td class="small text-center">{{ act.mode_execution or 'Direct' }}</td>
+      <td class="small text-center">{{ act.observations or '' }}</td>
+      {% if can_edit %}
+      <td>
+        <!-- Déplacer activité -->
+        <form method="POST" action="{{ url_for('pta.activite_move', act_id=act.id, direction='up') }}" class="d-inline">
+          <button type="submit" class="btn btn-xs btn-light border" title="Monter"><i class="fas fa-arrow-up"></i></button>
+        </form>
+        <form method="POST" action="{{ url_for('pta.activite_move', act_id=act.id, direction='down') }}" class="d-inline">
+          <button type="submit" class="btn btn-xs btn-light border me-1" title="Descendre"><i class="fas fa-arrow-down"></i></button>
+        </form>
+        <!-- Modifier / Supprimer — AJAX -->
+        <button class="btn btn-xs btn-warning"
+                onclick="openPtaModal('/pta/activite/{{ act.id }}/modal')" title="Modifier"><i class="fas fa-edit"></i></button>
+        <form method="POST" action="{{ url_for('pta.activite_delete', act_id=act.id) }}"
+              class="d-inline" onsubmit="return confirm('Supprimer l\'activité {{ act.code }} ?')">
+          <button type="submit" class="btn btn-xs btn-danger" title="Supprimer"><i class="fas fa-trash"></i></button>
+        </form>
+        <form method="POST" action="{{ url_for('pta.activite_clear_taches', act_id=act.id) }}"
+              class="d-inline" onsubmit="return confirm('Supprimer TOUTES les tâches de {{ act.code }} ?')">
+          <button type="submit" class="btn btn-xs btn-outline-danger" title="Supprimer toutes les tâches">
+            <i class="fas fa-broom"></i>
+          </button>
+        </form>
+        <br class="mt-1">
+        <!-- Ajouter tâche — AJAX -->
+        <button class="btn btn-xs btn-success mt-1"
+                onclick="openPtaModal('/pta/activite/{{ act.id }}/modal-add-tache')" title="Ajouter tâche">
+          <i class="fas fa-plus"></i> Tâche
+        </button>
+        <!-- Insérer activité en dessous — AJAX -->
+        <button class="btn btn-xs btn-outline-primary mt-1"
+                onclick="insertActiviteBeneath({{ projet.id }}, {{ act.numero }})"
+                title="Insérer une activité en dessous">
+          <i class="fas fa-layer-group"></i>↓
+        </button>
+        <!-- Dupliquer : juste après ou en bas -->
+        <form method="POST" action="{{ url_for('pta.activite_duplicate', act_id=act.id) }}"
+              id="dupAct{{ act.id }}" class="d-inline">
+          <input type="hidden" name="placement" id="dupActP{{ act.id }}" value="after">
+          <div class="btn-group mt-1">
+            <button type="submit" class="btn btn-xs btn-info" title="Dupliquer juste après">
+              <i class="fas fa-copy"></i>
+            </button>
+            <button type="button" class="btn btn-xs btn-info dropdown-toggle dropdown-toggle-split"
+                    data-bs-toggle="dropdown"></button>
+            <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+              <li>
+                <button type="button" class="dropdown-item"
+                        onclick="setAndSubmit('dupActP{{ act.id }}','end','dupAct{{ act.id }}')">
+                  <i class="fas fa-angle-double-down me-2"></i>Dupliquer en bas
+                </button>
+              </li>
+            </ul>
+          </div>
+        </form>
+        <!-- Copier vers un autre projet — AJAX -->
+        <button class="btn btn-xs btn-secondary mt-1"
+                onclick="openPtaModal('/pta/activite/{{ act.id }}/modal-copy')" title="Copier vers un autre projet">
+          <i class="fas fa-share-square"></i>
+        </button>
+        <!-- Exporter vers la bibliothèque — AJAX -->
+        <button class="btn btn-xs btn-outline-info mt-1"
+                onclick="openPtaModal('/pta/activite/{{ act.id }}/modal-biblio')" title="Exporter vers la bibliothèque">
+          <i class="fas fa-book"></i>
+        </button>
+      </td>
+      {% endif %}
+    </tr>
+
+    <!-- Tâches -->
+    {% for tache in act.taches %}
+    {% set ma_tache = (mon_service_id and tache.service_responsable_id == mon_service_id) or (ma_direction_id and tache.direction_responsable_id == ma_direction_id) %}
+    <tr id="row-tache-{{ tache.id }}" class="{% if ma_tache %}table-warning{% endif %}">
+      <td class="ps-3 text-muted text-center">{{ tache.code }}</td>
+      <td class="ps-3">
+        <i class="fas fa-angle-right text-muted me-1"></i>{{ tache.nom }}
+        {% if ma_tache %}
+        <span class="badge bg-warning text-dark ms-1">Ma tâche</span>
+        {% endif %}
+      </td>
+      <td class="text-center small text-muted">{{ tache.imputation_budgetaire or 'NÉANT' }}</td>
+      <td class="text-center">{{ tache.ressources_propres|milliers }}</td>
+      <td class="text-center">{{ tache.fadec_affecte|milliers }}</td>
+      <td class="text-center">{{ tache.fadec_non_affecte|milliers }}</td>
+      <td class="text-center">{{ tache.autres_partenaires|milliers }}</td>
+      <td class="text-center">{{ tache.autres_fonds|milliers }}</td>
+      <td class="text-center fw-semibold">{{ tache.budget_total|milliers }}</td>
+      <td class="small text-center">
+        {% if tache.periode_debut and tache.periode_fin and tache.periode_debut != tache.periode_fin %}
+          {{ tache.periode_debut|mois_court }} - {{ tache.periode_fin|mois_court }}
+        {% elif tache.periode_debut %}
+          {{ tache.periode_debut|mois_court }}
+        {% elif tache.periode_fin %}
+          {{ tache.periode_fin|mois_court }}
+        {% endif %}
+      </td>
+      <td class="text-center">{{ tache.poids|pct }}%</td>
+      <td class="text-center small">
+        {% if tache.service_responsable %}
+        <span class="badge bg-success">{{ tache.service_responsable.code }}</span>
+        {% elif tache.direction_responsable %}
+        <span class="badge bg-primary">{{ tache.direction_responsable.code }}</span>
+        {% endif %}
+      </td>
+      <td class="small text-center">
+        {% set nb_s = tache.services_concernes|length %}
+        {% set nb_d = tache.directions_associees|length %}
+        {% set all_s = (services|length > 0 and nb_s == services|length) %}
+        {% set all_d = (directions|length > 0 and nb_d == directions|length) %}
+        {% if all_s and all_d %}
+          <span class="badge bg-success">Tous services et directions</span>
+        {% elif all_s %}
+          <span class="badge bg-secondary">Tous les services</span>
+        {% elif all_d %}
+          <span class="badge bg-info text-dark">Toutes les directions</span>
+        {% elif nb_s == 0 and nb_d == 0 and not tache.acteurs_externes and tache.structures_externes|length == 0 %}
+          <span class="text-muted fst-italic small">Aucun</span>
+        {% else %}
+          {% for s in tache.services_concernes %}<span class="badge bg-secondary me-1">{{ s.code }}</span>{% endfor %}
+          {% for d in tache.directions_associees %}<span class="badge bg-info text-dark me-1">{{ d.code }}</span>{% endfor %}
+          {% if tache.acteurs_externes %}<span class="text-muted fst-italic" style="font-size:.75rem;">{{ tache.acteurs_externes }}</span>{% endif %}
+          {% for se in tache.structures_externes %}<span class="badge bg-warning text-dark me-1" title="{{ se.type_org or '' }}">{{ se.nom[:20] }}</span>{% endfor %}
+        {% endif %}
+      </td>
+      <td class="small text-center">{{ tache.mode_execution or 'Direct' }}</td>
+      <td class="small text-center">{{ tache.observations or '' }}</td>
+      {% if can_edit %}
+      <td>
+        <!-- Déplacer -->
+        <form method="POST" action="{{ url_for('pta.tache_move', tache_id=tache.id, direction='up') }}"
+              class="d-inline">
+          <button type="submit" class="btn btn-xs btn-light border" title="Monter">
+            <i class="fas fa-arrow-up"></i>
+          </button>
+        </form>
+        <form method="POST" action="{{ url_for('pta.tache_move', tache_id=tache.id, direction='down') }}"
+              class="d-inline">
+          <button type="submit" class="btn btn-xs btn-light border" title="Descendre">
+            <i class="fas fa-arrow-down"></i>
+          </button>
+        </form>
+        <!-- Modifier — AJAX -->
+        <button class="btn btn-xs btn-warning"
+                onclick="openPtaModal('/pta/tache/{{ tache.id }}/modal')" title="Modifier">
+          <i class="fas fa-edit"></i>
+        </button>
+        <!-- Insérer tâche en dessous — AJAX -->
+        <button class="btn btn-xs btn-outline-success"
+                onclick="insertTacheBeneath({{ act.id }}, {{ tache.ordre }})"
+                title="Insérer une tâche en dessous">
+          <i class="fas fa-plus"></i>↓
+        </button>
+        <!-- Dupliquer : juste après ou en bas -->
+        <form method="POST" action="{{ url_for('pta.tache_duplicate', tache_id=tache.id) }}"
+              id="dupTch{{ tache.id }}" class="d-inline">
+          <input type="hidden" name="placement" id="dupTchP{{ tache.id }}" value="after">
+          <div class="btn-group">
+            <button type="submit" class="btn btn-xs btn-info" title="Dupliquer juste après">
+              <i class="fas fa-copy"></i>
+            </button>
+            <button type="button" class="btn btn-xs btn-info dropdown-toggle dropdown-toggle-split"
+                    data-bs-toggle="dropdown"></button>
+            <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+              <li>
+                <button type="button" class="dropdown-item"
+                        onclick="setAndSubmit('dupTchP{{ tache.id }}','end','dupTch{{ tache.id }}')">
+                  <i class="fas fa-angle-double-down me-2"></i>Dupliquer en bas
+                </button>
+              </li>
+            </ul>
+          </div>
+        </form>
+        <!-- Supprimer -->
+        <form method="POST" action="{{ url_for('pta.tache_delete', tache_id=tache.id) }}"
+              class="d-inline" onsubmit="return confirm('Supprimer la tâche {{ tache.code }} ?')">
+          <button type="submit" class="btn btn-xs btn-danger" title="Supprimer">
+            <i class="fas fa-trash"></i>
+          </button>
+        </form>
+      </td>
+      {% endif %}
+    </tr>
+    {% endfor %}
+    <!-- Fin tâches -->
+    {% if can_edit %}
+    <tr style="background:#f0fff4;">
+      <td colspan="{{ 14 + (1 if can_edit else 0) }}" class="py-1 ps-4">
+        {# ── AJAX : ouvre le modal ajout tâche à la demande ── #}
+        <button class="btn btn-xs btn-outline-success"
+                onclick="openPtaModal('/pta/activite/{{ act.id }}/modal-add-tache')">
+          <i class="fas fa-plus me-1"></i>Nouvelle tâche dans {{ act.code }}
+        </button>
+        <button class="btn btn-xs btn-outline-primary ms-3"
+                onclick="insertActiviteBeneath({{ projet.id }}, {{ act.numero }})"
+                title="Insérer une nouvelle activité juste après {{ act.code }}">
+          <i class="fas fa-layer-group me-1"></i>Nouvelle activité après {{ act.code }}
+        </button>
+      </td>
+    </tr>
+    {% endif %}
+    {% endfor %}
+    <!-- Fin activités -->
+    {% if can_edit %}
+    <tr style="background:#fff0f5;">
+      <td colspan="{{ 14 + (1 if can_edit else 0) }}" class="py-1 ps-3">
+        {# ── AJAX : ouvre le modal ajout activité à la demande ── #}
+        <button class="btn btn-xs btn-outline-primary"
+                onclick="openPtaModal('/pta/projet/{{ projet.id }}/modal-add-activite')">
+          <i class="fas fa-plus me-1"></i>Nouvelle activité dans Projet {{ projet.code }}
+        </button>
+      </td>
+    </tr>
+    {% endif %}
+
+    <!-- Modals projet (légers — conservés inline) -->
+    {% if can_edit %}
+    <div class="modal fade" id="editProjet{{ projet.id }}" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header bg-warning">
+            <h5 class="modal-title fw-bold">Modifier Projet {{ projet.code }}</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <form method="POST" action="{{ url_for('pta.projet_edit', proj_id=projet.id) }}">
+            <div class="modal-body row g-2">
+              <div class="col-12">
+                <label class="form-label fw-semibold">Nom *</label>
+                <input type="text" name="nom" class="form-control" value="{{ projet.nom }}" required>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-semibold">Poids (%)</label>
+                <input type="number" name="poids" class="form-control" value="{{ projet.poids }}" step="0.01" min="0" max="100">
+              </div>
+              <div class="col-12">
+                <label class="form-label fw-semibold">Description</label>
+                <textarea name="description" class="form-control" rows="2">{{ projet.description or '' }}</textarea>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+              <button type="submit" class="btn btn-warning fw-bold"><i class="fas fa-save me-1"></i>Enregistrer</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+    {% endfor %}
+    <!-- Fin projets -->
+    {% if can_edit %}
+    <tr style="background:#fffde7;">
+      <td colspan="{{ 14 + (1 if can_edit else 0) }}" class="py-1 ps-2">
+        <button class="btn btn-xs btn-outline-warning"
+                data-bs-toggle="modal" data-bs-target="#addProjet{{ prog.id }}">
+          <i class="fas fa-plus me-1"></i>Nouveau projet dans Programme {{ prog.code }}
+        </button>
+      </td>
+    </tr>
+    {% endif %}
+
+    <!-- Nouveau programme juste après ce programme -->
+    {% if can_edit %}
+    <tr style="background:#e8f0fe;">
+      <td colspan="{{ 14 + (1 if can_edit else 0) }}" class="py-1 ps-2">
+        <button class="btn btn-xs btn-outline-primary fw-semibold"
+                onclick="openAddProg({{ prog.numero }})"
+                data-bs-toggle="modal" data-bs-target="#modalAddProg">
+          <i class="fas fa-plus me-1"></i>Nouveau programme après Programme {{ prog.code }}
+        </button>
+      </td>
+    </tr>
+    {% endif %}
+
+    <!-- Modals programme (légers — conservés inline) -->
+    {% if can_edit %}
+    <div class="modal fade" id="editProg{{ prog.id }}" tabindex="-1">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header bg-warning">
+            <h5 class="modal-title fw-bold">Modifier Programme {{ prog.code }}</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <form method="POST" action="{{ url_for('pta.programme_edit', prog_id=prog.id) }}">
+            <div class="modal-body row g-2">
+              <div class="col-12">
+                <label class="form-label fw-semibold">Objectif spécifique (OS)</label>
+                <textarea name="objectif_specifique" class="form-control" rows="2">{{ prog.objectif_specifique or '' }}</textarea>
+              </div>
+              <div class="col-md-9">
+                <label class="form-label fw-semibold">Nom *</label>
+                <input type="text" name="nom" class="form-control" value="{{ prog.nom }}" required>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label fw-semibold">Poids (%)</label>
+                <input type="number" name="poids" class="form-control" value="{{ prog.poids }}" step="0.01">
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+              <button type="submit" class="btn btn-warning fw-bold"><i class="fas fa-save me-1"></i>Enregistrer</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="addProjet{{ prog.id }}" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header bg-success text-white">
+            <h5 class="modal-title">Ajouter un projet — Programme {{ prog.code }}</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+          <form method="POST" action="{{ url_for('pta.projet_add') }}">
+            <input type="hidden" name="programme_id" value="{{ prog.id }}">
+            <div class="modal-body row g-2">
+              <div class="col-md-9">
+                <label class="form-label fw-semibold">Nom *</label>
+                <input type="text" name="nom" class="form-control" required>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label fw-semibold">Poids (%)</label>
+                <input type="number" name="poids" class="form-control" value="0" step="0.01">
+              </div>
+              <div class="col-12">
+                <label class="form-label fw-semibold">Description</label>
+                <textarea name="description" class="form-control" rows="2"></textarea>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+              <button type="submit" class="btn btn-success fw-bold"><i class="fas fa-plus me-1"></i>Ajouter</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  {% endfor %}
+  <!-- Fin programmes -->
+
+  <!-- ── Ligne Total général ── -->
+  {% set tg_rp = programmes|sum(attribute='ressources_propres') %}
+  {% set tg_fa = programmes|sum(attribute='fadec_affecte') %}
+  {% set tg_fn = programmes|sum(attribute='fadec_non_affecte') %}
+  {% set tg_ap = programmes|sum(attribute='autres_partenaires') %}
+  {% set tg_af = programmes|sum(attribute='autres_fonds') %}
+  {% set tg_tot = programmes|sum(attribute='budget_total') %}
+  {% set poids_progs = programmes|sum(attribute='poids') %}
+  <tr style="background:#1F4E79;color:#fff;font-weight:800;">
+    <td></td>
+    <td>TOTAL GÉNÉRAL</td>
+    <td></td>
+    <td class="text-end">{{ tg_rp|milliers }}</td>
+    <td class="text-end">{{ tg_fa|milliers }}</td>
+    <td class="text-end">{{ tg_fn|milliers }}</td>
+    <td class="text-end">{{ tg_ap|milliers }}</td>
+    <td class="text-end">{{ tg_af|milliers }}</td>
+    <td class="text-end">{{ tg_tot|milliers }}</td>
+    <td></td>
+    <td class="text-center">{{ poids_progs|pct }}%</td>
+    <td></td><td></td><td></td><td></td>
+    {% if can_edit %}<td></td>{% endif %}
+  </tr>
+  </tbody>
+</table>
+</div>
+{% endif %}
+
+<!-- ══ Modals globaux (légers, conservés inline) ══════════════════════════ -->
+
+<!-- Modal Objectif général -->
+{% if can_edit and annee %}
+<div class="modal fade" id="modalObjGen" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title"><i class="fas fa-bullseye me-2"></i>Objectif général du PTA {{ annee.annee }}</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" action="{{ url_for('pta.annee_objectif', annee_id=annee.id) }}">
+        <div class="modal-body">
+          <textarea name="objectif_general" class="form-control" rows="3"
+                    placeholder="Ex : Contribuer à l'amélioration des conditions de vie de la population...">{{ annee.objectif_general or '' }}</textarea>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-primary fw-bold"><i class="fas fa-save me-1"></i>Enregistrer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Nouveau programme -->
+<div class="modal fade" id="modalAddProg" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title"><i class="fas fa-plus me-2"></i>Nouveau programme</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" action="{{ url_for('pta.programme_add') }}">
+        <input type="hidden" name="insert_after" id="addProgInsertAfter" value="">
+        <div class="modal-body row g-2">
+          <div id="addProgPositionInfo" class="col-12 d-none">
+            <div class="alert alert-info py-1 mb-1" id="addProgPositionText"></div>
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold">Objectif spécifique (OS / Résultat)</label>
+            <textarea name="objectif_specifique" class="form-control" rows="2"
+                      placeholder="Ex : Le développement durable de l'économie locale est promu"></textarea>
+          </div>
+          <div class="col-md-9">
+            <label class="form-label fw-semibold">Nom du programme *</label>
+            <input type="text" name="nom" class="form-control" required
+                   placeholder="Ex : Promotion du développement de l'économie locale">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label fw-semibold">Poids (%)</label>
+            <input type="number" name="poids" class="form-control" value="0" step="0.01">
+            <small class="text-muted">Somme des programmes = 100%</small>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-primary fw-bold"><i class="fas fa-plus me-1"></i>Créer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- ══ Modal dynamique partagé (chargé via AJAX à la demande) ══════════ -->
+{% if can_edit %}
+<div class="modal fade" id="ptaDynModal" tabindex="-1">
+  <div id="ptaDynModalDialog">
+    <!-- Le contenu (modal-dialog + modal-content) est injecté par openPtaModal() -->
+    <div class="modal-dialog modal-xl">
+      <div class="modal-content p-5 text-center text-muted">
+        <div class="spinner-border text-primary mx-auto mb-2" role="status"></div>
+        Chargement…
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<style>
+.search-match { outline: 2px solid #ffc107; }
+.search-current { outline: 3px solid #198754 !important; background-color: rgba(255,243,205,0.5) !important; }
+</style>
+<script>
+function openAddProg(insertAfter) {
+  var field = document.getElementById('addProgInsertAfter');
+  var infoBox = document.getElementById('addProgPositionInfo');
+  var infoText = document.getElementById('addProgPositionText');
+  if (insertAfter !== undefined && insertAfter !== null) {
+    if (field) field.value = insertAfter;
+    if (infoBox) infoBox.classList.remove('d-none');
+    if (infoText) infoText.innerHTML = '<i class="fas fa-info-circle me-1"></i>Ce programme sera inséré <strong>juste après le Programme ' + insertAfter + '</strong>.';
+  } else {
+    if (field) field.value = '';
+    if (infoBox) infoBox.classList.add('d-none');
+  }
+}
+document.addEventListener('DOMContentLoaded', function () {
+  var modalEl = document.getElementById('modalAddProg');
+  if (modalEl) {
+    modalEl.addEventListener('hidden.bs.modal', function () {
+      var field = document.getElementById('addProgInsertAfter');
+      var infoBox = document.getElementById('addProgPositionInfo');
+      if (field) field.value = '';
+      if (infoBox) infoBox.classList.add('d-none');
+    });
+  }
+
+  /* ── Scroll vers l'élément indiqué par ?go=... ── */
+  var goParam = new URLSearchParams(window.location.search).get('go');
+  if (goParam) {
+    var target = document.getElementById('row-' + goParam);
+    if (target) {
+      setTimeout(function () {
+        var c = document.getElementById('ptaContainer');
+        if (c) {
+          var top = c.scrollTop + target.getBoundingClientRect().top - c.getBoundingClientRect().top - 80;
+          c.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+        } else {
+          target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 150);
+    }
+  }
+});
+</script>
+
+<script>
+(function () {
+  var inp = document.getElementById('ptaSearch');
+  if (!inp) return;
+  var countEl = document.getElementById('searchCount');
+  var prevBtn = document.getElementById('prevMatch');
+  var nextBtn = document.getElementById('nextMatch');
+  var clearBtn = document.getElementById('clearSearch');
+  var matches = [], cur = -1, timer;
+
+  function doSearch() {
+    var q = inp.value.trim().toLowerCase();
+    var rows = document.querySelectorAll('#tablePTA tbody tr');
+    matches = [];
+    rows.forEach(function (row) {
+      row.classList.remove('search-match', 'search-current');
+      if (!q) return;
+      var text = Array.from(row.querySelectorAll('td'))
+        .map(function (td) { return td.textContent; }).join(' ').toLowerCase();
+      if (text.includes(q)) { row.classList.add('search-match'); matches.push(row); }
+    });
+    cur = matches.length > 0 ? 0 : -1;
+    if (cur >= 0) goTo(0);
+    updateCount();
+  }
+
+  function goTo(idx) {
+    if (!matches.length) return;
+    matches.forEach(function (r) { r.classList.remove('search-current'); });
+    cur = ((idx % matches.length) + matches.length) % matches.length;
+    var row = matches[cur];
+    row.classList.add('search-current');
+    var c = document.getElementById('ptaContainer');
+    if (c) {
+      var newTop = c.scrollTop + row.getBoundingClientRect().top - c.getBoundingClientRect().top - 80;
+      c.scrollTo({ top: Math.max(0, newTop), behavior: 'smooth' });
+    } else { row.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+    updateCount();
+  }
+
+  function updateCount() {
+    if (!inp.value.trim()) { countEl.innerHTML = ''; return; }
+    if (!matches.length) { countEl.innerHTML = '<span class="text-danger">Aucun résultat</span>'; return; }
+    countEl.innerHTML = '<span class="text-success fw-bold">' + (cur + 1) + ' / ' + matches.length + '</span>';
+  }
+
+  inp.addEventListener('keyup', function (e) {
+    if (e.key === 'Enter') { if (matches.length) goTo(cur + 1); return; }
+    if (e.key === 'Escape') { inp.value = ''; doSearch(); return; }
+    clearTimeout(timer); timer = setTimeout(doSearch, 200);
+  });
+  if (prevBtn) prevBtn.addEventListener('click', function () { goTo(cur - 1); });
+  if (nextBtn) nextBtn.addEventListener('click', function () { goTo(cur + 1); });
+  if (clearBtn) clearBtn.addEventListener('click', function () { inp.value = ''; doSearch(); inp.focus(); });
+})();
+</script>
+{% endblock %}

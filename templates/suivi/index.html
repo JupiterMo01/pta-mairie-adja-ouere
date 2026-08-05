@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block title %}Suivi des tâches{% endblock %}
+{% block page_title %}<i class="fas fa-tasks me-2"></i>Suivi des tâches{% endblock %}
+
+{% block content %}
+<!-- Sélecteur de trimestre -->
+<div class="d-flex align-items-center gap-3 mt-2 mb-3 flex-wrap">
+  <span class="fw-semibold text-muted">Trimestre :</span>
+  {% for t in trimestres %}
+  <a href="{{ url_for('suivi.index', trimestre=t) }}"
+     class="btn btn-sm {% if trimestre == t %}btn-primary{% else %}btn-outline-primary{% endif %}">
+    T{{ t }}
+  </a>
+  {% endfor %}
+  {% if annee %}
+  <span class="badge bg-light text-dark border ms-2">{{ annee.annee }}</span>
+  {% endif %}
+  <span class="ms-auto text-muted small">{{ taches_data|length }} tâche(s) affichée(s)</span>
+</div>
+
+{% if not annee %}
+<div class="alert alert-warning"><i class="fas fa-exclamation-triangle me-2"></i>Aucune année active.</div>
+{% elif not taches_data %}
+<div class="alert alert-info">
+  <i class="fas fa-info-circle me-2"></i>
+  Aucune tâche à afficher pour ce trimestre.
+  {% if current_user.role == 'service' %}
+  Vérifiez que des tâches vous sont bien assignées dans le PTA Global.
+  {% endif %}
+</div>
+{% endif %}
+
+{% for item in taches_data %}
+{% set tache = item.tache %}
+{% set suivi = item.suivi %}
+{% set statut = suivi.statut if suivi else 'non_execute' %}
+<div class="card border-0 shadow-sm mb-2
+  {% if statut == 'execute' %}border-start border-success border-4
+  {% elif statut == 'en_cours' %}border-start border-warning border-4
+  {% else %}border-start border-secondary border-4{% endif %}">
+  <div class="card-body py-2">
+    <!-- Fil d'Ariane -->
+    <div class="text-muted small mb-1">
+      <span>{{ item.programme.code }} — {{ item.programme.nom[:40] }}</span>
+      <i class="fas fa-chevron-right mx-1"></i>
+      <span>{{ item.projet.code }}</span>
+      <i class="fas fa-chevron-right mx-1"></i>
+      <span>{{ item.activite.code }} — {{ item.activite.nom[:40] }}</span>
+    </div>
+
+    <div class="d-flex align-items-start gap-3">
+      <div class="flex-grow-1">
+        <div class="fw-semibold">
+          <code class="me-2">{{ tache.code }}</code>{{ tache.nom }}
+          <span class="badge bg-light text-dark border ms-2">{{ tache.poids }}%</span>
+          {% if tache.service_responsable %}
+          <span class="badge bg-success ms-1">{{ tache.service_responsable.code }}</span>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Boutons de statut (uniquement si le service peut modifier) -->
+      {% if item.peut_modifier %}
+      <form method="POST" action="{{ url_for('suivi.update_tache', tache_id=tache.id) }}"
+            class="d-flex gap-2 align-items-start flex-wrap suivi-form" id="form-{{ tache.id }}">
+        <input type="hidden" name="trimestre" value="{{ trimestre }}">
+
+        <div class="btn-group btn-group-sm" role="group">
+          <input type="radio" class="btn-check" name="statut" id="ex-{{ tache.id }}"
+                 value="execute" {% if statut == 'execute' %}checked{% endif %}
+                 onchange="this.form.submit()">
+          <label class="btn btn-outline-success" for="ex-{{ tache.id }}">
+            <i class="fas fa-check-circle me-1"></i>Exécuté
+          </label>
+
+          <input type="radio" class="btn-check" name="statut" id="ec-{{ tache.id }}"
+                 value="en_cours" {% if statut == 'en_cours' %}checked{% endif %}
+                 onchange="this.form.submit()">
+          <label class="btn btn-outline-warning" for="ec-{{ tache.id }}">
+            <i class="fas fa-spinner me-1"></i>En cours
+          </label>
+
+          <input type="radio" class="btn-check" name="statut" id="ne-{{ tache.id }}"
+                 value="non_execute" {% if statut == 'non_execute' %}checked{% endif %}
+                 onchange="this.form.submit()">
+          <label class="btn btn-outline-secondary" for="ne-{{ tache.id }}">
+            <i class="fas fa-times-circle me-1"></i>Non exécuté
+          </label>
+        </div>
+      </form>
+      {% else %}
+      <!-- Lecture seule -->
+      <span class="badge fs-6
+        {% if statut == 'execute' %}bg-success
+        {% elif statut == 'en_cours' %}bg-warning text-dark
+        {% else %}bg-secondary{% endif %}">
+        {% if statut == 'execute' %}<i class="fas fa-check-circle me-1"></i>Exécuté
+        {% elif statut == 'en_cours' %}<i class="fas fa-spinner me-1"></i>En cours
+        {% else %}<i class="fas fa-times-circle me-1"></i>Non exécuté
+        {% endif %}
+      </span>
+      {% endif %}
+    </div>
+
+    <!-- Observation -->
+    {% if item.peut_modifier %}
+    <div class="mt-2">
+      <form method="POST" action="{{ url_for('suivi.update_tache', tache_id=tache.id) }}"
+            class="d-flex gap-2">
+        <input type="hidden" name="trimestre" value="{{ trimestre }}">
+        <input type="hidden" name="statut" value="{{ statut }}">
+        <input type="text" name="observation" class="form-control form-control-sm"
+               placeholder="Observation (optionnel)…"
+               value="{{ suivi.observation if suivi and suivi.observation else '' }}">
+        <button type="submit" class="btn btn-sm btn-outline-secondary">
+          <i class="fas fa-save"></i>
+        </button>
+      </form>
+    </div>
+    {% elif suivi and suivi.observation %}
+    <div class="mt-1 text-muted small fst-italic">
+      <i class="fas fa-comment me-1"></i>{{ suivi.observation }}
+    </div>
+    {% endif %}
+
+    {% if suivi and suivi.date_maj %}
+    <div class="text-muted" style="font-size:.7rem;">
+      Mis à jour le {{ suivi.date_maj.strftime('%d/%m/%Y à %H:%M') }}
+      {% if suivi.modified_by %} par {{ suivi.modified_by.prenom }} {{ suivi.modified_by.nom }}{% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endfor %}
+{% endblock %}

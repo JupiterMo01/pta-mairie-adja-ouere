@@ -127,6 +127,12 @@
             </li>
             <li><hr class="dropdown-divider"></li>
             <li>
+              <a class="dropdown-item" href="{{ url_for('auth.change_password') }}">
+                <i class="fas fa-key me-2"></i>Changer mon mot de passe
+              </a>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <li>
               <a class="dropdown-item text-danger" href="{{ url_for('auth.logout') }}">
                 <i class="fas fa-sign-out-alt me-2"></i>Déconnexion
               </a>

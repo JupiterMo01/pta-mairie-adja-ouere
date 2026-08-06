@@ -43,3 +43,27 @@ def logout():
     session.pop('annee', None)
     flash('Vous avez été déconnecté.', 'info')
     return redirect(url_for('auth.login'))
+
+
+@auth_bp.route('/changer-mot-de-passe', methods=['GET', 'POST'])
+@login_required
+def change_password():
+    if request.method == 'POST':
+        ancien = request.form.get('ancien_mdp', '').strip()
+        nouveau = request.form.get('nouveau_mdp', '').strip()
+        confirm = request.form.get('confirm_mdp', '').strip()
+
+        if not current_user.check_password(ancien):
+            flash('Mot de passe actuel incorrect.', 'danger')
+        elif len(nouveau) < 6:
+            flash('Le nouveau mot de passe doit contenir au moins 6 caractères.', 'danger')
+        elif nouveau != confirm:
+            flash('Le nouveau mot de passe et la confirmation ne correspondent pas.', 'danger')
+        else:
+            from models import db
+            current_user.set_password(nouveau)
+            db.session.commit()
+            flash('Mot de passe modifié avec succès !', 'success')
+            return redirect(url_for('auth.index'))
+
+    return render_template('auth/change_password.html')

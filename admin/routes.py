@@ -153,6 +153,20 @@ def user_delete(user_id):
     return redirect(url_for('admin.users'))
 
 
+@admin_bp.route('/users/<int:user_id>/reset-password', methods=['POST'])
+@editeur_required
+def user_reset_password(user_id):
+    user = User.query.get_or_404(user_id)
+    nouveau_mdp = request.form.get('nouveau_mdp', '').strip()
+    if len(nouveau_mdp) < 6:
+        flash('Le mot de passe temporaire doit contenir au moins 6 caractères.', 'danger')
+        return redirect(url_for('admin.users'))
+    user.set_password(nouveau_mdp)
+    db.session.commit()
+    flash(f'Mot de passe de {user.prenom} {user.nom} réinitialisé. Communiquez-lui le nouveau mot de passe.', 'success')
+    return redirect(url_for('admin.users'))
+
+
 # ─── Directions ─────────────────────────────────────────────────────────────
 
 @admin_bp.route('/directions')

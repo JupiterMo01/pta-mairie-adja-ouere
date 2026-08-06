@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Identifiant ou mot de passe oublié — PTA Mairie d'Adja-Ouèrè</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+  <style>
+    body { background: linear-gradient(135deg, #1F4E79 0%, #2E75B6 100%); min-height: 100vh; }
+    .card-login { border: none; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+  </style>
+</head>
+<body class="d-flex align-items-center justify-content-center py-5">
+  <div class="container" style="max-width:460px;">
+    <div class="card card-login">
+      <div class="card-body p-5">
+        <div class="text-center mb-4">
+          <i class="fas fa-key fa-2x text-warning mb-2"></i>
+          <h5 class="fw-bold mb-0">Identifiant ou mot de passe oublié ?</h5>
+        </div>
+
+        <div class="alert alert-info small">
+          <i class="fas fa-info-circle me-2"></i>
+          Pour des raisons de sécurité, les mots de passe sont <strong>chiffrés de façon irréversible</strong>.
+          Ni vous ni l'administrateur ne pouvez retrouver un mot de passe existant.
+        </div>
+
+        <p class="text-muted small mb-3">
+          En cas d'oubli, seul l'administrateur peut <strong>réinitialiser</strong> votre mot de passe
+          et vous en communiquer un nouveau temporaire.
+        </p>
+
+        <div class="card bg-light border-0 rounded p-3 mb-4">
+          <p class="fw-semibold mb-1 small"><i class="fas fa-user-shield me-2 text-primary"></i>Contactez l'administrateur</p>
+          <p class="text-muted small mb-0">
+            Présentez-vous avec votre nom complet afin qu'il puisse identifier votre compte
+            et vous attribuer un nouveau mot de passe.
+          </p>
+        </div>
+
+        <a href="{{ url_for('auth.login') }}" class="btn btn-primary w-100">
+          <i class="fas fa-arrow-left me-2"></i>Retour à la connexion
+        </a>
+      </div>
+    </div>
+    <p class="text-center text-white-50 small mt-3">
+      &copy; 2026 Mairie d'Adja-Ouèrè — Tous droits réservés
+    </p>
+  </div>
+</body>
+</html>

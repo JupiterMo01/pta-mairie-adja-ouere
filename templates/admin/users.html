@@ -59,6 +59,11 @@
                 {{ 'Désactiver' if u.actif else 'Activer' }}
               </button>
             </form>
+            <button type="button" class="btn btn-sm btn-outline-secondary ms-1"
+                    data-bs-toggle="modal" data-bs-target="#modalReset{{ u.id }}"
+                    title="Réinitialiser le mot de passe">
+              <i class="fas fa-key me-1"></i>Réinit. MDP
+            </button>
             {% if u.login != 'admin' and u.id != current_user.id %}
             <form method="POST" action="{{ url_for('admin.user_delete', user_id=u.id) }}" class="d-inline ms-1"
                   onsubmit="return confirm('Supprimer définitivement {{ u.prenom }} {{ u.nom }} ?')">
@@ -144,5 +149,42 @@
     </div>
   </div>
 </div>
+<!-- Modals réinitialisation mot de passe -->
+{% for u in users %}
+<div class="modal fade" id="modalReset{{ u.id }}" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-warning">
+        <h5 class="modal-title fw-bold"><i class="fas fa-key me-2"></i>Réinitialiser le mot de passe</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" action="{{ url_for('admin.user_reset_password', user_id=u.id) }}">
+        <div class="modal-body">
+          <p class="mb-3">
+            Vous allez réinitialiser le mot de passe de
+            <strong>{{ u.prenom }} {{ u.nom }}</strong> (<code>{{ u.login }}</code>).
+          </p>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Nouveau mot de passe temporaire</label>
+            <input type="text" name="nouveau_mdp" class="form-control font-monospace"
+                   required minlength="6" placeholder="Saisissez un mot de passe temporaire">
+            <div class="form-text text-muted">
+              <i class="fas fa-info-circle me-1"></i>
+              Notez ce mot de passe — vous devrez le communiquer à l'utilisateur.
+              Il pourra le modifier ensuite via son menu en haut à droite.
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-warning fw-bold">
+            <i class="fas fa-key me-1"></i>Réinitialiser
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endfor %}
 {% endif %}
 {% endblock %}

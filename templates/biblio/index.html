@@ -10,9 +10,11 @@
     Activités et tâches types réutilisables lors de la création du PTA.
     Depuis le PTA, utilisez le bouton <i class="fas fa-book"></i> sur une activité pour l'exporter ici.
   </p>
+  {% if current_user.role == 'admin_editeur' %}
   <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalAddActivite">
     <i class="fas fa-plus me-1"></i>Nouvelle activité
   </button>
+  {% endif %}
 </div>
 
 {% if not activites %}
@@ -71,6 +73,7 @@
         {% endif %}
       </div>
     </div>
+    {% if current_user.role == 'admin_editeur' %}
     <div class="d-flex gap-1 ms-2 flex-shrink-0">
       <button class="btn btn-xs btn-success" data-bs-toggle="modal"
               data-bs-target="#addTacheBiblio{{ activite.id }}" title="Ajouter une tâche">
@@ -87,6 +90,7 @@
         </button>
       </form>
     </div>
+    {% endif %}
   </div>
 
   {# ── Table des tâches ── #}
@@ -134,7 +138,7 @@
           <th rowspan="2">Resp.</th>
           <th rowspan="2">Structures</th>
           <th rowspan="2" class="text-center">Mode</th>
-          <th rowspan="2" class="text-center">Actions</th>
+          {% if current_user.role == 'admin_editeur' %}<th rowspan="2" class="text-center">Actions</th>{% endif %}
         </tr>
         <tr style="background:#ddeeff;">
           <th class="text-center">Fds<br>Propres</th>
@@ -192,6 +196,7 @@
           {% for se in tache.structures_externes %}<span class="badge bg-warning text-dark" title="{{ se.type_org or '' }}">{{ se.nom[:15] }}</span>{% endfor %}
         </td>
         <td class="small text-center">{{ tache.mode_execution or 'Direct' }}</td>
+        {% if current_user.role == 'admin_editeur' %}
         <td class="text-center" style="padding:2px;">
           <div class="d-flex flex-wrap gap-1 justify-content-center">
           <form method="POST" action="{{ url_for('biblio.tache_move', tache_id=tache.id, direction='up') }}" class="d-inline">
@@ -231,9 +236,11 @@
           </form>
           </div>
         </td>
+        {% endif %}
       </tr>
 
       {# ── Modal édition tâche ── #}
+      {% if current_user.role == 'admin_editeur' %}
       <div class="modal fade" id="editTacheBiblio{{ tache.id }}" tabindex="-1">
         <div class="modal-dialog modal-xl">
           <div class="modal-content">
@@ -253,6 +260,7 @@
           </div>
         </div>
       </div>
+      {% endif %}
       {% endfor %}
 
       {# ── Ligne totaux ── #}
@@ -286,6 +294,7 @@
 </div>
 
 {# ── Modal ajout tâche ── #}
+{% if current_user.role == 'admin_editeur' %}
 <div class="modal fade" id="addTacheBiblio{{ activite.id }}" tabindex="-1">
   <div class="modal-dialog modal-xl">
     <div class="modal-content">
@@ -309,6 +318,7 @@
 </div>
 
 {# ── Modal édition activité ── #}
+{% if current_user.role == 'admin_editeur' %}
 <div class="modal fade" id="editActivite{{ activite.id }}" tabindex="-1">
   <div class="modal-dialog modal-xl">
     <div class="modal-content">
@@ -329,9 +339,11 @@
     </div>
   </div>
 </div>
+{% endif %}
 {% endfor %}
 
 {# ══ Modal nouvelle activité ══════════════════════════════════════════════ #}
+{% if current_user.role == 'admin_editeur' %}
 <div class="modal fade" id="modalAddActivite" tabindex="-1">
   <div class="modal-dialog modal-xl">
     <div class="modal-content">
@@ -352,5 +364,6 @@
     </div>
   </div>
 </div>
+{% endif %}
 
 {% endblock %}

@@ -45,6 +45,11 @@ def logout():
     return redirect(url_for('auth.login'))
 
 
+@auth_bp.route('/mdp-oublie')
+def mdp_oublie():
+    return render_template('auth/mdp_oublie.html')
+
+
 @auth_bp.route('/changer-mot-de-passe', methods=['GET', 'POST'])
 @login_required
 def change_password():

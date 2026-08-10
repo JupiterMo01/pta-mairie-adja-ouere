@@ -7,21 +7,107 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
   <style>
-    body { background: linear-gradient(135deg, #1F4E79 0%, #2E75B6 100%); min-height: 100vh; }
-    .card-login { border: none; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
-    .brand-icon { font-size: 3rem; color: #f0a500; }
+    /* ── Fond ── */
+    body {
+      min-height: 100vh;
+      margin: 0;
+      background: linear-gradient(150deg, #0B3D20 0%, #0F3529 30%, #102A4A 65%, #0A1E38 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem 3rem;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* ── Drapeau du Bénin en filigrane ── */
+    .flag-bg {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) rotate(-8deg);
+      width: min(560px, 90vw);
+      height: auto;
+      opacity: 0.065;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── Bandeau tricolore fixé en bas ── */
+    .benin-bandeau {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 7px;
+      display: flex;
+      z-index: 100;
+    }
+    .benin-bandeau .b-vert  { flex: 1; background: #008751; }
+    .benin-bandeau .b-jaune { flex: 1; background: #FCD116; }
+    .benin-bandeau .b-rouge { flex: 1; background: #E8112D; }
+
+    /* ── Carte de connexion ── */
+    .card-login {
+      border: none;
+      border-radius: 16px;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.45);
+      background: #ffffff;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ── Icône mairie ── */
+    .brand-icon {
+      font-size: 2.8rem;
+      color: #FCD116;
+      filter: drop-shadow(0 2px 6px rgba(252,209,22,0.35));
+    }
+
+    /* ── Bouton connexion ── */
+    .btn-connexion {
+      background: linear-gradient(135deg, #008751 0%, #006B40 100%);
+      border: none;
+      color: #fff;
+      font-weight: 700;
+      letter-spacing: .03em;
+      transition: opacity .2s;
+    }
+    .btn-connexion:hover { opacity: .88; color: #fff; }
+
+    /* ── Texte bas de page ── */
+    .footer-text    { color: rgba(255,255,255,.45); font-size: .72rem; line-height: 1.7; }
+    .footer-text a  { color: rgba(255,255,255,.38); text-decoration: none; }
+    .footer-text a:hover { color: rgba(255,255,255,.65); text-decoration: underline; }
+    .footer-strong  { color: rgba(255,255,255,.62); font-weight: 600; }
   </style>
 </head>
-<body class="d-flex align-items-center justify-content-center py-5">
-  <div class="container" style="max-width:420px;">
+<body>
+
+  <!-- Drapeau du Bénin en filigrane -->
+  <svg class="flag-bg" viewBox="0 0 300 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <!-- Bande verte (gauche) -->
+    <rect x="0"   y="0" width="120" height="200" fill="#008751"/>
+    <!-- Bande jaune (haut droite) -->
+    <rect x="120" y="0" width="180" height="100" fill="#FCD116"/>
+    <!-- Bande rouge (bas droite) -->
+    <rect x="120" y="100" width="180" height="100" fill="#E8112D"/>
+  </svg>
+
+  <!-- Contenu principal -->
+  <div class="container" style="max-width:420px; position:relative; z-index:1;">
     <div class="card card-login">
       <div class="card-body p-5">
+
+        <!-- En-tête -->
         <div class="text-center mb-4">
           <i class="fas fa-city brand-icon"></i>
-          <h4 class="fw-bold mt-2 mb-0">Mairie d'Adja-Ouèrè</h4>
-          <p class="text-muted small">Système de gestion du PTA</p>
+          <h4 class="fw-bold mt-2 mb-0" style="color:#0F3529;">Mairie d'Adja-Ouèrè</h4>
+          <p class="text-muted small mb-0">Système de gestion du PTA</p>
         </div>
 
+        <!-- Messages flash -->
         {% with messages = get_flashed_messages(with_categories=true) %}
           {% if messages %}
             {% for category, message in messages %}
@@ -30,9 +116,10 @@
           {% endif %}
         {% endwith %}
 
+        <!-- Formulaire -->
         <form method="POST" action="{{ url_for('auth.login') }}">
           <div class="mb-3">
-            <label class="form-label fw-semibold">Identifiant</label>
+            <label class="form-label fw-semibold small">Identifiant</label>
             <div class="input-group">
               <span class="input-group-text"><i class="fas fa-user"></i></span>
               <input type="text" name="login" class="form-control form-control-lg"
@@ -40,7 +127,7 @@
             </div>
           </div>
           <div class="mb-4">
-            <label class="form-label fw-semibold">Mot de passe</label>
+            <label class="form-label fw-semibold small">Mot de passe</label>
             <div class="input-group">
               <span class="input-group-text"><i class="fas fa-lock"></i></span>
               <input type="password" name="password" id="passwordInput"
@@ -53,31 +140,43 @@
               </button>
             </div>
           </div>
-          <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold">
+          <button type="submit" class="btn btn-connexion btn-lg w-100">
             <i class="fas fa-sign-in-alt me-2"></i>Se connecter
           </button>
         </form>
+
         <div class="text-center mt-3">
           <a href="{{ url_for('auth.mdp_oublie') }}" class="text-muted small">
             <i class="fas fa-question-circle me-1"></i>Identifiant ou mot de passe oublié ?
           </a>
         </div>
+
       </div>
     </div>
-    <p class="text-center text-white-50 small mt-3 mb-1">
+
+    <!-- Pied de page -->
+    <p class="text-center footer-text mt-3 mb-1">
       &copy; 2026 Mairie d'Adja-Ouèrè — Tous droits réservés
     </p>
-    <p class="text-center small mb-1" style="color:rgba(255,255,255,.35);font-size:.7rem;">
+    <p class="text-center footer-text mb-1" style="font-size:.68rem;">
       Version 1.0
     </p>
-    <p class="text-center small mt-2" style="color:rgba(255,255,255,.3);font-size:.68rem;line-height:1.6;">
-      Développé par <span style="color:rgba(255,255,255,.55);font-weight:600;">GBOYOU A. Jupiter</span><br>
+    <p class="text-center footer-text mt-1">
+      Développé par <span class="footer-strong">GBOYOU A. Jupiter</span><br>
       Statisticien · Collaborateur DDLP · Passionné de développement web, programmation, automatisation &amp; IA<br>
-      <a href="mailto:jupitergboyou38@gmail.com" style="color:rgba(255,255,255,.4);text-decoration:none;">jupitergboyou38@gmail.com</a>
+      <a href="mailto:jupitergboyou38@gmail.com">jupitergboyou38@gmail.com</a>
       &nbsp;·&nbsp;
-      <a href="tel:+2290162004627" style="color:rgba(255,255,255,.4);text-decoration:none;">+229 01 62 00 46 27</a>
+      <a href="tel:+2290162004627">+229 01 62 00 46 27</a>
     </p>
   </div>
+
+  <!-- Bandeau tricolore Bénin -->
+  <div class="benin-bandeau" aria-hidden="true">
+    <div class="b-vert"></div>
+    <div class="b-jaune"></div>
+    <div class="b-rouge"></div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <script>
     document.getElementById('togglePassword').addEventListener('click', function () {

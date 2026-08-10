@@ -49,6 +49,7 @@ def _activite_from_form(a):
     a.nom = request.form.get('nom', '').strip() or a.nom
     a.description = request.form.get('description', '').strip()
     a.mode_execution = request.form.get('mode_execution', '').strip() or 'Direct'
+    a.type_activite = request.form.get('type_activite', 'Activité de fonctionnement').strip() or 'Activité de fonctionnement'
     a.direction_responsable_id = request.form.get('direction_responsable_id') or None
     if a.direction_responsable_id:
         a.direction_responsable_id = int(a.direction_responsable_id)

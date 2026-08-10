@@ -89,6 +89,26 @@
   </select>
 </div>
 
+{# ── Type d'activité ── #}
+<div class="col-12">
+  <label class="form-label fw-semibold">Type d'activité *</label>
+  <div class="d-flex gap-4">
+    <div class="form-check">
+      <input class="form-check-input" type="radio" name="type_activite"
+             id="ba_ta_fonct_{{ aid }}" value="Activité de fonctionnement"
+             {% if not act or act.type_activite == 'Activité de fonctionnement' %}checked{% endif %}
+             required>
+      <label class="form-check-label" for="ba_ta_fonct_{{ aid }}">Activité de fonctionnement</label>
+    </div>
+    <div class="form-check">
+      <input class="form-check-input" type="radio" name="type_activite"
+             id="ba_ta_invest_{{ aid }}" value="Activité d'investissement"
+             {% if act and act.type_activite == "Activité d'investissement" %}checked{% endif %}>
+      <label class="form-check-label" for="ba_ta_invest_{{ aid }}">Activité d'investissement</label>
+    </div>
+  </div>
+</div>
+
 {# ── Direction responsable ── #}
 <div class="col-md-6">
   <label class="form-label fw-semibold">Direction responsable *</label>

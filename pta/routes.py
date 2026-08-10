@@ -380,6 +380,7 @@ def activite_add():
             a.autres_fonds = ba.autres_fonds or 0
             a.poids = ba.poids or 0
             a.mode_execution = ba.mode_execution or 'Direct'
+            a.type_activite = ba.type_activite or 'Activité de fonctionnement'
             a.structures_externes = list(ba.structures_externes)
             # 2. Laisser le formulaire écraser seulement les champs explicitement renseignés
             _activite_form_overrides(a)
@@ -580,6 +581,7 @@ def activite_duplicate(act_id):
         imputation_budgetaire=a.imputation_budgetaire,
         periode_debut=a.periode_debut, periode_fin=a.periode_fin,
         mode_execution=a.mode_execution or 'Direct',
+        type_activite=a.type_activite or 'Activité de fonctionnement',
         details_financement=a.details_financement,
         acteurs_externes=a.acteurs_externes,
         ressources_propres=a.ressources_propres or 0,
@@ -610,6 +612,7 @@ def activite_export_biblio(act_id):
         description=a.description,
         direction_responsable_id=a.direction_responsable_id,
         mode_execution=a.mode_execution or 'Direct',
+        type_activite=a.type_activite or 'Activité de fonctionnement',
         imputation_budgetaire=a.imputation_budgetaire,
         periode_debut=a.periode_debut,
         periode_fin=a.periode_fin,
@@ -668,6 +671,7 @@ def activite_copy_to(act_id):
         imputation_budgetaire=a.imputation_budgetaire,
         periode_debut=a.periode_debut, periode_fin=a.periode_fin,
         mode_execution=a.mode_execution or 'Direct',
+        type_activite=a.type_activite or 'Activité de fonctionnement',
         details_financement=a.details_financement,
         acteurs_externes=a.acteurs_externes,
         ressources_propres=a.ressources_propres or 0,

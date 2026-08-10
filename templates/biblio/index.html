@@ -34,6 +34,11 @@
         <span class="fw-bold me-1">{{ activite.nom }}</span>
         {% if activite.poids %}<span class="badge bg-dark">Poids : {{ activite.poids|pct }}%</span>{% endif %}
         <span class="badge bg-secondary">{{ activite.mode_execution or 'Direct' }}</span>
+        {% if activite.type_activite == "Activité d'investissement" %}
+          <span class="badge" style="background:#C0392B;">Investissement</span>
+        {% else %}
+          <span class="badge" style="background:#1A7245;">Fonctionnement</span>
+        {% endif %}
         {% if activite.direction_responsable %}<span class="badge bg-primary">{{ activite.direction_responsable.code }}</span>{% endif %}
         {% set nb_s = activite.services_associes|length %}
         {% set nb_d = activite.directions_associees|length %}

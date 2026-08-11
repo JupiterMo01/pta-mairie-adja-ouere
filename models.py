@@ -339,6 +339,7 @@ class BiblioActivite(db.Model):
     description = db.Column(db.Text, nullable=True)
     direction_responsable_id = db.Column(db.Integer, db.ForeignKey('directions.id'), nullable=True)
     mode_execution = db.Column(db.String(100), nullable=True, default='Direct')
+    type_activite = db.Column(db.String(50), nullable=True, default='Activité de fonctionnement')
     imputation_budgetaire = db.Column(db.String(200), nullable=True)
     periode_debut = db.Column(db.String(20), nullable=True)
     periode_fin = db.Column(db.String(20), nullable=True)

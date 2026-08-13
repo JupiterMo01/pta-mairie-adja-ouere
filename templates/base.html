@@ -29,21 +29,7 @@
           <i class="fas fa-clipboard-list me-2 fa-fw"></i>PTA Global
         </a>
       </li>
-      {# MASQUÉ — à réactiver quand les modules Suivi et Rapports seront refaits
-      <li class="nav-item">
-        <a class="nav-link text-white py-2 px-3 {% if request.blueprint == 'suivi' %}active-link{% endif %}"
-           href="{{ url_for('suivi.index') }}">
-          <i class="fas fa-tasks me-2 fa-fw"></i>Suivi
-        </a>
-      </li>
-      <li class="nav-item">
-        <a class="nav-link text-white py-2 px-3 {% if request.blueprint == 'rapports' %}active-link{% endif %}"
-           href="{{ url_for('rapports.index') }}">
-          <i class="fas fa-chart-bar me-2 fa-fw"></i>Rapports
-        </a>
-      </li>
-      #}
-      <li class="nav-item">
+<li class="nav-item">
         <a class="nav-link text-white py-2 px-3 {% if request.blueprint == 'stats' %}active-link{% endif %}"
            href="{{ url_for('stats.index') }}">
           <i class="fas fa-chart-pie me-2 fa-fw"></i>Statistiques

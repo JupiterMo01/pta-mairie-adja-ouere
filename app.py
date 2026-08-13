@@ -72,8 +72,6 @@ def create_app():
     from auth import auth_bp
     from admin import admin_bp
     from pta import pta_bp
-    from suivi import suivi_bp
-    from rapports import rapports_bp
     from biblio import biblio_bp
     from stats import stats_bp
     from dirpta import dirpta_bp
@@ -83,8 +81,6 @@ def create_app():
     app.register_blueprint(auth_bp)
     app.register_blueprint(admin_bp, url_prefix='/admin')
     app.register_blueprint(pta_bp, url_prefix='/pta')
-    app.register_blueprint(suivi_bp, url_prefix='/suivi')
-    app.register_blueprint(rapports_bp, url_prefix='/rapports')
     app.register_blueprint(biblio_bp, url_prefix='/biblio')
     app.register_blueprint(stats_bp, url_prefix='/stats')
     app.register_blueprint(dirpta_bp, url_prefix='/dirpta')

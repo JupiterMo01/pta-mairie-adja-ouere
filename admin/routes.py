@@ -34,15 +34,18 @@ def editeur_required(f):
 @editeur_required
 def backup_now():
     """Déclenche une sauvegarde immédiate par email (admin_editeur uniquement)."""
-    import subprocess, os, sys
+    import importlib.util, os
     script = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'backup_pta.py')
     try:
-        subprocess.run([sys.executable, script], timeout=60, check=True)
+        spec = importlib.util.spec_from_file_location('backup_pta', script)
+        mod  = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        mod.run()
         flash('Sauvegarde envoyée par email avec succès.', 'success')
-    except subprocess.TimeoutExpired:
-        flash('La sauvegarde a dépassé le délai. Vérifiez backup_email.log.', 'warning')
-    except subprocess.CalledProcessError as e:
-        flash(f'Erreur lors de la sauvegarde. Vérifiez backup_email.log.', 'danger')
+    except FileNotFoundError:
+        flash('Script de sauvegarde introuvable. Contactez l\'administrateur.', 'danger')
+    except Exception as e:
+        flash(f'Erreur lors de la sauvegarde : {e}', 'danger')
     return redirect(url_for('admin.index'))
 
 

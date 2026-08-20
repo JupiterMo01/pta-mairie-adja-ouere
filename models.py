@@ -279,6 +279,7 @@ class SuiviTache(db.Model):
     trimestre = db.Column(db.Integer, nullable=False)
     annee_id = db.Column(db.Integer, db.ForeignKey('annees.id'), nullable=False)
     statut = db.Column(db.String(20), default='non_execute')
+    taux_execution = db.Column(db.Float, nullable=True)   # saisi manuellement si en_cours
     observation = db.Column(db.Text, nullable=True)
     date_maj = db.Column(db.DateTime, default=datetime.utcnow)
     modified_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
@@ -293,7 +294,12 @@ class SuiviTache(db.Model):
     )
 
     @property
-    def taux(self): return 100.0 if self.statut == 'execute' else 0.0
+    def taux(self):
+        if self.statut == 'execute':
+            return 100.0
+        if self.statut == 'en_cours':
+            return float(self.taux_execution or 0)
+        return 0.0
 
 
 # Constantes modes d'exécution

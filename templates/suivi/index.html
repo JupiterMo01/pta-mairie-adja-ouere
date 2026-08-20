@@ -1,0 +1,740 @@
+{% extends "base.html" %}
+{% block title %}Suivi — {{ titre }} — {{ annee.libelle if annee }}{% endblock %}
+{% block page_title %}
+  <i class="fas fa-tasks me-2 text-success"></i>Suivi &amp; Évaluation
+  {% if annee %}<span class="badge bg-success ms-1">{{ annee.annee }}</span>{% endif %}
+  {% if edit_mode %}
+  <span class="badge bg-warning text-dark ms-2">
+    <i class="fas fa-pencil-alt me-1"></i>Mode édition — T{{ trimestre }}
+  </span>
+  {% endif %}
+  {# Boutons export/impression : masqués en mode édition #}
+  {% if data and not edit_mode %}
+  <span class="ms-3 d-inline-flex gap-2">
+    {% set q_e = [('trimestre', trimestre)] %}
+    {% if sel_dir_id %}{% set q_e = q_e + [('direction_id', sel_dir_id)] %}{% endif %}
+    {% if sel_svc_id %}{% set q_e = q_e + [('service_id',   sel_svc_id)] %}{% endif %}
+    <a href="{{ url_for('suivi.export_excel', **dict(q_e)) }}"
+       class="btn btn-sm btn-outline-success" title="Exporter en Excel">
+      <i class="fas fa-file-excel me-1"></i>Excel
+    </a>
+    <a href="{{ url_for('suivi.print_view', **dict(q_e)) }}"
+       target="_blank" class="btn btn-sm btn-outline-secondary" title="Imprimer / PDF">
+      <i class="fas fa-print me-1"></i>Imprimer
+    </a>
+  </span>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+
+{# ═══ Filtre admin ══════════════════════════════════════════════════════════ #}
+{% if role in ('admin_editeur','admin_lecteur') %}
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-body py-2">
+    <form method="GET" action="{{ url_for('suivi.index') }}"
+          class="d-flex align-items-center gap-3 flex-wrap">
+      <input type="hidden" name="trimestre" value="{{ trimestre }}">
+      <label class="fw-semibold text-nowrap mb-0 small">
+        <i class="fas fa-filter me-1 text-success"></i>Filtrer :
+      </label>
+      <select name="direction_id" class="form-select form-select-sm" style="max-width:260px;"
+              onchange="this.form.service_id.value='';this.form.submit()">
+        <option value="">— Toutes directions (global) —</option>
+        {% for d in directions %}
+        <option value="{{ d.id }}" {% if sel_dir_id == d.id %}selected{% endif %}>
+          {{ d.code }} — {{ d.nom }}
+        </option>
+        {% endfor %}
+      </select>
+      <select name="service_id" class="form-select form-select-sm" style="max-width:260px;"
+              onchange="this.form.direction_id.value='';this.form.submit()">
+        <option value="">— Tous services —</option>
+        {% for s in services_list %}
+        <option value="{{ s.id }}" {% if sel_svc_id == s.id %}selected{% endif %}>
+          {{ s.code }} — {{ s.nom }}
+        </option>
+        {% endfor %}
+      </select>
+      {% if sel_dir_id or sel_svc_id %}
+      <a href="{{ url_for('suivi.index', trimestre=trimestre) }}"
+         class="btn btn-sm btn-outline-secondary">
+        <i class="fas fa-times me-1"></i>Global
+      </a>
+      {% endif %}
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{# ═══ Filtre direction ══════════════════════════════════════════════════════ #}
+{% if role == 'direction' and services_dir %}
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-body py-2">
+    <form method="GET" action="{{ url_for('suivi.index') }}"
+          class="d-flex align-items-center gap-2 flex-wrap">
+      <input type="hidden" name="trimestre" value="{{ trimestre }}">
+      <label class="fw-semibold text-nowrap mb-0 small">
+        <i class="fas fa-users me-1 text-primary"></i>Voir :
+      </label>
+      <a href="{{ url_for('suivi.index', trimestre=trimestre) }}"
+         class="btn btn-sm {% if not sel_svc_id %}btn-primary{% else %}btn-outline-primary{% endif %}">
+        <i class="fas fa-building me-1"></i>Ma direction (total)
+      </a>
+      {% for s in services_dir %}
+      <a href="{{ url_for('suivi.index', trimestre=trimestre, service_id=s.id) }}"
+         class="btn btn-sm {% if sel_svc_id == s.id %}btn-secondary{% else %}btn-outline-secondary{% endif %}">
+        {{ s.code }}
+      </a>
+      {% endfor %}
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{# ═══ Macro URL tab (préserve sel_dir_id, sel_svc_id, et edit en mode édition) ═ #}
+{% macro url_tab(t) %}
+  {%- set q = {'trimestre': t} -%}
+  {%- if sel_dir_id %}{% set q = dict(q, direction_id=sel_dir_id) %}{% endif -%}
+  {%- if sel_svc_id %}{% set q = dict(q, service_id=sel_svc_id) %}{% endif -%}
+  {%- if edit_mode %}{% set q = dict(q, edit='1') %}{% endif -%}
+  {{- url_for('suivi.index', **q) -}}
+{% endmacro %}
+
+{# ═══ Onglets ═══════════════════════════════════════════════════════════════ #}
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-2">
+  <ul class="nav nav-tabs mb-0 border-0">
+    {% for lbl, t in [('Global', 0), ('T1', 1), ('T2', 2), ('T3', 3), ('T4', 4)] %}
+    <li class="nav-item">
+      <a class="nav-link py-1 px-3 {% if trimestre == t %}active fw-bold border-success text-success{% endif %}"
+         href="{{ url_tab(t) }}">{{ lbl }}</a>
+    </li>
+    {% endfor %}
+  </ul>
+  <div class="d-flex align-items-center gap-2">
+    {% if data %}
+    <span class="text-muted small">
+      {% if trimestre == 0 %}Taux global :{% else %}Taux T{{ trimestre }} :{% endif %}
+    </span>
+    <span class="badge bg-success fs-6 px-3 py-2">
+      <span id="taux-global">{{ '%.2f'|format(taux_global) }}</span>&thinsp;%
+    </span>
+    {% endif %}
+    {# ── Bouton "Faire le suivi de mon PTA" — visible sur tous les onglets ── #}
+    {% if peut_editer_pta and not edit_mode %}
+    {%- set q_edit = {'trimestre': trimestre, 'edit': '1'} -%}
+    {%- if sel_svc_id %}{% set q_edit = dict(q_edit, service_id=sel_svc_id) %}{% endif -%}
+    {%- if sel_dir_id %}{% set q_edit = dict(q_edit, direction_id=sel_dir_id) %}{% endif -%}
+    <a href="{{ url_for('suivi.index', **q_edit) }}"
+       class="btn btn-warning btn-sm fw-bold">
+      <i class="fas fa-edit me-1"></i>Faire le suivi de mon PTA
+    </a>
+    {% endif %}
+    {# ── Annuler le mode édition : même URL sans ?edit=1 ── #}
+    {% if edit_mode %}
+    {%- set q_cancel = {'trimestre': trimestre} -%}
+    {%- if sel_svc_id %}{% set q_cancel = dict(q_cancel, service_id=sel_svc_id) %}{% endif -%}
+    {%- if sel_dir_id %}{% set q_cancel = dict(q_cancel, direction_id=sel_dir_id) %}{% endif -%}
+    <a href="{{ url_for('suivi.index', **q_cancel) }}"
+       class="btn btn-outline-secondary btn-sm" data-nav-exempt>
+      <i class="fas fa-times me-1"></i>Annuler l'édition
+    </a>
+    {% endif %}
+  </div>
+</div>
+
+{# ═══ Bandeau info ══════════════════════════════════════════════════════════ #}
+{% if data %}
+{% if edit_mode and trimestre == 0 %}
+<div class="alert alert-warning border py-1 mb-2 small">
+  <i class="fas fa-pencil-alt me-1"></i>
+  <strong>Mode édition — Vue globale</strong> — toutes les tâches sont visibles.
+  Saisissez les statuts et taux puis cliquez <strong>Valider</strong>.
+</div>
+{% elif edit_mode %}
+<div class="alert alert-warning border py-1 mb-2 small">
+  <i class="fas fa-pencil-alt me-1"></i>
+  <strong>Mode édition — T{{ trimestre }}</strong>.
+  Saisissez les statuts et taux, puis cliquez <strong>Valider</strong>.
+  Impression et export disponibles après validation.
+</div>
+{% elif trimestre == 0 %}
+<div class="alert alert-light border py-1 mb-2 small">
+  <i class="fas fa-info-circle text-primary me-1"></i>
+  <strong>Vue globale</strong> — état le plus récent (tous trimestres).
+  {% if peut_editer_pta %}
+    Cliquez sur <strong>Faire le suivi de mon PTA</strong> pour saisir.
+  {% endif %}
+</div>
+{% else %}
+<div class="alert alert-light border py-1 mb-2 small">
+  <i class="fas fa-info-circle text-primary me-1"></i>
+  Tâches de la période <strong>T{{ trimestre }}</strong>.
+</div>
+{% endif %}
+{% endif %}
+
+{# ═══ Aucune donnée ═════════════════════════════════════════════════════════ #}
+{% if not data %}
+<div class="alert alert-{% if trimestre > 0 %}warning{% else %}info{% endif %} mt-2">
+  <i class="fas fa-{% if trimestre > 0 %}exclamation-triangle{% else %}info-circle{% endif %} me-2"></i>
+  {% if trimestre > 0 %}
+    Aucune tâche dont la période chevauche <strong>T{{ trimestre }}</strong>.
+    Essayez <strong>Global</strong> ou un autre trimestre.
+  {% else %}
+    Aucune tâche à afficher.
+  {% endif %}
+</div>
+
+{% else %}
+
+{# Bouton valider haut — mode édition uniquement #}
+{% if peut_modifier_page %}
+<div class="d-flex justify-content-between align-items-center mb-1">
+  <span class="small fw-semibold text-secondary">
+    <i class="fas fa-edit me-1"></i>{{ titre }}{% if trimestre > 0 %} — Trimestre {{ trimestre }}{% else %} — Vue globale{% endif %}
+  </span>
+  <button id="btnValider" class="btn btn-success btn-sm px-3">
+    <i class="fas fa-check me-1"></i>Valider les saisies
+  </button>
+</div>
+{% endif %}
+
+{% if annee.objectif_general %}
+<div class="alert alert-light border fw-semibold mb-2 py-2 small">
+  <i class="fas fa-bullseye text-primary me-2"></i>{{ annee.objectif_general }}
+</div>
+{% endif %}
+
+{# ═══ CSS couleurs — cible les <td> pour passer Bootstrap 5 ═════════════════ #}
+<style>
+#tblSuivi tr.bg-prog > td { background-color:#FFFF99 !important; font-weight:700; }
+#tblSuivi tr.bg-proj > td { background-color:#FFB6C1 !important; font-weight:700; }
+#tblSuivi tr.bg-act  > td { background-color:#D3D3D3 !important; font-weight:700; }
+#tblSuivi tr.bg-tch  > td { background-color:#ffffff !important; }
+#tblSuivi tr.bg-os   > td { background-color:#FFFACD !important; font-style:italic; font-weight:600; }
+#tblSuivi thead th       { background-color:#FF69B4 !important; color:#000 !important;
+                           font-weight:700; text-align:center; font-size:.68rem;
+                           vertical-align:middle; padding:3px 4px !important; }
+#tblSuivi td, #tblSuivi th { padding:2px 4px !important;
+  word-break:break-word; overflow-wrap:break-word; vertical-align:middle; line-height:1.25; }
+</style>
+
+{# ── Barre de recherche ── #}
+<div class="d-flex align-items-center gap-2 mb-2 px-1 py-2 bg-light border rounded">
+  <i class="fas fa-search text-muted"></i>
+  <input type="text" id="suiviSearch" class="form-control form-control-sm"
+         placeholder="Rechercher (code, libellé, statut, observation…)"
+         style="max-width:340px;" autocomplete="off">
+  <span id="suiviCount" class="small fw-semibold ms-1"></span>
+  <button class="btn btn-xs btn-outline-secondary" id="suiviPrev" title="Résultat précédent ↑">
+    <i class="fas fa-chevron-up"></i>
+  </button>
+  <button class="btn btn-xs btn-outline-secondary" id="suiviNext" title="Résultat suivant ↓">
+    <i class="fas fa-chevron-down"></i>
+  </button>
+  <button class="btn btn-xs btn-outline-danger" id="suiviClear" title="Effacer la recherche">
+    <i class="fas fa-times"></i>
+  </button>
+  <span class="text-muted small ms-2">Entrée = suivant • Échap = effacer</span>
+</div>
+
+<div id="suiviContainer" style="font-size:.75rem;max-height:calc(100vh - 310px);overflow-y:auto;overflow-x:hidden;width:100%;">
+<table class="table table-bordered table-sm mb-0" id="tblSuivi"
+       style="width:100%;table-layout:fixed;">
+  <colgroup>
+    <col style="width:5%"><col style="width:26%"><col style="width:7%">
+    <col style="width:5%"><col style="width:16%"><col style="width:9%"><col style="width:32%">
+  </colgroup>
+  <thead>
+    <tr>
+      <th style="position:sticky;top:0;z-index:3;">Code</th>
+      <th style="position:sticky;top:0;z-index:3;">Libellé / Tâche</th>
+      <th style="position:sticky;top:0;z-index:3;">Période</th>
+      <th style="position:sticky;top:0;z-index:3;">Poids&nbsp;%</th>
+      <th style="position:sticky;top:0;z-index:3;">Statut</th>
+      <th style="position:sticky;top:0;z-index:3;">Taux&nbsp;%</th>
+      <th style="position:sticky;top:0;z-index:3;">Observations / Difficultés</th>
+    </tr>
+  </thead>
+  <tbody>
+
+  {% for pd in data %}{% set prog = pd['programme'] %}
+
+  {% if prog.objectif_specifique %}
+  <tr class="bg-os">
+    <td colspan="7" class="px-2">
+      <i class="fas fa-crosshairs text-warning me-2"></i>
+      Objectif {{ pd['code'] }}/Résultat {{ pd['code'] }} : {{ prog.objectif_specifique }}
+    </td>
+  </tr>
+  {% endif %}
+
+  {# ── PROGRAMME ── #}
+  <tr class="bg-prog" style="border-top:2px solid #aaa;">
+    <td class="text-center">{{ pd['code'] }}</td>
+    <td>Programme {{ pd['code'] }} : {{ prog.nom }}</td>
+    <td></td>
+    <td class="text-center">{{ pd['new_poids']|pct }}%</td>
+    <td></td>
+    <td class="text-center" id="taux-prog-{{ prog.id }}">{{ '%.2f'|format(pd['taux']) }}&thinsp;%</td>
+    <td></td>
+  </tr>
+
+  {% for pjd in pd['projets'] %}{% set proj = pjd['projet'] %}
+  {# ── PROJET ── #}
+  <tr class="bg-proj">
+    <td class="text-center">{{ pjd['code'] }}</td>
+    <td colspan="2">Projet {{ pjd['code'] }} : {{ proj.nom }}</td>
+    <td class="text-center">{{ pjd['new_poids']|pct }}%</td>
+    <td></td>
+    <td class="text-center" id="taux-proj-{{ proj.id }}">{{ '%.2f'|format(pjd['taux']) }}&thinsp;%</td>
+    <td></td>
+  </tr>
+
+  {% for ad in pjd['activites'] %}{% set act = ad['activite'] %}
+  {% if act.periode_debut and act.periode_fin and act.periode_debut != act.periode_fin %}
+    {% set per_a = act.periode_debut|mois_court ~ ' - ' ~ act.periode_fin|mois_court %}
+  {% elif act.periode_debut %}{% set per_a = act.periode_debut|mois_court %}
+  {% elif act.periode_fin  %}{% set per_a = act.periode_fin|mois_court %}
+  {% else %}{% set per_a = '' %}{% endif %}
+
+  {# ── ACTIVITÉ ── #}
+  <tr class="bg-act">
+    <td class="text-center">{{ ad['code'] }}</td>
+    <td>{{ act.nom }}</td>
+    <td class="text-center">{{ per_a }}</td>
+    <td class="text-center">{{ ad['new_poids']|pct }}%</td>
+    <td class="text-center" id="statut-act-{{ act.id }}">
+      {% set lbl={'execute':'Exécutée','en_cours':'En cours','non_execute':'Non exécutée'} %}
+      {% set cls={'execute':'bg-success','en_cours':'bg-warning text-dark','non_execute':'bg-secondary'} %}
+      <span class="badge {{ cls.get(ad['statut'] or 'non_execute','bg-secondary') }}"
+            style="font-size:.65rem;">{{ lbl.get(ad['statut'] or 'non_execute','—') }}</span>
+    </td>
+    <td class="text-center" id="taux-act-{{ act.id }}">{{ '%.2f'|format(ad['taux']) }}&thinsp;%</td>
+    <td></td>
+  </tr>
+
+  {% for td in ad['taches'] %}{% set t = td['tache'] %}
+  {% if t.periode_debut and t.periode_fin and t.periode_debut != t.periode_fin %}
+    {% set per_t = t.periode_debut|mois_court ~ ' - ' ~ t.periode_fin|mois_court %}
+  {% elif t.periode_debut %}{% set per_t = t.periode_debut|mois_court %}
+  {% elif t.periode_fin  %}{% set per_t = t.periode_fin|mois_court %}
+  {% else %}{% set per_t = '' %}{% endif %}
+
+  {# ── TÂCHE ── #}
+  <tr class="bg-tch {% if td['peut_modifier'] %}suivi-tache-row{% endif %}"
+      {% if td['peut_modifier'] %}data-tache-id="{{ t.id }}"{% endif %}>
+    <td class="text-center text-muted">{{ td['num'] }}</td>
+    <td class="ps-1">
+      <i class="fas fa-angle-right text-muted me-1" style="font-size:.6rem;"></i>{{ t.nom }}
+      {% if t.service_responsable %}
+      <span class="badge bg-light text-secondary border ms-1" style="font-size:.6rem;"
+            title="{{ t.service_responsable.nom }}">{{ t.service_responsable.code }}</span>
+      {% endif %}
+    </td>
+    <td class="text-center">{{ per_t }}</td>
+    <td class="text-center">{{ td['new_poids']|pct }}%</td>
+
+    {# Statut #}
+    <td>
+      {% if td['peut_modifier'] %}
+      <div class="d-flex flex-column gap-1" style="font-size:.68rem;">
+        {% for val,lbl,cls in [('execute','Exécutée','text-success'),
+                               ('en_cours','En cours','text-warning'),
+                               ('non_execute','Non exécutée','text-danger')] %}
+        <label class="d-flex align-items-center gap-1 mb-0 {{ cls }} fw-semibold"
+               style="cursor:pointer;white-space:nowrap;">
+          <input type="radio" name="statut_{{ t.id }}" value="{{ val }}"
+                 class="statut-radio" data-id="{{ t.id }}"
+                 {% if td['statut'] == val %}checked{% endif %}>{{ lbl }}
+        </label>
+        {% endfor %}
+      </div>
+      {% else %}
+      {% set lbl={'execute':'Exécutée','en_cours':'En cours','non_execute':'Non exécutée'} %}
+      {% set cls={'execute':'bg-success','en_cours':'bg-warning text-dark','non_execute':'bg-secondary'} %}
+      <span id="statut-tache-{{ t.id }}"
+            class="badge {{ cls.get(td['statut'] or 'non_execute','bg-secondary') }}"
+            style="font-size:.65rem;">{{ lbl.get(td['statut'] or 'non_execute','—') }}</span>
+      {% endif %}
+    </td>
+
+    {# Taux #}
+    <td class="text-center">
+      {% if td['peut_modifier'] %}
+      <span id="taux-static-{{ t.id }}"
+            class="fw-bold{% if td['statut'] == 'en_cours' %} d-none{% endif %}">
+        <span id="taux-tache-{{ t.id }}">{{ '%.2f'|format(td['taux']) }}</span>&thinsp;%
+      </span>
+      <div id="taux-input-wrap-{{ t.id }}"
+           class="{% if td['statut'] != 'en_cours' %}d-none{% endif %}">
+        <div class="input-group input-group-sm justify-content-center"
+             style="max-width:84px;margin:auto;">
+          <input type="number" id="taux-input-{{ t.id }}"
+                 class="form-control form-control-sm text-center"
+                 data-id="{{ t.id }}" min="0" max="99.99" step="0.01"
+                 value="{{ td['taux'] }}"
+                 {% if td['statut'] != 'en_cours' %}disabled{% endif %}>
+          <span class="input-group-text px-1">%</span>
+        </div>
+      </div>
+      {% else %}
+      <span id="taux-tache-{{ t.id }}" class="fw-bold
+         {% if td['taux'] >= 100 %}text-success
+         {% elif td['taux'] > 0 %}text-warning
+         {% else %}text-muted{% endif %}">
+        {{ '%.2f'|format(td['taux']) }}&thinsp;%
+      </span>
+      {% endif %}
+    </td>
+
+    {# Observations #}
+    <td>
+      {% if td['peut_modifier'] %}
+      <textarea id="obs-{{ t.id }}" class="form-control form-control-sm" rows="2"
+                style="font-size:.68rem;resize:vertical;min-height:38px;"
+                placeholder="Observations, difficultés…">{{
+        td['suivi'].observation if td['suivi'] and td['suivi'].observation else '' }}</textarea>
+      {% else %}
+      <span class="small text-muted" style="white-space:pre-wrap;">{{
+        td['suivi'].observation if td['suivi'] and td['suivi'].observation else '—' }}</span>
+      {% endif %}
+    </td>
+  </tr>
+  {% endfor %}{% endfor %}{% endfor %}{% endfor %}
+
+  </tbody>
+</table>
+</div>
+
+{% if peut_modifier_page %}
+<div class="mt-2 d-flex justify-content-between align-items-center">
+  <span class="text-muted small">
+    <i class="fas fa-info-circle me-1"></i>
+    Après validation, la page repassera en lecture et les boutons impression/export réapparaîtront.
+  </span>
+  <button id="btnValider2" class="btn btn-success px-4">
+    <i class="fas fa-check me-1"></i>Valider les saisies
+  </button>
+</div>
+{% endif %}
+
+{% endif %}{# data #}
+
+{# ── Toast ── #}
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index:9999;">
+  <div id="suiviToast" class="toast align-items-center border-0 text-white" role="alert">
+    <div class="d-flex">
+      <div class="toast-body fw-semibold" id="suiviToastBody"></div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto"
+              data-bs-dismiss="toast"></button>
+    </div>
+  </div>
+</div>
+
+{# ── Modal garde navigation (édition uniquement) ── #}
+{% if peut_modifier_page %}
+<div class="modal fade" id="navGuardModal" tabindex="-1"
+     data-bs-backdrop="static" data-bs-keyboard="false">
+  <div class="modal-dialog modal-sm modal-dialog-centered">
+    <div class="modal-content border-warning">
+      <div class="modal-header bg-warning text-dark py-2">
+        <h6 class="modal-title fw-bold mb-0">
+          <i class="fas fa-exclamation-triangle me-1"></i>Saisies non enregistrées
+        </h6>
+      </div>
+      <div class="modal-body small py-2">
+        Vous avez des saisies non enregistrées. Que souhaitez-vous faire avant de quitter ?
+      </div>
+      <div class="modal-footer flex-column gap-2 p-2">
+        <button id="navGuardSave" class="btn btn-success btn-sm w-100">
+          <i class="fas fa-check me-1"></i>Valider les saisies, puis quitter
+        </button>
+        <button id="navGuardDiscard" class="btn btn-danger btn-sm w-100">
+          <i class="fas fa-trash-alt me-1"></i>Ignorer les modifications et quitter
+        </button>
+        <button class="btn btn-outline-secondary btn-sm w-100" data-bs-dismiss="modal">
+          <i class="fas fa-arrow-left me-1"></i>Rester sur cette page
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if peut_modifier_page %}
+<script>
+(function(){
+  'use strict';
+  var TRIMESTRE_PAGE = {{ trimestre }};   // 0 = Global, 1-4 = trimestre spécifique
+  var CSRF_TOKEN = (document.querySelector('meta[name="csrf-token"]')||{}).content||'';
+  var BADGE_CLS  = {execute:'badge bg-success',en_cours:'badge bg-warning text-dark',non_execute:'badge bg-secondary'};
+  var BADGE_LBL  = {execute:'Exécutée',en_cours:'En cours',non_execute:'Non exécutée'};
+
+  // ── Garde navigation ──────────────────────────────────────────────────────
+  var hasChanges   = false;   // vrai si l'utilisateur a modifié quelque chose
+  var pendingNavUrl = null;   // URL cible interceptée
+
+  function markDirty(){ hasChanges = true; }
+
+  // Surveiller toute modification de saisie
+  document.addEventListener('change', function(e){
+    if(e.target.classList.contains('statut-radio') ||
+       (e.target.type==='number' && e.target.id.startsWith('taux-input-'))){
+      markDirty();
+    }
+  });
+  document.addEventListener('input', function(e){
+    if(e.target.tagName==='TEXTAREA' && e.target.id.startsWith('obs-')){ markDirty(); }
+  });
+
+  // Intercepter la fermeture/rechargement du navigateur
+  window.addEventListener('beforeunload', function(e){
+    if(hasChanges){ e.preventDefault(); e.returnValue=''; }
+  });
+
+  // Intercepter les clics sur tous les liens (onglets, sidebar, etc.)
+  document.addEventListener('click', function(e){
+    var link = e.target.closest('a[href]');
+    if(!link || !hasChanges) return;
+    if(link.hasAttribute('data-nav-exempt')) return; // Annuler l'édition : exempt
+    var href = link.getAttribute('href');
+    if(!href || href==='#' || href.startsWith('javascript:')) return;
+    e.preventDefault();
+    pendingNavUrl = href;
+    bootstrap.Modal.getOrCreateInstance(
+      document.getElementById('navGuardModal')).show();
+  });
+
+  // Bouton "Valider puis quitter" du modal
+  var btnGuardSave = document.getElementById('navGuardSave');
+  if(btnGuardSave){
+    btnGuardSave.addEventListener('click', function(){
+      bootstrap.Modal.getInstance(
+        document.getElementById('navGuardModal')).hide();
+      valider(function(){
+        // navigue vers la destination après sauvegarde réussie
+        if(pendingNavUrl){ window.location.href = pendingNavUrl; }
+      });
+    });
+  }
+
+  // Bouton "Ignorer et quitter" du modal
+  var btnGuardDiscard = document.getElementById('navGuardDiscard');
+  if(btnGuardDiscard){
+    btnGuardDiscard.addEventListener('click', function(){
+      hasChanges = false; // désarmer pour ne pas déclencher beforeunload
+      bootstrap.Modal.getInstance(
+        document.getElementById('navGuardModal')).hide();
+      if(pendingNavUrl){ window.location.href = pendingNavUrl; }
+    });
+  }
+
+  // ── Bascule taux/statut ───────────────────────────────────────────────────
+  document.addEventListener('change', function(e){
+    if(!e.target.classList.contains('statut-radio')) return;
+    var id=e.target.dataset.id, statut=e.target.value;
+    var stEl=document.getElementById('taux-static-'+id);
+    var wrEl=document.getElementById('taux-input-wrap-'+id);
+    var inEl=document.getElementById('taux-input-'+id);
+    var spEl=document.getElementById('taux-tache-'+id);
+    if(statut==='en_cours'){
+      stEl&&stEl.classList.add('d-none');
+      wrEl&&wrEl.classList.remove('d-none');
+      inEl&&inEl.removeAttribute('disabled');
+    }else{
+      stEl&&stEl.classList.remove('d-none');
+      wrEl&&wrEl.classList.add('d-none');
+      inEl&&inEl.setAttribute('disabled','');
+      if(spEl)spEl.textContent=(statut==='execute')?'100':'0';
+    }
+  });
+
+  // ── Collecte des tâches ───────────────────────────────────────────────────
+  function collecterTaches(){
+    return Array.from(document.querySelectorAll('.suivi-tache-row')).map(function(row){
+      var id=parseInt(row.dataset.tacheId,10);
+      var ck=row.querySelector('input[type="radio"]:checked');
+      var statut=ck?ck.value:'non_execute';
+      var taux;
+      if(statut==='execute'){ taux=100; }
+      else if(statut==='non_execute'){ taux=0; }
+      else{
+        var inp=document.getElementById('taux-input-'+id);
+        // Permet les décimales (33,33 % / 99,99 %) — pas de plafond ici
+        taux=Math.max(0, parseFloat((inp?inp.value:'0').replace(',','.'))||0);
+      }
+      var obs=document.getElementById('obs-'+id);
+      return{tache_id:id,statut:statut,taux:taux,observation:obs?obs.value:''};
+    });
+  }
+
+  // ── Mise à jour DOM après sauvegarde ─────────────────────────────────────
+  function majDOM(d){
+    var g=document.getElementById('taux-global');
+    if(g&&d.global!=null)g.textContent=parseFloat(d.global).toFixed(1);
+    Object.keys(d.programmes||{}).forEach(function(pid){
+      var el=document.getElementById('taux-prog-'+pid);
+      if(el)el.textContent=parseFloat(d.programmes[pid].taux).toFixed(1)+' %';
+    });
+    Object.keys(d.projets||{}).forEach(function(pid){
+      var el=document.getElementById('taux-proj-'+pid);
+      if(el)el.textContent=parseFloat(d.projets[pid].taux).toFixed(1)+' %';
+    });
+    Object.keys(d.activites||{}).forEach(function(aid){
+      var a=d.activites[aid];
+      var te=document.getElementById('taux-act-'+aid);
+      if(te)te.textContent=parseFloat(a.taux).toFixed(1)+' %';
+      if(a.statut){
+        var se=document.getElementById('statut-act-'+aid);
+        if(se){se.className=BADGE_CLS[a.statut]||'badge bg-secondary';
+               se.style.fontSize='.65rem'; se.textContent=BADGE_LBL[a.statut]||'';}
+      }
+    });
+    Object.keys(d.taches||{}).forEach(function(tid){
+      var te=document.getElementById('taux-tache-'+tid);
+      if(te)te.textContent=parseFloat(d.taches[tid].taux).toFixed(2);
+    });
+  }
+
+  // ── Valider ───────────────────────────────────────────────────────────────
+  // onSuccess : callback optionnel appelé après sauvegarde réussie
+  //             (ex : naviguer vers la destination interceptée)
+  function valider(onSuccess){
+    var taches=collecterTaches();
+    if(!taches.length){showToast('error','Aucune tâche à enregistrer.');return;}
+
+    // Validation : en_cours → taux doit être entre 0 exclu et 100 exclu
+    var errTaux = null;
+    taches.forEach(function(t){
+      if(t.statut==='en_cours'){
+        if(t.taux <= 0){
+          errTaux = 'Taux 0 % incompatible avec « En cours ». '
+                  + 'Saisissez un taux entre 1 % et 99 %, ou choisissez « Non exécutée ».';
+        } else if(t.taux >= 100){
+          errTaux = 'Taux 100 % incompatible avec « En cours ». '
+                  + 'Choisissez « Exécutée » si la tâche est terminée.';
+        }
+      }
+    });
+    if(errTaux){ showToast('error', errTaux); return; }
+
+    var btns=document.querySelectorAll('#btnValider,#btnValider2');
+    btns.forEach(function(b){b.disabled=true;
+      b.innerHTML='<i class="fas fa-spinner fa-spin me-1"></i>Enregistrement…';});
+
+    fetch('/suivi/save',{method:'POST',
+      headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF_TOKEN},
+      credentials:'same-origin',
+      body:JSON.stringify({trimestre:TRIMESTRE_PAGE,taches:taches})})
+    .then(function(r){return r.json();})
+    .then(function(j){
+      if(j.ok){
+        hasChanges = false; // plus de modifications en attente
+        showToast('success',j.msg||'Enregistré avec succès.');
+        if(j.taux)majDOM(j.taux);
+        if(typeof onSuccess === 'function'){
+          // callback personnalisé (ex : navigation après "Valider puis quitter")
+          setTimeout(onSuccess, 600);
+        }else{
+          // comportement par défaut : retour en mode lecture
+          setTimeout(function(){
+            var url=new URL(window.location.href);
+            url.searchParams.delete('edit');
+            window.location.href=url.toString();
+          },1500);
+        }
+      }else{
+        showToast('error',j.msg||'Erreur.');
+        btns.forEach(function(b){b.disabled=false;
+          b.innerHTML='<i class="fas fa-check me-1"></i>Valider les saisies';});
+      }
+    })
+    .catch(function(){
+      showToast('error','Erreur réseau. Réessayez.');
+      btns.forEach(function(b){b.disabled=false;
+        b.innerHTML='<i class="fas fa-check me-1"></i>Valider les saisies';});
+    });
+  }
+
+  // ── Toast ─────────────────────────────────────────────────────────────────
+  function showToast(type,msg){
+    var el=document.getElementById('suiviToast'),bd=document.getElementById('suiviToastBody');
+    if(!el||!bd)return;
+    bd.textContent=msg;
+    el.className='toast align-items-center border-0 text-white '+(type==='success'?'bg-success':'bg-danger');
+    bootstrap.Toast.getOrCreateInstance(el,{delay:5000}).show();
+  }
+
+  document.querySelectorAll('#btnValider,#btnValider2').forEach(function(b){
+    b.addEventListener('click',function(){ valider(); });
+  });
+})();
+</script>
+{% endif %}
+
+{# ── Recherche dans le tableau suivi ── #}
+<style>
+.search-match  { outline: 2px solid #ffc107; }
+.search-current{ outline: 3px solid #198754 !important; background-color: rgba(255,243,205,0.5) !important; }
+</style>
+<script>
+(function () {
+  var inp = document.getElementById('suiviSearch');
+  if (!inp) return;
+  var countEl  = document.getElementById('suiviCount');
+  var prevBtn  = document.getElementById('suiviPrev');
+  var nextBtn  = document.getElementById('suiviNext');
+  var clearBtn = document.getElementById('suiviClear');
+  var matches  = [], cur = -1, timer;
+
+  function doSearch() {
+    var q    = inp.value.trim().toLowerCase();
+    var rows = document.querySelectorAll('#tblSuivi tbody tr');
+    matches  = [];
+    rows.forEach(function (row) {
+      row.classList.remove('search-match', 'search-current');
+      if (!q) return;
+      var text = Array.from(row.querySelectorAll('td'))
+        .map(function (td) { return td.textContent; }).join(' ').toLowerCase();
+      if (text.includes(q)) { row.classList.add('search-match'); matches.push(row); }
+    });
+    cur = matches.length > 0 ? 0 : -1;
+    if (cur >= 0) goTo(0);
+    updateCount();
+  }
+
+  function goTo(idx) {
+    if (!matches.length) return;
+    matches.forEach(function (r) { r.classList.remove('search-current'); });
+    cur = ((idx % matches.length) + matches.length) % matches.length;
+    var row = matches[cur];
+    row.classList.add('search-current');
+    var c = document.getElementById('suiviContainer');
+    if (c) {
+      var newTop = c.scrollTop + row.getBoundingClientRect().top - c.getBoundingClientRect().top - 80;
+      c.scrollTo({ top: Math.max(0, newTop), behavior: 'smooth' });
+    } else { row.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+    updateCount();
+  }
+
+  function updateCount() {
+    if (!inp.value.trim()) { countEl.innerHTML = ''; return; }
+    if (!matches.length)   { countEl.innerHTML = '<span class="text-danger">Aucun résultat</span>'; return; }
+    countEl.innerHTML = '<span class="text-success fw-bold">' + (cur + 1) + ' / ' + matches.length + '</span>';
+  }
+
+  inp.addEventListener('keyup', function (e) {
+    if (e.key === 'Enter')  { if (matches.length) goTo(cur + 1); return; }
+    if (e.key === 'Escape') { inp.value = ''; doSearch(); return; }
+    clearTimeout(timer); timer = setTimeout(doSearch, 200);
+  });
+  if (prevBtn)  prevBtn.addEventListener('click',  function () { goTo(cur - 1); });
+  if (nextBtn)  nextBtn.addEventListener('click',  function () { goTo(cur + 1); });
+  if (clearBtn) clearBtn.addEventListener('click', function () { inp.value = ''; doSearch(); inp.focus(); });
+})();
+</script>
+{% endblock %}

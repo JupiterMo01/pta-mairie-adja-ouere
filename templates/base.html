@@ -7,6 +7,7 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
   <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+  <meta name="csrf-token" content="{{ csrf_token }}">
 </head>
 <body>
 
@@ -23,13 +24,52 @@
     </div>
 
     <ul class="nav flex-column pt-2 flex-grow-1">
+
+      {# ── Tableau de bord : tous les rôles ── #}
+      <li class="nav-item">
+        <a class="nav-link text-white py-2 px-3 {% if request.blueprint == 'dashboard' %}active-link{% endif %}"
+           href="{{ url_for('dashboard.index') }}">
+          <i class="fas fa-tachometer-alt me-2 fa-fw"></i>Tableau de bord
+        </a>
+      </li>
+
+      {# ── Menus service / direction uniquement ── #}
+      {% if current_user.role == 'service' %}
+      <li class="nav-item">
+        <a class="nav-link text-white py-2 px-3 {% if request.blueprint == 'svcpta' %}active-link{% endif %}"
+           href="{{ url_for('svcpta.index') }}">
+          <i class="fas fa-clipboard-list me-2 fa-fw"></i>Mon PTA
+        </a>
+      </li>
+      {% elif current_user.role == 'direction' %}
+      <li class="nav-item">
+        <a class="nav-link text-white py-2 px-3 {% if request.blueprint == 'dirpta' %}active-link{% endif %}"
+           href="{{ url_for('dirpta.index') }}">
+          <i class="fas fa-clipboard-list me-2 fa-fw"></i>Mon PTA
+        </a>
+      </li>
+      {% endif %}
+
+      {# ── Suivi : service, direction et admin ── #}
+      {% if current_user.role in ('service', 'direction', 'admin_editeur', 'admin_lecteur') %}
+      <li class="nav-item">
+        <a class="nav-link text-white py-2 px-3 {% if request.blueprint == 'suivi' %}active-link{% endif %}"
+           href="{{ url_for('suivi.index') }}">
+          <i class="fas fa-tasks me-2 fa-fw"></i>Suivi &amp; Évaluation
+        </a>
+      </li>
+      {% endif %}
+
+      {# ── Menus admin uniquement ── #}
+      {% if current_user.role in ('admin_editeur', 'admin_lecteur') %}
+      <li><hr class="border-secondary my-1"></li>
       <li class="nav-item">
         <a class="nav-link text-white py-2 px-3 {% if request.blueprint == 'pta' %}active-link{% endif %}"
            href="{{ url_for('pta.global_pta') }}">
           <i class="fas fa-clipboard-list me-2 fa-fw"></i>PTA Global
         </a>
       </li>
-<li class="nav-item">
+      <li class="nav-item">
         <a class="nav-link text-white py-2 px-3 {% if request.blueprint == 'stats' %}active-link{% endif %}"
            href="{{ url_for('stats.index') }}">
           <i class="fas fa-chart-pie me-2 fa-fw"></i>Statistiques
@@ -53,7 +93,6 @@
           <i class="fas fa-file-export me-2 fa-fw"></i>Exportation
         </a>
       </li>
-      {% if current_user.role in ['admin_editeur', 'admin_lecteur'] %}
       <li><hr class="border-secondary my-1"></li>
       <li class="nav-item">
         <a class="nav-link text-white py-2 px-3 {% if request.blueprint == 'biblio' %}active-link{% endif %}"
@@ -61,8 +100,6 @@
           <i class="fas fa-book me-2 fa-fw"></i>Bibliothèque
         </a>
       </li>
-      {% endif %}
-      {% if current_user.role in ['admin_editeur', 'admin_lecteur'] %}
       <li><hr class="border-secondary my-1"></li>
       <li class="nav-item">
         <a class="nav-link text-white py-2 px-3 {% if request.blueprint == 'admin' %}active-link{% endif %}"
@@ -71,6 +108,7 @@
         </a>
       </li>
       {% endif %}
+
     </ul>
 
     <div class="px-3 pb-3 mt-auto">
@@ -93,9 +131,23 @@
         <span class="fw-bold text-primary">{% block page_title %}PTA{% endblock %}</span>
       </div>
       <div class="d-flex align-items-center gap-3 ms-auto">
+
+        {# ── Badge année (lecture seule — changement uniquement depuis PTA Global) ── #}
         {% if session.get('annee') %}
-        <span class="badge bg-primary fs-6 px-3">{{ session.get('annee') }}</span>
+          {% set ann_courante_id = session.get('annee_id') %}
+          {% if current_user.role in ('admin_editeur', 'admin_lecteur')
+               and ann_courante_id and annee_active_id
+               and ann_courante_id != annee_active_id %}
+            {# Année non-active : badge orange pour signaler le mode préparation #}
+            <span class="badge fs-6 px-3" style="background:#fd7e14;"
+                  title="PTA en préparation — non actif">
+              <i class="fas fa-tools me-1" style="font-size:.75rem;"></i>{{ session.get('annee') }}
+            </span>
+          {% else %}
+            <span class="badge bg-primary fs-6 px-3">{{ session.get('annee') }}</span>
+          {% endif %}
         {% endif %}
+
         <div class="dropdown">
           <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
             <i class="fas fa-user-circle me-1"></i>{{ current_user.prenom }} {{ current_user.nom }}
@@ -142,6 +194,28 @@
         {% endif %}
       {% endwith %}
     </div>
+
+    {# ── Bandeau informatif : année non-active (admins uniquement) ─────── #}
+    {% if current_user.role in ('admin_editeur', 'admin_lecteur') %}
+      {% set ann_courante_id = session.get('annee_id') %}
+      {% if ann_courante_id and annee_active_id and ann_courante_id != annee_active_id %}
+        {% set ann_active_obj = toutes_annees | selectattr('actif', 'equalto', true) | first | default(none) %}
+        <div class="mx-4 mt-2 alert alert-warning d-flex align-items-center gap-2 py-2 mb-0" role="alert"
+             style="border-left:5px solid #fd7e14;">
+          <i class="fas fa-tools text-warning"></i>
+          <span>
+            <strong>Mode préparation — PTA {{ session.get('annee') }}</strong>
+            <span class="text-muted ms-2" style="font-size:.87rem;">
+              Ce PTA n'est pas encore actif.
+              {% if ann_active_obj %}
+                L'année active pour tous les utilisateurs est <strong>{{ ann_active_obj.annee }}</strong>.
+              {% endif %}
+              Pour changer d'année, allez dans <strong>PTA Global</strong>.
+            </span>
+          </span>
+        </div>
+      {% endif %}
+    {% endif %}
 
     <!-- Contenu -->
     <main class="px-4 pb-4 flex-grow-1">

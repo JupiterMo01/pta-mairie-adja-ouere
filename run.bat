@@ -23,5 +23,5 @@ echo   Partagez l'adresse reseau avec les autres postes du WiFi.
 echo   Pour arreter le serveur : appuyez sur Ctrl+C
 echo ============================================================
 echo.
-python app.py
+py app.py
 pause

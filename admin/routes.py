@@ -4,6 +4,7 @@ from flask_login import login_required, current_user
 import json
 from models import db, User, Direction, Service, Annee, StructureExterne, PTABackup, Programme, Projet, Activite, Tache
 from admin import admin_bp
+from utils import log_audit
 
 
 def admin_required(f):
@@ -41,6 +42,7 @@ def backup_now():
         mod  = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
         mod.run()
+        log_audit('sauvegarde', 'Sauvegarde manuelle déclenchée depuis Administration')
         flash('Sauvegarde envoyée par email avec succès.', 'success')
     except FileNotFoundError:
         flash('Script de sauvegarde introuvable. Contactez l\'administrateur.', 'danger')
@@ -102,6 +104,7 @@ def user_add():
     user.set_password(password)
     db.session.add(user)
     db.session.commit()
+    log_audit('user_cree', f"Compte créé : {prenom} {nom} ({role})")
     flash(f'Utilisateur {prenom} {nom} créé.', 'success')
     return redirect(url_for('admin.users'))
 
@@ -136,6 +139,7 @@ def user_edit(user_id):
         if new_pw:
             user.set_password(new_pw)
         db.session.commit()
+        log_audit('user_modifie', f"Utilisateur modifié : {user.prenom} {user.nom} — rôle : {user.role}")
         flash('Utilisateur mis à jour.', 'success')
         return redirect(url_for('admin.users'))
 
@@ -153,6 +157,8 @@ def user_toggle(user_id):
     user.actif = not user.actif
     db.session.commit()
     etat = 'activé' if user.actif else 'désactivé'
+    action = 'user_active' if user.actif else 'user_desactive'
+    log_audit(action, f"Compte {etat} : {user.prenom} {user.nom}")
     flash(f'{user.prenom} {user.nom} {etat}.', 'success')
     return redirect(url_for('admin.users'))
 
@@ -168,8 +174,10 @@ def user_delete(user_id):
         flash('Vous ne pouvez pas supprimer votre propre compte.', 'danger')
         return redirect(url_for('admin.users'))
     nom = f'{user.prenom} {user.nom}'
+    role = user.role
     db.session.delete(user)
     db.session.commit()
+    log_audit('user_supprime', f"Compte supprimé : {nom} ({role})")
     flash(f'Utilisateur {nom} supprimé.', 'success')
     return redirect(url_for('admin.users'))
 
@@ -184,6 +192,7 @@ def user_reset_password(user_id):
         return redirect(url_for('admin.users'))
     user.set_password(nouveau_mdp)
     db.session.commit()
+    log_audit('mdp_reinit', f"Mot de passe réinitialisé pour : {user.prenom} {user.nom}")
     flash(f'Mot de passe de {user.prenom} {user.nom} réinitialisé. Communiquez-lui le nouveau mot de passe.', 'success')
     return redirect(url_for('admin.users'))
 
@@ -326,6 +335,7 @@ def annee_add():
     nouvelle = Annee(annee=val, actif=False)
     db.session.add(nouvelle)
     db.session.commit()
+    log_audit('annee_cree', f"Année PTA créée : {val}")
     # Proposer immédiatement la copie du PTA de l'année source
     return redirect(url_for('admin.annee_confirm_copie', ann_id=nouvelle.id))
 
@@ -459,6 +469,7 @@ def annee_copier_pta(ann_id):
     # Copier aussi l'objectif général de l'année source
     nouvelle.objectif_general = source.objectif_general
     db.session.commit()
+    log_audit('annee_pta_copie', f"PTA {source.annee} → {nouvelle.annee} : {nb_prog} prog., {nb_proj} proj., {nb_act} act., {nb_tache} tâches")
 
     flash(
         f'Structure du PTA {source.annee} copiée vers {nouvelle.annee} avec succès : '
@@ -480,6 +491,7 @@ def annee_activate(ann_id):
     # Mettre à jour la session pour que le badge en haut change immédiatement
     session['annee_id'] = a.id
     session['annee'] = a.annee
+    log_audit('annee_activee', f"Année PTA activée : {a.annee}")
     flash(f'Année {a.annee} activée.', 'success')
     return redirect(url_for('admin.annees'))
 
@@ -492,6 +504,7 @@ def annee_deactivate(ann_id):
     db.session.commit()
     session.pop('annee_id', None)
     session.pop('annee', None)
+    log_audit('annee_desactivee', f"Année PTA désactivée : {a.annee}")
     flash(f'Année {a.annee} désactivée.', 'warning')
     return redirect(url_for('admin.annees'))
 
@@ -504,6 +517,7 @@ def annee_purge_suivi(ann_id):
     from models import SuiviTache
     nb = SuiviTache.query.filter_by(annee_id=ann_id).delete()
     db.session.commit()
+    log_audit('annee_purge_suivi', f"Suivi PTA {a.annee} purgé : {nb} enregistrement(s) supprimé(s)")
     flash(f'Suivi de {a.annee} vidé : {nb} enregistrement(s) supprimé(s). '
           f'La structure du PTA est conservée.', 'success')
     return redirect(url_for('admin.annees'))
@@ -524,6 +538,7 @@ def annee_purge_pta(ann_id):
     for prog in programmes:
         db.session.delete(prog)
     db.session.commit()
+    log_audit('annee_purge_pta', f"PTA {a.annee} entièrement purgé : {nb_suivi} suivi(s), {nb_prog} programme(s)")
     flash(f'PTA {a.annee} entièrement vidé : {nb_suivi} suivi(s) et '
           f'{nb_prog} programme(s) supprimé(s) (avec projets, activités, tâches). '
           f'L\'année {a.annee} existe toujours et peut être réimportée.', 'success')
@@ -598,6 +613,53 @@ def struct_ext_delete(se_id):
     db.session.commit()
     flash(f'Structure externe « {nom} » supprimée.', 'success')
     return redirect(url_for('admin.structures_externes'))
+
+
+# ─── Journal d'audit ────────────────────────────────────────────────────────
+
+@admin_bp.route('/journal')
+@admin_required
+def journal():
+    from models import AuditLog
+    import datetime as _dt
+
+    page          = request.args.get('page', 1, type=int)
+    filtre_action = request.args.get('action', '').strip()
+    filtre_user   = request.args.get('user', '').strip()
+    filtre_depuis = request.args.get('depuis', '').strip()
+
+    q = AuditLog.query.order_by(AuditLog.horodatage.desc())
+
+    if filtre_action:
+        q = q.filter(AuditLog.action == filtre_action)
+    if filtre_user:
+        q = q.filter(
+            db.or_(
+                AuditLog.user_nom.ilike(f'%{filtre_user}%'),
+                AuditLog.user_role.ilike(f'%{filtre_user}%'),
+            )
+        )
+    if filtre_depuis:
+        try:
+            depuis = _dt.datetime.strptime(filtre_depuis, '%Y-%m-%d')
+            q = q.filter(AuditLog.horodatage >= depuis)
+        except ValueError:
+            filtre_depuis = ''
+
+    pagination = q.paginate(page=page, per_page=50, error_out=False)
+    entries    = pagination.items
+
+    # Liste de toutes les actions distinctes (pour le filtre)
+    actions_dispo = [r[0] for r in db.session.query(AuditLog.action).distinct().order_by(AuditLog.action).all()]
+
+    return render_template('admin/journal.html',
+        entries=entries,
+        pagination=pagination,
+        actions_dispo=actions_dispo,
+        filtre_action=filtre_action,
+        filtre_user=filtre_user,
+        filtre_depuis=filtre_depuis,
+    )
 
 
 # ─── Sauvegardes PTA ─────────────────────────────────────────────────────────

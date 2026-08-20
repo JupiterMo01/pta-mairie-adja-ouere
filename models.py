@@ -446,6 +446,20 @@ class PTABackup(db.Model):
     annee = db.relationship('Annee', foreign_keys=[annee_id])
 
 
+# ─── Journal d'audit ─────────────────────────────────────────────────────────
+
+class AuditLog(db.Model):
+    __tablename__ = 'audit_log'
+    id          = db.Column(db.Integer, primary_key=True)
+    horodatage  = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    user_id     = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    user_nom    = db.Column(db.String(150))   # snapshot — survit à la suppression du compte
+    user_role   = db.Column(db.String(30))
+    action      = db.Column(db.String(80),    nullable=False)
+    details     = db.Column(db.Text)
+    ip          = db.Column(db.String(45))
+
+
 # ─── Structures externes (ONGs, prestataires, partenaires techniques) ─────────
 
 activite_struct_ext = db.Table(

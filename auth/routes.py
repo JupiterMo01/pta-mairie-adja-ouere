@@ -2,6 +2,7 @@ from flask import render_template, redirect, url_for, flash, request, session
 from flask_login import login_user, logout_user, login_required, current_user
 from models import User, Annee
 from auth import auth_bp
+from utils import log_audit
 
 
 @auth_bp.route('/')
@@ -27,10 +28,12 @@ def login():
             if annee_active:
                 session['annee_id'] = annee_active.id
                 session['annee'] = annee_active.annee
+            log_audit('connexion', f"Connexion réussie — {user.role_label}")
             flash(f'Bienvenue, {user.prenom} {user.nom} !', 'success')
             next_page = request.args.get('next')
             return redirect(next_page or url_for('auth.index'))
         else:
+            log_audit('echec_connexion', f"Échec connexion pour l'identifiant : {login_val}")
             flash('Identifiant ou mot de passe incorrect.', 'danger')
 
     return render_template('auth/login.html')
@@ -39,6 +42,7 @@ def login():
 @auth_bp.route('/logout')
 @login_required
 def logout():
+    log_audit('deconnexion')
     logout_user()
     session.pop('annee_id', None)
     session.pop('annee', None)
@@ -69,6 +73,7 @@ def change_password():
             from models import db
             current_user.set_password(nouveau)
             db.session.commit()
+            log_audit('mdp_change', "Mot de passe modifié par l'utilisateur")
             flash('Mot de passe modifié avec succès !', 'success')
             return redirect(url_for('auth.index'))
 

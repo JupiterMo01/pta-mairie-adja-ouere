@@ -1,6 +1,39 @@
 from models import SuiviTache, Programme
 
 
+def log_audit(action, details=None):
+    """Enregistre une entrée dans le journal d'audit.
+    Ne lève jamais d'exception — un échec de log ne doit pas bloquer l'app."""
+    from models import AuditLog, db
+    from flask import request
+    try:
+        from flask_login import current_user
+        if current_user.is_authenticated:
+            user_id   = current_user.id
+            user_nom  = f"{current_user.prenom} {current_user.nom}"
+            user_role = current_user.role
+        else:
+            user_id, user_nom, user_role = None, 'Anonyme', None
+    except Exception:
+        user_id, user_nom, user_role = None, 'Système', None
+    try:
+        ip = request.remote_addr
+    except Exception:
+        ip = None
+    try:
+        entry = AuditLog(
+            user_id=user_id, user_nom=user_nom, user_role=user_role,
+            action=action, details=details, ip=ip
+        )
+        db.session.add(entry)
+        db.session.commit()
+    except Exception:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+
+
 def get_suivi(tache_id, trimestre, annee_id, service_id=None):
     q = SuiviTache.query.filter_by(
         tache_id=tache_id, trimestre=trimestre, annee_id=annee_id

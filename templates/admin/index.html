@@ -79,6 +79,9 @@
         <a href="{{ url_for('admin.backups') }}" class="btn btn-outline-dark">
           <i class="fas fa-database me-2"></i>Sauvegardes PTA
         </a>
+        <a href="{{ url_for('admin.journal') }}" class="btn btn-outline-secondary">
+          <i class="fas fa-history me-2"></i>Journal d'audit
+        </a>
         {% if current_user.role == 'admin_editeur' %}
         <hr class="my-1">
         <form method="POST" action="{{ url_for('admin.backup_now') }}"

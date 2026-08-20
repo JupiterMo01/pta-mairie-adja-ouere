@@ -1,102 +1,120 @@
 """
-backup_pta.py — Sauvegarde automatique quotidienne vers Google Drive
+backup_pta.py — Sauvegarde automatique quotidienne par email
 Mairie d'Adja-Ouèrè — Système de Gestion du PTA
 
-Pré-requis (sur PythonAnywhere) :
-    pip install --user google-api-python-client google-auth
+La base de données est envoyée en pièce jointe sur Gmail chaque nuit.
+Aucune API payante, aucune carte bancaire — uniquement un mot de passe
+d'application Gmail (myaccount.google.com > Sécurité > Mots de passe applis).
 
-Configuration :
-    1. Placer drive_key.json dans le même dossier que ce fichier
-    2. Renseigner DRIVE_FOLDER_ID ci-dessous (ID du dossier Drive)
+Configuration : fichier ~/.pta_backup_config (jamais versionné dans git)
+    GMAIL_USER=votre@gmail.com
+    GMAIL_APP_PASSWORD=motdepasseapp16caract
+    DEST_EMAIL=destinataire@gmail.com
 
-Planification :
-    PythonAnywhere > Tasks > Daily à 00:30 UTC (01h30 heure Bénin)
-    Commande : python /home/jupi01/pta_mairie/backup_pta.py
+Planification : PythonAnywhere > Tasks > Daily 00:30 UTC
+    python /home/jupi01/pta_mairie/backup_pta.py
 """
 
 import os
 import datetime
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.base       import MIMEBase
+from email.mime.text       import MIMEText
+from email                 import encoders
 
-# ── Configuration ──────────────────────────────────────────────────────────────
-BASE_DIR        = os.path.dirname(os.path.abspath(__file__))
-DB_SOURCE       = os.path.join(BASE_DIR, 'instance', 'pta_mairie.db')
-KEY_FILE        = os.path.join(BASE_DIR, 'drive_key.json')
-LOG_FILE        = os.path.join(BASE_DIR, 'backup_drive.log')
+# ── Chemins ───────────────────────────────────────────────────────────────────
+BASE_DIR   = os.path.dirname(os.path.abspath(__file__))
+DB_SOURCE  = os.path.join(BASE_DIR, 'instance', 'pta_mairie.db')
+LOG_FILE   = os.path.join(BASE_DIR, 'backup_email.log')
+CONFIG     = os.path.expanduser('~/.pta_backup_config')
 
-DRIVE_FOLDER_ID = 'REMPLACER_PAR_ID_DU_DOSSIER_DRIVE'  # ← à remplir
-MAX_BACKUPS     = 14   # jours de rétention
-
-# ── Utilitaires ────────────────────────────────────────────────────────────────
+# ── Utilitaires ───────────────────────────────────────────────────────────────
 def log(message):
     horodatage = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    ligne = f"[{horodatage}] {message}"
+    ligne      = f"[{horodatage}] {message}"
     print(ligne)
     with open(LOG_FILE, 'a', encoding='utf-8') as f:
         f.write(ligne + '\n')
 
-def get_drive_service():
-    from google.oauth2 import service_account
-    from googleapiclient.discovery import build
-    creds = service_account.Credentials.from_service_account_file(
-        KEY_FILE,
-        scopes=['https://www.googleapis.com/auth/drive']
+def lire_config():
+    """Lire GMAIL_USER, GMAIL_APP_PASSWORD, DEST_EMAIL depuis ~/.pta_backup_config"""
+    if not os.path.exists(CONFIG):
+        raise FileNotFoundError(f"Fichier de config introuvable : {CONFIG}")
+    cfg = {}
+    with open(CONFIG, encoding='utf-8') as f:
+        for ligne in f:
+            ligne = ligne.strip()
+            if '=' in ligne and not ligne.startswith('#'):
+                cle, val = ligne.split('=', 1)
+                cfg[cle.strip()] = val.strip()
+    for cle in ('GMAIL_USER', 'GMAIL_APP_PASSWORD', 'DEST_EMAIL'):
+        if cle not in cfg:
+            raise ValueError(f"Clé manquante dans config : {cle}")
+    return cfg
+
+def envoyer_backup(cfg, db_path, nom_fichier):
+    """Envoyer le fichier .db en pièce jointe par email."""
+    date_lisible = datetime.datetime.now().strftime('%d/%m/%Y à %Hh%M')
+    taille_ko    = os.path.getsize(db_path) / 1024
+
+    msg = MIMEMultipart()
+    msg['From']    = cfg['GMAIL_USER']
+    msg['To']      = cfg['DEST_EMAIL']
+    msg['Subject'] = f"[PTA Mairie] Sauvegarde automatique — {date_lisible}"
+
+    corps = (
+        f"Bonjour,\n\n"
+        f"Sauvegarde automatique de la base PTA de la Mairie d'Adja-Ouèrè.\n\n"
+        f"  Fichier  : {nom_fichier}\n"
+        f"  Taille   : {taille_ko:.1f} Ko\n"
+        f"  Date     : {date_lisible}\n\n"
+        f"Ce message est généré automatiquement — ne pas répondre.\n"
+        f"Mairie d'Adja-Ouèrè · Système PTA"
     )
-    return build('drive', 'v3', credentials=creds)
+    msg.attach(MIMEText(corps, 'plain', 'utf-8'))
 
-def upload_to_drive(service, local_path, filename):
-    from googleapiclient.http import MediaFileUpload
-    metadata = {'name': filename, 'parents': [DRIVE_FOLDER_ID]}
-    media    = MediaFileUpload(local_path, mimetype='application/x-sqlite3')
-    f = service.files().create(body=metadata, media_body=media, fields='id').execute()
-    return f.get('id')
+    # Pièce jointe
+    with open(db_path, 'rb') as f:
+        part = MIMEBase('application', 'octet-stream')
+        part.set_payload(f.read())
+    encoders.encode_base64(part)
+    part.add_header('Content-Disposition', f'attachment; filename="{nom_fichier}"')
+    msg.attach(part)
 
-def rotation_drive(service):
-    """Supprimer les sauvegardes excédentaires (les plus anciennes en premier)."""
-    res = service.files().list(
-        q=(f"'{DRIVE_FOLDER_ID}' in parents "
-           f"and name contains 'pta_mairie_' "
-           f"and trashed=false"),
-        orderBy='createdTime',
-        fields='files(id, name)'
-    ).execute()
-    fichiers = res.get('files', [])
-    while len(fichiers) > MAX_BACKUPS:
-        ancien = fichiers.pop(0)
-        service.files().delete(fileId=ancien['id']).execute()
-        log(f"Supprimé Drive (rotation) : {ancien['name']}")
-    return len(fichiers)
+    # Envoi via Gmail SMTP
+    with smtplib.SMTP('smtp.gmail.com', 587) as srv:
+        srv.ehlo()
+        srv.starttls()
+        srv.login(cfg['GMAIL_USER'], cfg['GMAIL_APP_PASSWORD'])
+        srv.sendmail(cfg['GMAIL_USER'], cfg['DEST_EMAIL'], msg.as_string())
 
 # ── Sauvegarde principale ──────────────────────────────────────────────────────
 def run():
     log("=" * 60)
-    log("Démarrage sauvegarde PTA → Google Drive")
+    log("Démarrage sauvegarde PTA → Gmail")
 
-    # Vérifications
     if not os.path.exists(DB_SOURCE):
         log(f"ERREUR : base de données introuvable → {DB_SOURCE}")
         return
-    if not os.path.exists(KEY_FILE):
-        log(f"ERREUR : clé service account introuvable → {KEY_FILE}")
-        return
-    if DRIVE_FOLDER_ID == 'REMPLACER_PAR_ID_DU_DOSSIER_DRIVE':
-        log("ERREUR : DRIVE_FOLDER_ID non configuré dans backup_pta.py")
-        return
 
     try:
-        service  = get_drive_service()
-        date_str = datetime.datetime.now().strftime('%Y-%m-%d_%Hh%M')
-        filename = f'pta_mairie_{date_str}.db'
-        taille   = os.path.getsize(DB_SOURCE) / 1024
+        cfg          = lire_config()
+        date_str     = datetime.datetime.now().strftime('%Y-%m-%d_%Hh%M')
+        nom_fichier  = f'pta_mairie_{date_str}.db'
+        taille_ko    = os.path.getsize(DB_SOURCE) / 1024
 
-        file_id = upload_to_drive(service, DB_SOURCE, filename)
-        log(f"Envoyé sur Drive : {filename}  ({taille:.1f} Ko)  ID={file_id}")
+        log(f"Envoi en cours : {nom_fichier} ({taille_ko:.1f} Ko) → {cfg['DEST_EMAIL']}")
+        envoyer_backup(cfg, DB_SOURCE, nom_fichier)
+        log("Email envoyé avec succès ✓")
+        log("Sauvegarde terminée")
 
-        nb = rotation_drive(service)
-        log(f"Sauvegardes Drive actives : {nb} / {MAX_BACKUPS}")
-        log("Sauvegarde terminée avec succès ✓")
-
+    except FileNotFoundError as e:
+        log(f"ERREUR config : {e}")
+    except ValueError as e:
+        log(f"ERREUR config : {e}")
     except Exception as e:
-        log(f"ERREUR inattendue : {e}")
+        log(f"ERREUR envoi : {e}")
         raise
 
 if __name__ == '__main__':

@@ -1,6 +1,6 @@
 import io
 from flask import render_template, redirect, url_for, flash, request, session, send_file
-from flask_login import login_required
+from flask_login import login_required, current_user
 from models import db, Programme, Direction, Annee, Service
 from dirpta import dirpta_bp
 
@@ -438,20 +438,43 @@ def _build_excel(annee, direction, data):
 @dirpta_bp.route('/', methods=['GET'])
 @login_required
 def index():
-    annee      = get_annee()
-    directions = Direction.query.order_by(Direction.nom).all()
-    dir_id     = request.args.get('direction_id', type=int)
-    direction  = Direction.query.get(dir_id) if dir_id else None
+    annee = get_annee()
+    is_direction_user = (current_user.role == 'direction')
 
-    services = Service.query.order_by(Service.nom).all()
+    if is_direction_user:
+        # L'agent de direction ne voit que SA direction — pas de sélecteur
+        direction  = current_user.direction
+        directions = []
+    else:
+        directions = Direction.query.order_by(Direction.nom).all()
+        dir_id     = request.args.get('direction_id', type=int)
+        direction  = Direction.query.get(dir_id) if dir_id else None
+
+    # Services rattachés à la direction (pour filtre direction user)
+    dir_services = sorted(direction.services, key=lambda s: s.nom) if direction else []
+
+    # Filtre optionnel par service (direction user uniquement)
+    sel_svc_id  = request.args.get('service_id', type=int) if is_direction_user else None
+    sel_service = None
+    if sel_svc_id:
+        _svc = Service.query.get(sel_svc_id)
+        if _svc and direction and _svc.direction_id == direction.id:
+            sel_service = _svc
+
     data = []
     if annee and direction:
-        data = _compute_pta_direction(annee, direction)
+        if sel_service:
+            from svcpta.routes import _compute_pta_service
+            data = _compute_pta_service(annee, sel_service)
+        else:
+            data = _compute_pta_direction(annee, direction)
 
     return render_template('dirpta/index.html',
                            annee=annee, directions=directions,
                            direction=direction, data=data,
-                           services=services)
+                           is_direction_user=is_direction_user,
+                           dir_services=dir_services,
+                           sel_service=sel_service)
 
 
 @dirpta_bp.route('/excel-toutes-directions')

@@ -1,6 +1,6 @@
 import io
 from flask import render_template, redirect, url_for, flash, request, session, send_file
-from flask_login import login_required
+from flask_login import login_required, current_user
 from models import db, Programme, Direction, Service, Annee
 from svcpta import svcpta_bp
 
@@ -445,10 +445,16 @@ def _build_excel(annee, service, data):
 @login_required
 def index():
     annee      = get_annee()
-    directions = Direction.query.order_by(Direction.nom).all()
-    services   = Service.query.order_by(Service.nom).all()
-    svc_id     = request.args.get('service_id', type=int)
-    service    = Service.query.get(svc_id) if svc_id else None
+    is_service_user = (current_user.role == 'service')
+
+    if is_service_user:
+        # L'agent de service ne voit que SON service — pas de sélecteur
+        service = current_user.service
+        directions = []
+    else:
+        directions = Direction.query.order_by(Direction.nom).all()
+        svc_id  = request.args.get('service_id', type=int)
+        service = Service.query.get(svc_id) if svc_id else None
 
     data = []
     if annee and service:
@@ -456,7 +462,8 @@ def index():
 
     return render_template('svcpta/index.html',
                            annee=annee, directions=directions,
-                           services=services, service=service, data=data)
+                           service=service, data=data,
+                           is_service_user=is_service_user)
 
 
 @svcpta_bp.route('/excel-tous-services')

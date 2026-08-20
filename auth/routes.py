@@ -7,7 +7,8 @@ from auth import auth_bp
 @auth_bp.route('/')
 @login_required
 def index():
-    return redirect(url_for('stats.index'))
+    # Tous les rôles atterrissent sur le tableau de bord
+    return redirect(url_for('dashboard.index'))
 
 
 @auth_bp.route('/login', methods=['GET', 'POST'])

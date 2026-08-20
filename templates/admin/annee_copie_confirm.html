@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}Nouvelle année {{ nouvelle.annee }} — Importer le PTA{% endblock %}
+{% block page_title %}
+  <i class="fas fa-calendar-alt me-2 text-warning"></i>Année {{ nouvelle.annee }} créée
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-4">
+  <div class="col-md-7">
+
+    {# ── Carte principale ── #}
+    <div class="card border-0 shadow">
+      <div class="card-header text-white fw-bold"
+           style="background:linear-gradient(90deg,#1a1a2e,#16213e);">
+        <i class="fas fa-check-circle text-success me-2"></i>
+        Année <strong>{{ nouvelle.annee }}</strong> créée avec succès
+      </div>
+      <div class="card-body px-4 py-4">
+
+        <p class="fs-5 fw-semibold mb-1">
+          Voulez-vous copier la structure du PTA
+          <span class="text-primary">{{ source.annee if source else '—' }}</span>
+          vers <span class="text-success">{{ nouvelle.annee }}</span> ?
+        </p>
+
+        {% if source and nb_prog_source > 0 %}
+        <p class="text-muted mb-4" style="font-size:.9rem;">
+          <i class="fas fa-info-circle me-1"></i>
+          Le PTA <strong>{{ source.annee }}</strong> contient
+          <strong>{{ nb_prog_source }}</strong> programme(s) avec tous leurs projets,
+          activités et tâches. La copie reproduit exactement la même structure
+          (poids, périodes, responsables) sans aucune donnée de suivi.
+        </p>
+        {% elif source %}
+        <div class="alert alert-warning py-2 mb-4">
+          <i class="fas fa-exclamation-triangle me-1"></i>
+          Le PTA <strong>{{ source.annee }}</strong> est vide — rien à copier.
+          Vous devrez saisir ou importer le PTA de <strong>{{ nouvelle.annee }}</strong> depuis zéro.
+        </div>
+        {% else %}
+        <div class="alert alert-info py-2 mb-4">
+          <i class="fas fa-info-circle me-1"></i>
+          Aucune année source disponible. Vous créerez le PTA de zéro.
+        </div>
+        {% endif %}
+
+        {# Ce qui sera copié / non copié #}
+        {% if source and nb_prog_source > 0 %}
+        <div class="row g-3 mb-4">
+          <div class="col-md-6">
+            <div class="card border-success border-2 h-100">
+              <div class="card-body py-2 px-3">
+                <div class="fw-bold text-success small mb-1">
+                  <i class="fas fa-copy me-1"></i>Ce qui sera copié
+                </div>
+                <ul class="mb-0 small text-muted ps-3">
+                  <li>Programmes, projets, activités, tâches</li>
+                  <li>Poids et numérotation</li>
+                  <li>Périodes de réalisation</li>
+                  <li>Responsables (direction, service)</li>
+                  <li>Sources de financement</li>
+                  <li>Objectif général</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="card border-secondary border-2 h-100">
+              <div class="card-body py-2 px-3">
+                <div class="fw-bold text-secondary small mb-1">
+                  <i class="fas fa-times-circle me-1"></i>Ce qui ne sera PAS copié
+                </div>
+                <ul class="mb-0 small text-muted ps-3">
+                  <li>Suivi &amp; évaluation</li>
+                  <li>Statuts d'exécution</li>
+                  <li>Taux et observations</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
+        {# Boutons #}
+        <div class="d-flex gap-3 flex-wrap">
+
+          {% if source and nb_prog_source > 0 %}
+          {# Option 1 : Copier #}
+          <form method="POST"
+                action="{{ url_for('admin.annee_copier_pta', ann_id=nouvelle.id) }}">
+            <input type="hidden" name="source_id" value="{{ source.id }}">
+            <button type="submit" class="btn btn-success btn-lg px-4">
+              <i class="fas fa-copy me-2"></i>
+              Oui — copier le PTA {{ source.annee }}
+            </button>
+          </form>
+          {% endif %}
+
+          {# Option 2 : Partir de zéro #}
+          <a href="{{ url_for('admin.annees') }}"
+             class="btn btn-outline-secondary btn-lg px-4">
+            <i class="fas fa-plus-circle me-2"></i>
+            Non — partir de zéro
+          </a>
+
+        </div>
+
+      </div>{# card-body #}
+    </div>{# card #}
+
+    <p class="text-muted small text-center mt-3">
+      <i class="fas fa-info-circle me-1"></i>
+      L'année <strong>{{ nouvelle.annee }}</strong> est inactive.
+      Activez-la depuis la page Années quand vous êtes prêt à la déployer.
+    </p>
+
+  </div>
+</div>
+{% endblock %}

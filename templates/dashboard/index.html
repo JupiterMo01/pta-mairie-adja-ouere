@@ -1,0 +1,542 @@
+{% extends "base.html" %}
+{% block title %}Tableau de bord — {{ titre }} — {{ annee.annee if annee }}{% endblock %}
+{% block page_title %}
+  <i class="fas fa-tachometer-alt me-2 text-primary"></i>Tableau de bord
+  {% if annee %}<span class="badge bg-primary ms-1">{{ annee.annee }}</span>{% endif %}
+{% endblock %}
+
+{# ════════════════════════════════════════════════════════════════════════════
+   Macro : tableau statuts (tâches ou activités) pour un sous-ensemble de suivi
+════════════════════════════════════════════════════════════════════════════ #}
+{% macro table_statuts(suivi_data, section) %}
+{# section : 'taches' ou 'activites' #}
+<div class="table-responsive">
+<table class="table table-bordered table-sm mb-0 text-center" style="font-size:.82rem;">
+  <thead style="background:#1a1a2e;color:#fff;">
+    <tr>
+      <th class="text-start ps-3">Statut</th>
+      <th>T1</th><th>T2</th><th>T3</th><th>T4</th>
+      <th style="background:#155724;">Global</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for skey, slbl, bg, fg in [
+        ('execute',     'Exécutées',     '#198754', '#fff'),
+        ('en_cours',    'En cours',      '#ffc107', '#000'),
+        ('non_execute', 'Non exécutées', '#6c757d', '#fff'),
+    ] %}
+    <tr>
+      <td class="text-start ps-3">
+        <span class="badge" style="background:{{ bg }};color:{{ fg }};font-size:.7rem;">
+          {{ slbl }}
+        </span>
+      </td>
+      {% for t in (1,2,3,4,0) %}
+      {% set grp = suivi_data[t].taches if section == 'taches' else suivi_data[t].activites %}
+      {% set n   = grp[skey] %}
+      {% set tot = grp.total %}
+      <td {% if t == 0 %}style="background:#d1f0da;"{% endif %}>
+        {% if tot > 0 %}
+        <span class="fw-bold">{{ n }}</span>
+        <span class="text-muted" style="font-size:.7rem;">
+          ({{ '%.0f'|format(n * 100 / tot) }}%)
+        </span>
+        {% else %}—{% endif %}
+      </td>
+      {% endfor %}
+    </tr>
+    {% endfor %}
+    <tr class="table-light fw-bold">
+      <td class="text-start ps-3">Total</td>
+      {% for t in (1,2,3,4,0) %}
+      {% set tot = suivi_data[t].taches.total if section == 'taches' else suivi_data[t].activites.total %}
+      <td {% if t == 0 %}style="background:#d1f0da;"{% endif %}>{{ tot }}</td>
+      {% endfor %}
+    </tr>
+  </tbody>
+</table>
+</div>
+{% endmacro %}
+
+{% block content %}
+
+{# ── Filtre direction : pills services ───────────────────────────────────── #}
+{% if role == 'direction' and services_dir %}
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-body py-2">
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+      <span class="fw-semibold small text-nowrap">
+        <i class="fas fa-users me-1 text-primary"></i>Voir :
+      </span>
+      <a href="{{ url_for('dashboard.index') }}"
+         class="btn btn-sm {% if not sel_svc_id %}btn-primary{% else %}btn-outline-primary{% endif %}">
+        <i class="fas fa-building me-1"></i>Ma direction (total)
+      </a>
+      {% for s in services_dir %}
+      <a href="{{ url_for('dashboard.index', service_id=s.id) }}"
+         class="btn btn-sm {% if sel_svc_id == s.id %}btn-secondary{% else %}btn-outline-secondary{% endif %}">
+        {{ s.code }}
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{# ── Filtre admin : dropdowns direction / service ────────────────────────── #}
+{% if is_admin %}
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-body py-2">
+    <form method="get" action="{{ url_for('dashboard.index') }}" class="row g-2 align-items-end">
+      <div class="col-auto">
+        <a href="{{ url_for('dashboard.index') }}"
+           class="btn btn-sm {% if not sel_dir_id and not sel_svc_id %}btn-primary{% else %}btn-outline-primary{% endif %}">
+          <i class="fas fa-globe me-1"></i>Global
+        </a>
+      </div>
+      {% if all_directions %}
+      <div class="col-auto">
+        <label class="form-label mb-0 small fw-semibold">
+          <i class="fas fa-building me-1 text-info"></i>Direction
+        </label>
+        <select name="direction_id" class="form-select form-select-sm"
+                onchange="this.form.submit()" style="min-width:220px;">
+          <option value="">— Toutes directions —</option>
+          {% for d in all_directions %}
+          <option value="{{ d.id }}" {% if sel_dir_id == d.id %}selected{% endif %}>
+            {{ d.code }} — {{ d.nom }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+      {% if all_services %}
+      <div class="col-auto">
+        <label class="form-label mb-0 small fw-semibold">
+          <i class="fas fa-users me-1 text-warning"></i>Service
+        </label>
+        <select name="service_id" class="form-select form-select-sm"
+                onchange="this.form.submit()" style="min-width:220px;">
+          <option value="">— Tous services —</option>
+          {% for s in all_services %}
+          <option value="{{ s.id }}" {% if sel_svc_id == s.id %}selected{% endif %}>
+            {{ s.code }} — {{ s.nom }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+
+      {# Bouton export Word — même filtre que la vue courante #}
+      <div class="col-auto ms-auto">
+        <a href="{{ url_for('dashboard.rapport_word',
+                            direction_id=sel_dir_id if sel_dir_id else '',
+                            service_id=sel_svc_id if sel_svc_id else '') }}"
+           class="btn btn-sm btn-outline-dark" title="Exporter le tableau de bord en Word">
+          <i class="fas fa-file-word me-1 text-primary"></i>Exporter Word
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{# ── Bandeau titre entité ────────────────────────────────────────────────── #}
+<div class="card border-0 shadow-sm mb-3" style="background:linear-gradient(90deg,#1a1a2e,#16213e);">
+  <div class="card-body py-3 px-4 d-flex align-items-center gap-3">
+    {% if is_admin and not sel_dir_id and not sel_svc_id %}
+      <i class="fas fa-globe fa-2x text-warning"></i>
+    {% elif role == 'service' or sel_svc_id %}
+      <i class="fas fa-users fa-2x text-warning"></i>
+    {% else %}
+      <i class="fas fa-building fa-2x text-warning"></i>
+    {% endif %}
+    <div>
+      <div class="text-white fw-bold fs-5">{{ titre }}</div>
+      <div class="text-muted small">{{ annee.libelle if annee }}</div>
+    </div>
+    {% if stats %}
+    <div class="ms-auto">
+      <span class="badge fs-4 px-4 py-2"
+            style="background:{% if stats.suivi[0].taux >= 75 %}#198754{% elif stats.suivi[0].taux >= 40 %}#ffc107;color:#000{% else %}#dc3545{% endif %};">
+        {{ '%.1f'|format(stats.suivi[0].taux) }}&thinsp;%
+      </span>
+      <div class="text-muted small text-center mt-1">Taux global</div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% if not stats %}
+<div class="alert alert-info">
+  <i class="fas fa-info-circle me-2"></i>Aucune tâche dans le PTA pour cette entité.
+</div>
+
+{% else %}
+
+{# ════════════════════════════════════════════════════════════════════════════
+   SECTION 1 — Structure du PTA
+════════════════════════════════════════════════════════════════════════════ #}
+<h6 class="fw-bold text-uppercase text-muted letter-spacing-1 mb-2 mt-1">
+  <i class="fas fa-sitemap me-1"></i>Structure du PTA
+</h6>
+
+<div class="row g-2 mb-3">
+  {% for icon, label, val, color in [
+      ('layer-group',     'Programmes', stats.nb_programmes, 'primary'),
+      ('diagram-project', 'Projets',    stats.nb_projets,    'info'),
+      ('list-check',      'Activités',  stats.nb_activites,  'warning'),
+      ('tasks',           'Tâches',     stats.nb_taches,     'success'),
+  ] %}
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center h-100">
+      <div class="card-body py-3">
+        <i class="fas fa-{{ icon }} fa-lg text-{{ color }} mb-2"></i>
+        <div class="fs-3 fw-bold text-{{ color }}">{{ val }}</div>
+        <div class="small text-muted">{{ label }}</div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="row g-2 mb-4">
+  <div class="col-md-6">
+    <div class="card border-start border-4 border-info shadow-sm">
+      <div class="card-body py-2 px-3">
+        <div class="d-flex align-items-center gap-3">
+          <i class="fas fa-hard-hat fa-lg text-info"></i>
+          <div>
+            <div class="fw-bold small">Activités d'investissement</div>
+            <div class="text-muted" style="font-size:.8rem;">
+              {{ stats.nb_invest }} activité{{ 's' if stats.nb_invest > 1 }} ·
+              {{ stats.nb_taches_invest }} tâche{{ 's' if stats.nb_taches_invest > 1 }}
+            </div>
+          </div>
+          <span class="ms-auto badge bg-info fs-6">
+            {{ stats.nb_invest }}<small class="fw-normal"> act.</small>
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card border-start border-4 border-warning shadow-sm">
+      <div class="card-body py-2 px-3">
+        <div class="d-flex align-items-center gap-3">
+          <i class="fas fa-cogs fa-lg text-warning"></i>
+          <div>
+            <div class="fw-bold small">Activités de fonctionnement</div>
+            <div class="text-muted" style="font-size:.8rem;">
+              {{ stats.nb_fonct }} activité{{ 's' if stats.nb_fonct > 1 }} ·
+              {{ stats.nb_taches_fonct }} tâche{{ 's' if stats.nb_taches_fonct > 1 }}
+            </div>
+          </div>
+          <span class="ms-auto badge bg-warning text-dark fs-6">
+            {{ stats.nb_fonct }}<small class="fw-normal"> act.</small>
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ════════════════════════════════════════════════════════════════════════════
+   SECTION 2 — Taux d'exécution
+════════════════════════════════════════════════════════════════════════════ #}
+<h6 class="fw-bold text-uppercase text-muted mb-2">
+  <i class="fas fa-chart-line me-1"></i>Taux d'exécution
+</h6>
+
+<div class="card border-0 shadow-sm mb-4">
+  <div class="table-responsive">
+  <table class="table table-bordered table-sm mb-0 text-center" style="font-size:.82rem;">
+    <thead style="background:#1a1a2e;color:#fff;">
+      <tr>
+        <th class="text-start ps-3">Indicateur</th>
+        <th>T1</th><th>T2</th><th>T3</th><th>T4</th>
+        <th style="background:#155724;">Global</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="text-start ps-3 fw-semibold text-muted">
+          <i class="fas fa-bullseye me-1 text-primary"></i>Cible théorique
+        </td>
+        {% for t in (1,2,3,4) %}
+        <td class="fw-semibold text-primary">{{ '%.1f'|format(stats.cibles[t]) }}&thinsp;%</td>
+        {% endfor %}
+        <td class="fw-semibold text-primary" style="background:#d1f0da;">
+          {{ '%.1f'|format(stats.cibles[0]) }}&thinsp;%
+        </td>
+      </tr>
+      <tr>
+        <td class="text-start ps-3 fw-semibold">
+          <i class="fas fa-check-circle me-1 text-success"></i>Taux réel atteint
+        </td>
+        {% for t in (1,2,3,4) %}
+        <td class="text-muted">—</td>
+        {% endfor %}
+        {% set tx_gl = stats.suivi[0].taux %}
+        <td class="fw-bold"
+            style="background:#d1f0da;color:{% if tx_gl >= 75 %}#155724{% elif tx_gl >= 40 %}#856404{% else %}#dc3545{% endif %}">
+          {{ '%.1f'|format(tx_gl) }}&thinsp;%
+        </td>
+      </tr>
+      <tr>
+        <td class="text-start ps-3 fw-semibold text-muted">
+          <i class="fas fa-arrows-alt-v me-1"></i>Écart global (réel − 100&thinsp;%)
+        </td>
+        {% for t in (1,2,3,4) %}
+        <td class="text-muted">—</td>
+        {% endfor %}
+        {% set ecart_gl = stats.suivi[0].taux - stats.cibles[0] %}
+        <td class="fw-bold" style="background:#d1f0da;
+            color:{% if ecart_gl >= 0 %}#155724{% elif ecart_gl >= -10 %}#856404{% else %}#dc3545{% endif %}">
+          {% if ecart_gl >= 0 %}+{% endif %}{{ '%.1f'|format(ecart_gl) }}&thinsp;%
+        </td>
+      </tr>
+      <tr>
+        <td class="text-start ps-3 text-muted small">Progression globale</td>
+        {% for t in (1,2,3,4) %}<td></td>{% endfor %}
+        {% set tx_gl = stats.suivi[0].taux %}
+        <td style="background:#d1f0da;">
+          <div class="progress" style="height:10px;border-radius:4px;" title="{{ '%.1f'|format(tx_gl) }}%">
+            <div class="progress-bar {% if tx_gl >= 75 %}bg-success{% elif tx_gl >= 40 %}bg-warning{% else %}bg-danger{% endif %}"
+                 style="width:{{ [tx_gl,100]|min }}%"></div>
+          </div>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+</div>
+
+{# ════════════════════════════════════════════════════════════════════════════
+   SECTIONS 3 & 4 — Tâches et Activités par statut
+   Admin : ventilation par nature via pills Bootstrap
+   Service/direction : tableau global uniquement
+════════════════════════════════════════════════════════════════════════════ #}
+
+{% if is_admin and stats.suivi_invest is not none %}
+
+{# Pills communs aux deux sections #}
+<div class="d-flex align-items-center gap-2 mb-2 mt-1">
+  <h6 class="fw-bold text-uppercase text-muted mb-0">
+    <i class="fas fa-filter me-1"></i>Ventilation par nature
+  </h6>
+  <ul class="nav nav-pills ms-2" id="nature-pills" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active py-1 px-3" id="pill-tout"
+              data-bs-toggle="pill" data-bs-target="#nat-tout" type="button" role="tab">
+        <i class="fas fa-th me-1"></i>Toutes
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link py-1 px-3" id="pill-invest"
+              data-bs-toggle="pill" data-bs-target="#nat-invest" type="button" role="tab">
+        <i class="fas fa-hard-hat me-1 text-info"></i>Investissement
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link py-1 px-3" id="pill-fonct"
+              data-bs-toggle="pill" data-bs-target="#nat-fonct" type="button" role="tab">
+        <i class="fas fa-cogs me-1 text-warning"></i>Fonctionnement
+      </button>
+    </li>
+  </ul>
+</div>
+
+<div class="tab-content">
+
+  {# ── Onglet : Toutes natures ── #}
+  <div class="tab-pane fade show active" id="nat-tout" role="tabpanel">
+
+    <h6 class="fw-bold text-uppercase text-muted mb-2">
+      <i class="fas fa-tasks me-1"></i>Tâches par statut — Toutes natures
+    </h6>
+    <div class="card border-0 shadow-sm mb-4">
+      {{ table_statuts(stats.suivi, 'taches') }}
+    </div>
+
+    <h6 class="fw-bold text-uppercase text-muted mb-2">
+      <i class="fas fa-list-check me-1"></i>Activités par statut — Toutes natures
+    </h6>
+    <div class="card border-0 shadow-sm mb-4">
+      {{ table_statuts(stats.suivi, 'activites') }}
+    </div>
+
+  </div>{# /nat-tout #}
+
+  {# ── Onglet : Investissement ── #}
+  <div class="tab-pane fade" id="nat-invest" role="tabpanel">
+
+    <div class="alert alert-info py-2 px-3 mb-3" style="font-size:.84rem;">
+      <i class="fas fa-hard-hat me-1"></i>
+      <strong>Activités d'investissement uniquement</strong> —
+      {{ stats.nb_invest }} activité{{ 's' if stats.nb_invest > 1 }} ·
+      {{ stats.nb_taches_invest }} tâche{{ 's' if stats.nb_taches_invest > 1 }}
+    </div>
+
+    <h6 class="fw-bold text-uppercase text-muted mb-2">
+      <i class="fas fa-tasks me-1"></i>Tâches par statut — Investissement
+    </h6>
+    <div class="card border-0 shadow-sm mb-4">
+      {{ table_statuts(stats.suivi_invest, 'taches') }}
+    </div>
+
+    <h6 class="fw-bold text-uppercase text-muted mb-2">
+      <i class="fas fa-list-check me-1"></i>Activités par statut — Investissement
+    </h6>
+    <div class="card border-0 shadow-sm mb-4">
+      {{ table_statuts(stats.suivi_invest, 'activites') }}
+    </div>
+
+  </div>{# /nat-invest #}
+
+  {# ── Onglet : Fonctionnement ── #}
+  <div class="tab-pane fade" id="nat-fonct" role="tabpanel">
+
+    <div class="alert alert-warning py-2 px-3 mb-3" style="font-size:.84rem;">
+      <i class="fas fa-cogs me-1"></i>
+      <strong>Activités de fonctionnement uniquement</strong> —
+      {{ stats.nb_fonct }} activité{{ 's' if stats.nb_fonct > 1 }} ·
+      {{ stats.nb_taches_fonct }} tâche{{ 's' if stats.nb_taches_fonct > 1 }}
+    </div>
+
+    <h6 class="fw-bold text-uppercase text-muted mb-2">
+      <i class="fas fa-tasks me-1"></i>Tâches par statut — Fonctionnement
+    </h6>
+    <div class="card border-0 shadow-sm mb-4">
+      {{ table_statuts(stats.suivi_fonct, 'taches') }}
+    </div>
+
+    <h6 class="fw-bold text-uppercase text-muted mb-2">
+      <i class="fas fa-list-check me-1"></i>Activités par statut — Fonctionnement
+    </h6>
+    <div class="card border-0 shadow-sm mb-4">
+      {{ table_statuts(stats.suivi_fonct, 'activites') }}
+    </div>
+
+  </div>{# /nat-fonct #}
+
+</div>{# /tab-content #}
+
+{% else %}
+{# Service / direction : affichage classique sans ventilation #}
+
+<h6 class="fw-bold text-uppercase text-muted mb-2">
+  <i class="fas fa-tasks me-1"></i>Tâches par statut
+</h6>
+<div class="card border-0 shadow-sm mb-4">
+  {{ table_statuts(stats.suivi, 'taches') }}
+</div>
+
+<h6 class="fw-bold text-uppercase text-muted mb-2">
+  <i class="fas fa-list-check me-1"></i>Activités par statut
+</h6>
+<div class="card border-0 shadow-sm mb-4">
+  {{ table_statuts(stats.suivi, 'activites') }}
+</div>
+
+{% endif %}
+
+{# ════════════════════════════════════════════════════════════════════════════
+   SECTION 5 — Vue d'ensemble directions & services (admins uniquement)
+════════════════════════════════════════════════════════════════════════════ #}
+{% if is_admin and synthese %}
+<h6 class="fw-bold text-uppercase text-muted mb-2 mt-1">
+  <i class="fas fa-chart-bar me-1"></i>Vue d'ensemble — Directions &amp; Services
+</h6>
+
+<div class="card border-0 shadow-sm mb-4">
+  <div class="table-responsive">
+  <table class="table table-sm table-bordered mb-0" style="font-size:.83rem;">
+    <thead style="background:#1a1a2e;color:#fff;">
+      <tr>
+        <th class="ps-3" style="min-width:260px;">Entité</th>
+        <th class="text-center" style="width:110px;">Taux global</th>
+        <th style="min-width:180px;">Progression</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in synthese %}
+
+      {# ── Ligne direction ── #}
+      {% set td = item.taux %}
+      <tr style="background:#e8eaf6;">
+        <td class="ps-3 fw-bold">
+          <i class="fas fa-building me-2 text-primary"></i>
+          {{ item.direction.code }} — {{ item.direction.nom }}
+        </td>
+        <td class="text-center fw-bold"
+            style="color:{% if td >= 75 %}#155724{% elif td >= 40 %}#856404{% else %}#dc3545{% endif %};">
+          {{ '%.1f'|format(td) }}&thinsp;%
+        </td>
+        <td class="align-middle pe-3">
+          <div class="progress" style="height:9px;border-radius:5px;">
+            <div class="progress-bar {% if td >= 75 %}bg-success{% elif td >= 40 %}bg-warning{% else %}bg-danger{% endif %}"
+                 style="width:{{ [td,100]|min }}%;" title="{{ '%.1f'|format(td) }}%"></div>
+          </div>
+        </td>
+      </tr>
+
+      {# ── Lignes services de la direction ── #}
+      {% if item.services %}
+        {% for sv in item.services %}
+        {% set ts = sv.taux %}
+        <tr>
+          <td class="ps-5 text-muted">
+            <i class="fas fa-users me-2 text-secondary" style="font-size:.75rem;"></i>
+            {{ sv.service.code }} — {{ sv.service.nom }}
+          </td>
+          <td class="text-center fw-semibold"
+              style="color:{% if ts >= 75 %}#155724{% elif ts >= 40 %}#856404{% else %}#dc3545{% endif %};">
+            {{ '%.1f'|format(ts) }}&thinsp;%
+          </td>
+          <td class="align-middle pe-3">
+            <div class="progress" style="height:7px;border-radius:5px;">
+              <div class="progress-bar {% if ts >= 75 %}bg-success{% elif ts >= 40 %}bg-warning{% else %}bg-danger{% endif %}"
+                   style="width:{{ [ts,100]|min }}%;" title="{{ '%.1f'|format(ts) }}%"></div>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      {% else %}
+        <tr>
+          <td colspan="3" class="ps-5 text-muted fst-italic" style="font-size:.78rem;">
+            <i class="fas fa-info-circle me-1"></i>Aucun service rattaché
+          </td>
+        </tr>
+      {% endif %}
+
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+{% endif %}
+
+{# ── Raccourcis ─────────────────────────────────────────────────────────── #}
+<div class="d-flex gap-2 flex-wrap mt-2">
+  {% if role == 'service' %}
+  <a href="{{ url_for('svcpta.index') }}" class="btn btn-outline-primary btn-sm">
+    <i class="fas fa-clipboard-list me-1"></i>Mon PTA
+  </a>
+  {% elif role == 'direction' %}
+  <a href="{{ url_for('dirpta.index') }}" class="btn btn-outline-primary btn-sm">
+    <i class="fas fa-clipboard-list me-1"></i>Mon PTA
+  </a>
+  {% elif is_admin %}
+  <a href="{{ url_for('pta.global_pta') }}" class="btn btn-outline-primary btn-sm">
+    <i class="fas fa-clipboard-list me-1"></i>PTA Global
+  </a>
+  {% endif %}
+  <a href="{{ url_for('suivi.index') }}" class="btn btn-outline-success btn-sm">
+    <i class="fas fa-tasks me-1"></i>Suivi &amp; Évaluation
+  </a>
+</div>
+
+{% endif %}{# stats #}
+
+{% endblock %}

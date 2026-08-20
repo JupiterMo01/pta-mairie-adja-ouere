@@ -302,9 +302,150 @@ def annee_add():
     if Annee.query.filter_by(annee=val).first():
         flash(f"L'année {val} existe déjà.", 'danger')
         return redirect(url_for('admin.annees'))
-    db.session.add(Annee(annee=val, actif=False))
+    nouvelle = Annee(annee=val, actif=False)
+    db.session.add(nouvelle)
     db.session.commit()
-    flash(f'Année {val} créée.', 'success')
+    # Proposer immédiatement la copie du PTA de l'année source
+    return redirect(url_for('admin.annee_confirm_copie', ann_id=nouvelle.id))
+
+
+@admin_bp.route('/annees/<int:ann_id>/confirmer-copie')
+@editeur_required
+def annee_confirm_copie(ann_id):
+    """Page de confirmation : copier ou non le PTA de l'année source vers la nouvelle année."""
+    nouvelle = Annee.query.get_or_404(ann_id)
+    # Source = année active, sinon la plus récente différente de la nouvelle
+    source = Annee.query.filter_by(actif=True).first()
+    if not source or source.id == ann_id:
+        source = Annee.query.filter(Annee.id != ann_id)\
+                             .order_by(Annee.annee.desc()).first()
+    from models import Programme
+    nb_prog_source = Programme.query.filter_by(
+        annee_id=source.id).count() if source else 0
+    return render_template('admin/annee_copie_confirm.html',
+                           nouvelle=nouvelle,
+                           source=source,
+                           nb_prog_source=nb_prog_source)
+
+
+@admin_bp.route('/annees/<int:ann_id>/copier-pta', methods=['POST'])
+@editeur_required
+def annee_copier_pta(ann_id):
+    """Copie la structure complète du PTA (sans suivi) depuis l'année source."""
+    nouvelle = Annee.query.get_or_404(ann_id)
+    source_id = request.form.get('source_id', type=int)
+    if not source_id:
+        flash('Année source introuvable.', 'danger')
+        return redirect(url_for('admin.annees'))
+
+    source = Annee.query.get_or_404(source_id)
+    from models import Programme, Projet, Activite, Tache
+
+    # Vérifier que la nouvelle année est bien vide
+    if Programme.query.filter_by(annee_id=ann_id).first():
+        flash(f'Le PTA {nouvelle.annee} contient déjà des données. Copie annulée.', 'danger')
+        return redirect(url_for('admin.annees'))
+
+    nb_prog = nb_proj = nb_act = nb_tache = 0
+
+    for prog_src in Programme.query.filter_by(annee_id=source_id)\
+                                   .order_by(Programme.numero).all():
+        prog_new = Programme(
+            annee_id            = ann_id,
+            numero              = prog_src.numero,
+            nom                 = prog_src.nom,
+            description         = prog_src.description,
+            objectif_specifique = prog_src.objectif_specifique,
+            poids               = prog_src.poids,
+            observations        = prog_src.observations,
+        )
+        db.session.add(prog_new)
+        db.session.flush()   # obtenir prog_new.id
+        nb_prog += 1
+
+        for proj_src in sorted(prog_src.projets, key=lambda p: p.numero):
+            proj_new = Projet(
+                programme_id = prog_new.id,
+                numero       = proj_src.numero,
+                nom          = proj_src.nom,
+                description  = proj_src.description,
+                poids        = proj_src.poids,
+                observations = proj_src.observations,
+            )
+            db.session.add(proj_new)
+            db.session.flush()
+            nb_proj += 1
+
+            for act_src in sorted(proj_src.activites, key=lambda a: a.numero):
+                act_new = Activite(
+                    projet_id               = proj_new.id,
+                    numero                  = act_src.numero,
+                    nom                     = act_src.nom,
+                    description             = act_src.description,
+                    direction_responsable_id= act_src.direction_responsable_id,
+                    imputation_budgetaire   = act_src.imputation_budgetaire,
+                    ressources_propres      = act_src.ressources_propres,
+                    fadec_affecte           = act_src.fadec_affecte,
+                    fadec_non_affecte       = act_src.fadec_non_affecte,
+                    autres_partenaires      = act_src.autres_partenaires,
+                    autres_fonds            = act_src.autres_fonds,
+                    details_financement     = act_src.details_financement,
+                    acteurs_externes        = act_src.acteurs_externes,
+                    periode_debut           = act_src.periode_debut,
+                    periode_fin             = act_src.periode_fin,
+                    mode_execution          = act_src.mode_execution,
+                    type_activite           = act_src.type_activite,
+                    poids                   = act_src.poids,
+                    observations            = act_src.observations,
+                )
+                # Many-to-many : services et directions intervenants
+                act_new.services_intervenants = list(act_src.services_intervenants)
+                act_new.directions_associees  = list(act_src.directions_associees)
+                db.session.add(act_new)
+                db.session.flush()
+                nb_act += 1
+
+                for tache_src in sorted(act_src.taches,
+                                        key=lambda t: (t.ordre, t.numero)):
+                    tache_new = Tache(
+                        activite_id             = act_new.id,
+                        numero                  = tache_src.numero,
+                        ordre                   = tache_src.ordre,
+                        nom                     = tache_src.nom,
+                        description             = tache_src.description,
+                        poids                   = tache_src.poids,
+                        service_responsable_id  = tache_src.service_responsable_id,
+                        direction_responsable_id= tache_src.direction_responsable_id,
+                        imputation_budgetaire   = tache_src.imputation_budgetaire,
+                        ressources_propres      = tache_src.ressources_propres,
+                        fadec_affecte           = tache_src.fadec_affecte,
+                        fadec_non_affecte       = tache_src.fadec_non_affecte,
+                        autres_partenaires      = tache_src.autres_partenaires,
+                        autres_fonds            = tache_src.autres_fonds,
+                        details_financement     = tache_src.details_financement,
+                        acteurs_externes        = tache_src.acteurs_externes,
+                        mode_execution          = tache_src.mode_execution,
+                        periode_debut           = tache_src.periode_debut,
+                        periode_fin             = tache_src.periode_fin,
+                        observations            = tache_src.observations,
+                    )
+                    # Many-to-many : services et directions concernés
+                    tache_new.services_concernes   = list(tache_src.services_concernes)
+                    tache_new.directions_associees = list(tache_src.directions_associees)
+                    db.session.add(tache_new)
+                    nb_tache += 1
+
+    # Copier aussi l'objectif général de l'année source
+    nouvelle.objectif_general = source.objectif_general
+    db.session.commit()
+
+    flash(
+        f'Structure du PTA {source.annee} copiée vers {nouvelle.annee} avec succès : '
+        f'{nb_prog} programme(s), {nb_proj} projet(s), '
+        f'{nb_act} activité(s), {nb_tache} tâche(s). '
+        "Aucune donnée de suivi n'a été copiée.",
+        'success'
+    )
     return redirect(url_for('admin.annees'))
 
 
@@ -331,6 +472,40 @@ def annee_deactivate(ann_id):
     session.pop('annee_id', None)
     session.pop('annee', None)
     flash(f'Année {a.annee} désactivée.', 'warning')
+    return redirect(url_for('admin.annees'))
+
+
+@admin_bp.route('/annees/<int:ann_id>/purge-suivi', methods=['POST'])
+@editeur_required
+def annee_purge_suivi(ann_id):
+    """Vide uniquement les données de suivi (suivi_taches) pour une année."""
+    a = Annee.query.get_or_404(ann_id)
+    from models import SuiviTache
+    nb = SuiviTache.query.filter_by(annee_id=ann_id).delete()
+    db.session.commit()
+    flash(f'Suivi de {a.annee} vidé : {nb} enregistrement(s) supprimé(s). '
+          f'La structure du PTA est conservée.', 'success')
+    return redirect(url_for('admin.annees'))
+
+
+@admin_bp.route('/annees/<int:ann_id>/purge-pta', methods=['POST'])
+@editeur_required
+def annee_purge_pta(ann_id):
+    """Vide TOUT le PTA d'une année (suivi + programmes/projets/activités/tâches)."""
+    a = Annee.query.get_or_404(ann_id)
+    from models import SuiviTache, Programme
+    # 1. Suivi d'abord (FK vers taches)
+    nb_suivi = SuiviTache.query.filter_by(annee_id=ann_id).delete()
+    db.session.flush()
+    # 2. Programmes en cascade → projets → activités → tâches
+    programmes = Programme.query.filter_by(annee_id=ann_id).all()
+    nb_prog = len(programmes)
+    for prog in programmes:
+        db.session.delete(prog)
+    db.session.commit()
+    flash(f'PTA {a.annee} entièrement vidé : {nb_suivi} suivi(s) et '
+          f'{nb_prog} programme(s) supprimé(s) (avec projets, activités, tâches). '
+          f'L\'année {a.annee} existe toujours et peut être réimportée.', 'success')
     return redirect(url_for('admin.annees'))
 
 

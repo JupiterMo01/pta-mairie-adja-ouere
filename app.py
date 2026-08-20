@@ -61,11 +61,27 @@ def create_app():
             session['_csrf_token'] = secrets.token_hex(24)
         return dict(csrf_token=session['_csrf_token'])
 
+    @app.context_processor
+    def inject_annees():
+        """Injecte la liste de toutes les années et l'id de l'année active
+        dans tous les templates — permet le sélecteur d'année admin."""
+        from models import Annee as _Annee
+        try:
+            toutes = _Annee.query.order_by(_Annee.annee.desc()).all()
+            active = next((a for a in toutes if a.actif), None)
+            return dict(
+                toutes_annees=toutes,
+                annee_active_id=active.id if active else None,
+            )
+        except Exception:
+            return dict(toutes_annees=[], annee_active_id=None)
+
     @app.before_request
     def check_csrf():
         if request.method == 'POST' and request.blueprint != 'auth':
             token = session.get('_csrf_token')
-            form_token = request.form.get('_csrf_token')
+            # Accepte le token via formulaire HTML ou via header X-CSRF-Token (AJAX JSON)
+            form_token = request.form.get('_csrf_token') or request.headers.get('X-CSRF-Token')
             if not token or token != form_token:
                 abort(403)
 
@@ -77,6 +93,8 @@ def create_app():
     from dirpta import dirpta_bp
     from svcpta import svcpta_bp
     from exportation import exportation_bp
+    from suivi import suivi_bp
+    from dashboard import dashboard_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(admin_bp, url_prefix='/admin')
@@ -86,6 +104,8 @@ def create_app():
     app.register_blueprint(dirpta_bp, url_prefix='/dirpta')
     app.register_blueprint(svcpta_bp, url_prefix='/svcpta')
     app.register_blueprint(exportation_bp, url_prefix='/exportation')
+    app.register_blueprint(suivi_bp, url_prefix='/suivi')
+    app.register_blueprint(dashboard_bp, url_prefix='/dashboard')
 
     return app
 

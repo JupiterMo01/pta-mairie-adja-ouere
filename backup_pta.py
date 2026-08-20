@@ -1,59 +1,103 @@
 """
-backup_pta.py — Sauvegarde automatique quotidienne de la base PTA
+backup_pta.py — Sauvegarde automatique quotidienne vers Google Drive
 Mairie d'Adja-Ouèrè — Système de Gestion du PTA
 
-Planifié via PythonAnywhere > Tasks (exécution quotidienne).
-Conserve les 14 derniers fichiers (rotation automatique).
-Journal dans backups/backup.log.
+Pré-requis (sur PythonAnywhere) :
+    pip install --user google-api-python-client google-auth
+
+Configuration :
+    1. Placer drive_key.json dans le même dossier que ce fichier
+    2. Renseigner DRIVE_FOLDER_ID ci-dessous (ID du dossier Drive)
+
+Planification :
+    PythonAnywhere > Tasks > Daily à 00:30 UTC (01h30 heure Bénin)
+    Commande : python /home/jupi01/pta_mairie/backup_pta.py
 """
 
-import shutil
 import os
-import glob
 import datetime
 
-# ── Chemins ───────────────────────────────────────────────────────────────────
-BASE_DIR    = os.path.dirname(os.path.abspath(__file__))
-DB_SOURCE   = os.path.join(BASE_DIR, 'instance', 'pta_mairie.db')
-BACKUP_DIR  = os.path.join(BASE_DIR, 'backups')
-LOG_FILE    = os.path.join(BACKUP_DIR, 'backup.log')
-MAX_BACKUPS = 14   # jours de rétention
+# ── Configuration ──────────────────────────────────────────────────────────────
+BASE_DIR        = os.path.dirname(os.path.abspath(__file__))
+DB_SOURCE       = os.path.join(BASE_DIR, 'instance', 'pta_mairie.db')
+KEY_FILE        = os.path.join(BASE_DIR, 'drive_key.json')
+LOG_FILE        = os.path.join(BASE_DIR, 'backup_drive.log')
 
-# ── Utilitaire log ─────────────────────────────────────────────────────────────
+DRIVE_FOLDER_ID = 'REMPLACER_PAR_ID_DU_DOSSIER_DRIVE'  # ← à remplir
+MAX_BACKUPS     = 14   # jours de rétention
+
+# ── Utilitaires ────────────────────────────────────────────────────────────────
 def log(message):
     horodatage = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     ligne = f"[{horodatage}] {message}"
     print(ligne)
-    os.makedirs(BACKUP_DIR, exist_ok=True)
     with open(LOG_FILE, 'a', encoding='utf-8') as f:
         f.write(ligne + '\n')
+
+def get_drive_service():
+    from google.oauth2 import service_account
+    from googleapiclient.discovery import build
+    creds = service_account.Credentials.from_service_account_file(
+        KEY_FILE,
+        scopes=['https://www.googleapis.com/auth/drive']
+    )
+    return build('drive', 'v3', credentials=creds)
+
+def upload_to_drive(service, local_path, filename):
+    from googleapiclient.http import MediaFileUpload
+    metadata = {'name': filename, 'parents': [DRIVE_FOLDER_ID]}
+    media    = MediaFileUpload(local_path, mimetype='application/x-sqlite3')
+    f = service.files().create(body=metadata, media_body=media, fields='id').execute()
+    return f.get('id')
+
+def rotation_drive(service):
+    """Supprimer les sauvegardes excédentaires (les plus anciennes en premier)."""
+    res = service.files().list(
+        q=(f"'{DRIVE_FOLDER_ID}' in parents "
+           f"and name contains 'pta_mairie_' "
+           f"and trashed=false"),
+        orderBy='createdTime',
+        fields='files(id, name)'
+    ).execute()
+    fichiers = res.get('files', [])
+    while len(fichiers) > MAX_BACKUPS:
+        ancien = fichiers.pop(0)
+        service.files().delete(fileId=ancien['id']).execute()
+        log(f"Supprimé Drive (rotation) : {ancien['name']}")
+    return len(fichiers)
 
 # ── Sauvegarde principale ──────────────────────────────────────────────────────
 def run():
     log("=" * 60)
-    log("Démarrage sauvegarde PTA")
+    log("Démarrage sauvegarde PTA → Google Drive")
 
-    # 1. Vérifier que la base existe
+    # Vérifications
     if not os.path.exists(DB_SOURCE):
         log(f"ERREUR : base de données introuvable → {DB_SOURCE}")
         return
+    if not os.path.exists(KEY_FILE):
+        log(f"ERREUR : clé service account introuvable → {KEY_FILE}")
+        return
+    if DRIVE_FOLDER_ID == 'REMPLACER_PAR_ID_DU_DOSSIER_DRIVE':
+        log("ERREUR : DRIVE_FOLDER_ID non configuré dans backup_pta.py")
+        return
 
-    # 2. Copier avec nom horodaté
-    date_str    = datetime.datetime.now().strftime('%Y-%m-%d_%Hh%M')
-    destination = os.path.join(BACKUP_DIR, f'pta_mairie_{date_str}.db')
-    shutil.copy2(DB_SOURCE, destination)
-    taille_ko = os.path.getsize(destination) / 1024
-    log(f"Copie réussie → {destination}  ({taille_ko:.1f} Ko)")
+    try:
+        service  = get_drive_service()
+        date_str = datetime.datetime.now().strftime('%Y-%m-%d_%Hh%M')
+        filename = f'pta_mairie_{date_str}.db'
+        taille   = os.path.getsize(DB_SOURCE) / 1024
 
-    # 3. Rotation : supprimer les sauvegardes excédentaires
-    toutes = sorted(glob.glob(os.path.join(BACKUP_DIR, 'pta_mairie_*.db')))
-    while len(toutes) > MAX_BACKUPS:
-        ancien = toutes.pop(0)
-        os.remove(ancien)
-        log(f"Supprimé (rotation 14j) : {os.path.basename(ancien)}")
+        file_id = upload_to_drive(service, DB_SOURCE, filename)
+        log(f"Envoyé sur Drive : {filename}  ({taille:.1f} Ko)  ID={file_id}")
 
-    log(f"Sauvegardes actives : {len(toutes)} / {MAX_BACKUPS}")
-    log("Sauvegarde terminée avec succès")
+        nb = rotation_drive(service)
+        log(f"Sauvegardes Drive actives : {nb} / {MAX_BACKUPS}")
+        log("Sauvegarde terminée avec succès ✓")
+
+    except Exception as e:
+        log(f"ERREUR inattendue : {e}")
+        raise
 
 if __name__ == '__main__':
     run()

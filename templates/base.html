@@ -100,6 +100,7 @@
           <i class="fas fa-book me-2 fa-fw"></i>Bibliothèque
         </a>
       </li>
+      {% if current_user.role == 'admin_editeur' %}
       <li><hr class="border-secondary my-1"></li>
       <li class="nav-item">
         <a class="nav-link text-white py-2 px-3 {% if request.blueprint == 'admin' %}active-link{% endif %}"
@@ -107,6 +108,7 @@
           <i class="fas fa-cog me-2 fa-fw"></i>Administration
         </a>
       </li>
+      {% endif %}
       {% endif %}
 
     </ul>

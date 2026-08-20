@@ -11,8 +11,8 @@ def admin_required(f):
     @wraps(f)
     @login_required
     def decorated(*args, **kwargs):
-        if current_user.role not in ('admin_editeur', 'admin_lecteur'):
-            flash('Accès refusé.', 'danger')
+        if current_user.role != 'admin_editeur':
+            flash('Accès refusé. Réservé aux administrateurs éditeurs.', 'danger')
             return redirect(url_for('pta.global_pta'))
         return f(*args, **kwargs)
     return decorated
@@ -618,7 +618,7 @@ def struct_ext_delete(se_id):
 # ─── Journal d'audit ────────────────────────────────────────────────────────
 
 @admin_bp.route('/journal')
-@admin_required
+@editeur_required
 def journal():
     from models import AuditLog
     import datetime as _dt

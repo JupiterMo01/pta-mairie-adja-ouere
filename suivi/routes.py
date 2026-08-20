@@ -20,6 +20,7 @@ from models import db, Programme, Tache, SuiviTache, Annee, Direction, Service
 from svcpta.routes import _compute_pta_service, _renorm
 from dirpta.routes import _compute_pta_direction
 from suivi import suivi_bp
+from utils import log_audit
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -545,6 +546,9 @@ def save():
         saved += 1
 
     db.session.commit()
+    if saved > 0:
+        lbl_tri = f"T{trimestre}" if trimestre else "Global"
+        log_audit('suivi_valide', f"Suivi {lbl_tri} — {saved} tâche(s) enregistrée(s)")
 
     # Recalcul : toujours en mode global (statut le plus récent par tâche)
     suivi_map = _load_suivis_global(annee.id)

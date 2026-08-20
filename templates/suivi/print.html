@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Suivi PTA {{ annee.annee if annee }} — {{ titre }}</title>
+<style>
+  @page {
+    size: A4 landscape;
+    margin: 1.8cm 1cm 2.2cm 1cm;
+    @bottom-left  { content: "Mairie d'Adja-Ouèrè — Suivi PTA {{ annee.annee if annee }} — {{ titre | replace('"', "'") | safe }}"; font-size:7pt; color:#555; font-weight:bold; }
+    @bottom-center{ content: ""; }
+    @bottom-right { content: "Page " counter(page) " / " counter(pages); font-size:7pt; color:#555; font-weight:bold; }
+  }
+  * {
+    box-sizing:border-box; margin:0; padding:0;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  body { font-family:Arial,Helvetica,sans-serif; font-size:7.5pt; color:#000; background:#fff; }
+
+  /* ─ Barre écran ─ */
+  .screen-bar {
+    background:#1a1a2e; color:#fff; padding:10px 20px;
+    display:flex; align-items:center; gap:12px;
+  }
+  .screen-bar span { font-size:13px; font-weight:bold; flex:1; }
+  .screen-bar button {
+    padding:7px 18px; border:none; border-radius:4px;
+    cursor:pointer; font-size:13px; font-weight:bold;
+  }
+  .btn-p { background:#28a745; color:#fff; }
+  .btn-c { background:#6c757d; color:#fff; }
+  @media print { .screen-bar { display:none !important; } }
+
+  /* ─ En-tête officiel ─ */
+  .entete {
+    display:flex; justify-content:space-between; align-items:center;
+    margin-bottom:6px; border-bottom:2px solid #333; padding-bottom:6px;
+  }
+  .entete-gauche img  { height:72px; width:auto; }
+  .entete-centre { text-align:center; width:24%; font-size:7.5pt; line-height:2.0; }
+  .entete-droite { text-align:right; }
+  .entete-droite img  { height:72px; width:auto; }
+
+  /* ─ Titre ─ */
+  .titre-pta {
+    text-align:center; margin:7px 0 5px 0;
+    border:2.5px solid #155724; border-radius:4px;
+    padding:6px 0; background:#d1f0da;
+  }
+  .titre-pta-h1 { font-size:13pt; font-weight:bold; letter-spacing:2px; text-transform:uppercase; }
+  .titre-pta-h2 { font-size:10pt; font-weight:bold; color:#155724; margin-top:3px; }
+  .titre-pta-h3 { font-size:9pt; font-weight:bold; color:#0a3d1e; margin-top:2px; }
+  .titre-pta-taux {
+    display:inline-block; margin-top:5px;
+    background:#155724; color:#fff; border-radius:4px;
+    padding:2px 14px; font-weight:bold; font-size:10pt;
+  }
+  .obj-gen {
+    border:1px solid #888; border-radius:3px; padding:4px 8px;
+    margin-bottom:6px; font-size:7.5pt; background:#f8f9fa; font-weight:bold;
+  }
+
+  /* ─ Tableau (7 colonnes) ─ */
+  table { width:100%; border-collapse:collapse; font-size:7pt; table-layout:fixed; }
+  col.c-code { width:4.5%; }
+  col.c-nom  { width:33%; }
+  col.c-per  { width:8%; }
+  col.c-pds  { width:5%; }
+  col.c-stat { width:12%; }
+  col.c-taux { width:7%; }
+  col.c-obs  { width:30.5%; }
+
+  thead { display:table-header-group; }
+  tfoot { display:table-footer-group; }
+
+  th {
+    background:#FF69B4 !important; border:1px solid #555;
+    padding:2px 3px; text-align:center; font-size:6.5pt;
+    font-weight:bold; vertical-align:middle; word-wrap:break-word;
+  }
+  td { border:1px solid #888; padding:2px 3px; vertical-align:middle; word-wrap:break-word; }
+  td.c { text-align:center; }
+  td.l { text-align:left; }
+
+  tr.prog td { background:#FFFF99 !important; font-weight:bold; }
+  tr.proj td { background:#FFB6C1 !important; font-weight:bold; }
+  tr.act  td { background:#D3D3D3 !important; font-weight:bold; }
+  tr.tach td { background:#ffffff; }
+  tr.os   td { background:#FFFACD !important; font-style:italic; font-weight:bold; }
+  tr.tot  td { background:#155724 !important; color:#fff !important;
+               font-weight:bold; text-align:center; }
+
+  /* ─ Badges statut et service ─ */
+  .badge { display:inline-block; padding:1px 5px; border-radius:3px;
+           font-size:6pt; font-weight:bold; }
+  .b-ex { background:#198754 !important; color:#fff !important; }
+  .b-ec { background:#ffc107 !important; color:#000 !important; }
+  .b-ne { background:#6c757d !important; color:#fff !important; }
+  .b-svc { display:inline-block; padding:0 4px; border-radius:2px;
+            font-size:5.5pt; font-style:italic; color:#555; border:1px solid #ccc;
+            background:#f5f5f5; margin-left:3px; }
+
+  /* ─ Pied de tableau ─ */
+  tfoot td {
+    font-size:6.5pt; color:#444; border:none; font-weight:bold;
+    border-top:1px solid #bbb; padding:2px 4px; background:#f5f5f5;
+  }
+</style>
+</head>
+<body>
+
+{# ── Barre écran ── #}
+<div class="screen-bar">
+  <span>📄 Suivi PTA {{ annee.annee if annee }} — {{ titre }}{% if trimestre > 0 %} — T{{ trimestre }}{% endif %}</span>
+  <button class="btn-p" onclick="window.print()">🖨️ Imprimer / Enregistrer PDF</button>
+  <button class="btn-c" onclick="window.close()">✕ Fermer</button>
+</div>
+
+<div style="padding:8px 10px;">
+
+{# ── En-tête officiel ── #}
+<div class="entete">
+  <div class="entete-gauche">
+    <img src="{{ url_for('static', filename='img/bandeau.png') }}" alt="Bandeau officiel">
+  </div>
+  <div class="entete-centre">
+    <strong>BP 02 Adja-Ouèrè</strong><br>
+    <strong>Tél&nbsp;: +229 01 61 91 96 12</strong><br>
+    <strong>Email&nbsp;: contact.adjaouere@mairie.bj</strong>
+  </div>
+  <div class="entete-droite">
+    <img src="{{ url_for('static', filename='img/logo_commune.png') }}" alt="Logo Commune">
+  </div>
+</div>
+
+{# ── Titre ── #}
+<div class="titre-pta">
+  <div class="titre-pta-h1">PLAN DE TRAVAIL ANNUEL — SUIVI &amp; ÉVALUATION</div>
+  <div class="titre-pta-h2">Exercice {{ annee.annee if annee }}</div>
+  <div class="titre-pta-h3">{{ titre }}</div>
+  {% if trimestre > 0 %}
+  <div class="titre-pta-h3">Trimestre {{ trimestre }}</div>
+  {% else %}
+  <div class="titre-pta-h3">Vue globale — état consolidé</div>
+  {% endif %}
+  <div>
+    <span class="titre-pta-taux">Taux d'exécution : {{ '%.2f'|format(taux_global) }}&thinsp;%</span>
+  </div>
+</div>
+
+{% if annee and annee.objectif_general %}
+<div class="obj-gen">
+  <strong>Objectif général :</strong> {{ annee.objectif_general }}
+</div>
+{% endif %}
+
+{# ── Macro badge statut ── #}
+{% macro badge_statut(s) %}
+{% if s == 'execute' %}<span class="badge b-ex">Exécutée</span>
+{% elif s == 'en_cours' %}<span class="badge b-ec">En cours</span>
+{% else %}<span class="badge b-ne">Non exécutée</span>
+{% endif %}
+{% endmacro %}
+
+{# ── Tableau (7 colonnes — sans Responsable) ── #}
+{% if not data %}
+<p style="margin-top:20px;text-align:center;color:#777;font-style:italic;">
+  Aucune tâche à afficher pour cette sélection.
+</p>
+{% else %}
+<table>
+  <colgroup>
+    <col class="c-code"><col class="c-nom"><col class="c-per">
+    <col class="c-pds"><col class="c-stat"><col class="c-taux">
+    <col class="c-obs">
+  </colgroup>
+
+  <thead>
+    <tr>
+      <th>Code</th>
+      <th>Libellé / Activité / Tâche</th>
+      <th>Période</th>
+      <th>Poids&nbsp;%</th>
+      <th>Statut</th>
+      <th>Taux&nbsp;%</th>
+      <th>Observations / Difficultés</th>
+    </tr>
+  </thead>
+
+  <tfoot>
+    <tr>
+      <td colspan="3" id="ft-date">Imprimé le …</td>
+      <td colspan="4" style="text-align:right;">
+        Direction du Développement Local et de la Planification (DDLP)
+      </td>
+    </tr>
+  </tfoot>
+
+  <tbody>
+  {% for pd in data %}{% set prog = pd['programme'] %}
+
+  {% if prog.objectif_specifique %}
+  <tr class="os">
+    <td colspan="7">
+      Objectif {{ pd['code'] }}/Résultat {{ pd['code'] }} : {{ prog.objectif_specifique }}
+    </td>
+  </tr>
+  {% endif %}
+
+  {# ── Programme ── #}
+  <tr class="prog" style="border-top:2px solid #777;">
+    <td class="c">{{ pd['code'] }}</td>
+    <td>Programme {{ pd['code'] }} : {{ prog.nom }}</td>
+    <td></td>
+    <td class="c">{{ pd['new_poids']|pct }}%</td>
+    <td></td>
+    <td class="c"><strong>{{ '%.2f'|format(pd['taux']) }}%</strong></td>
+    <td></td>
+  </tr>
+
+  {% for pjd in pd['projets'] %}{% set proj = pjd['projet'] %}
+  {# ── Projet ── #}
+  <tr class="proj">
+    <td class="c">{{ pjd['code'] }}</td>
+    <td colspan="2">Projet {{ pjd['code'] }} : {{ proj.nom }}</td>
+    <td class="c">{{ pjd['new_poids']|pct }}%</td>
+    <td></td>
+    <td class="c"><strong>{{ '%.2f'|format(pjd['taux']) }}%</strong></td>
+    <td></td>
+  </tr>
+
+  {% for ad in pjd['activites'] %}{% set act = ad['activite'] %}
+  {% if act.periode_debut and act.periode_fin and act.periode_debut != act.periode_fin %}
+    {% set per_a = act.periode_debut|mois_court ~ ' - ' ~ act.periode_fin|mois_court %}
+  {% elif act.periode_debut %}{% set per_a = act.periode_debut|mois_court %}
+  {% elif act.periode_fin  %}{% set per_a = act.periode_fin|mois_court %}
+  {% else %}{% set per_a = '' %}{% endif %}
+
+  {# ── Activité ── #}
+  <tr class="act">
+    <td class="c">{{ ad['code'] }}</td>
+    <td>{{ act.nom }}</td>
+    <td class="c">{{ per_a }}</td>
+    <td class="c">{{ ad['new_poids']|pct }}%</td>
+    <td class="c">{{ badge_statut(ad['statut']) }}</td>
+    <td class="c"><strong>{{ '%.2f'|format(ad['taux']) }}%</strong></td>
+    <td></td>
+  </tr>
+
+  {% for td in ad['taches'] %}{% set t = td['tache'] %}
+  {% if t.periode_debut and t.periode_fin and t.periode_debut != t.periode_fin %}
+    {% set per_t = t.periode_debut|mois_court ~ ' - ' ~ t.periode_fin|mois_court %}
+  {% elif t.periode_debut %}{% set per_t = t.periode_debut|mois_court %}
+  {% elif t.periode_fin  %}{% set per_t = t.periode_fin|mois_court %}
+  {% else %}{% set per_t = '' %}{% endif %}
+
+  {# ── Tâche ── #}
+  <tr class="tach">
+    <td class="c" style="color:#666;">{{ td['num'] }}</td>
+    <td style="padding-left:8px;">
+      ▸ {{ t.nom }}
+      {# Badge service (direction/global uniquement) #}
+      {% if show_service_badge and t.service_responsable %}
+      <span class="b-svc">{{ t.service_responsable.code }}</span>
+      {% endif %}
+    </td>
+    <td class="c">{{ per_t }}</td>
+    <td class="c">{{ td['new_poids']|pct }}%</td>
+    <td class="c">{{ badge_statut(td['statut']) }}</td>
+    <td class="c"
+        style="{% if td['taux'] >= 100 %}color:#155724;{% elif td['taux'] > 0 %}color:#856404;{% else %}color:#666;{% endif %}font-weight:bold;">
+      {{ '%.2f'|format(td['taux']) }}%
+    </td>
+    <td style="font-size:6.5pt;white-space:pre-wrap;">{{
+      td['suivi'].observation if td['suivi'] and td['suivi'].observation else '' }}</td>
+  </tr>
+  {% endfor %}{% endfor %}{% endfor %}{% endfor %}
+
+  {# ── Total général ── #}
+  <tr class="tot">
+    <td></td>
+    <td>TOTAL GÉNÉRAL</td>
+    <td></td>
+    <td>100%</td>
+    <td></td>
+    <td>{{ '%.2f'|format(taux_global) }}%</td>
+    <td></td>
+  </tr>
+  </tbody>
+</table>
+{% endif %}
+
+</div>
+
+<script>
+(function(){
+  var now = new Date();
+  var p = function(n){ return n < 10 ? '0'+n : ''+n; };
+  var s = p(now.getDate())+'/'+p(now.getMonth()+1)+'/'+now.getFullYear()
+        +' à '+p(now.getHours())+':'+p(now.getMinutes())+':'+p(now.getSeconds());
+  var el = document.getElementById('ft-date');
+  if(el) el.textContent = 'Imprimé le ' + s;
+})();
+window.addEventListener('load', function(){ setTimeout(function(){ window.print(); }, 500); });
+</script>
+</body>
+</html>

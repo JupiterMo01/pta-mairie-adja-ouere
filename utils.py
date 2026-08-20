@@ -11,11 +11,17 @@ def get_suivi(tache_id, trimestre, annee_id, service_id=None):
 
 
 def taux_tache(tache, trimestre, annee_id):
-    """Taux d'une tâche : 100% si exécutée, 0% sinon."""
+    """Taux d'une tâche : 100% si exécutée, taux_execution si en cours, 0% sinon."""
     suivi = SuiviTache.query.filter_by(
         tache_id=tache.id, trimestre=trimestre, annee_id=annee_id
     ).first()
-    return 100.0 if (suivi and suivi.statut == 'execute') else 0.0
+    if not suivi:
+        return 0.0
+    if suivi.statut == 'execute':
+        return 100.0
+    if suivi.statut == 'en_cours':
+        return float(suivi.taux_execution or 0)
+    return 0.0
 
 
 def _filtrer_taches(activite, service_id=None, direction_id=None):

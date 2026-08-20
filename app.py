@@ -85,6 +85,30 @@ def create_app():
             if not token or token != form_token:
                 abort(403)
 
+    # ── Route de déclenchement de la sauvegarde (appelée par cron-job.org) ──────
+    @app.route('/api/backup')
+    def api_backup():
+        import os, subprocess
+        from flask import jsonify
+        # Vérification du token secret
+        token_recu  = request.args.get('token', '')
+        config_path = os.path.expanduser('~/.pta_backup_config')
+        token_attendu = ''
+        if os.path.exists(config_path):
+            with open(config_path, encoding='utf-8') as f:
+                for ligne in f:
+                    if ligne.startswith('BACKUP_TOKEN='):
+                        token_attendu = ligne.split('=', 1)[1].strip()
+        if not token_attendu or token_recu != token_attendu:
+            abort(403)
+        # Lancer la sauvegarde
+        try:
+            script = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'backup_pta.py')
+            subprocess.run(['python', script], timeout=60, check=True)
+            return jsonify({'status': 'ok', 'message': 'Sauvegarde effectuée'})
+        except Exception as e:
+            return jsonify({'status': 'erreur', 'message': str(e)}), 500
+
     from auth import auth_bp
     from admin import admin_bp
     from pta import pta_bp

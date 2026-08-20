@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block title %}Journal d'audit{% endblock %}
+{% block page_title %}<i class="fas fa-history me-2"></i>Journal d'audit{% endblock %}
+
+{% block content %}
+{# ── Filtres ── #}
+<form method="GET" action="{{ url_for('admin.journal') }}" class="row g-2 align-items-end mb-3 mt-1">
+  <div class="col-sm-4 col-md-3">
+    <label class="form-label small fw-semibold mb-1">Action</label>
+    <select name="action" class="form-select form-select-sm">
+      <option value="">— Toutes —</option>
+      {% for a in actions_dispo %}
+      <option value="{{ a }}" {% if filtre_action == a %}selected{% endif %}>{{ a }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-sm-4 col-md-3">
+    <label class="form-label small fw-semibold mb-1">Utilisateur</label>
+    <input type="text" name="user" value="{{ filtre_user }}"
+           class="form-control form-control-sm" placeholder="Nom ou rôle…">
+  </div>
+  <div class="col-sm-3 col-md-2">
+    <label class="form-label small fw-semibold mb-1">Date (depuis)</label>
+    <input type="date" name="depuis" value="{{ filtre_depuis }}"
+           class="form-control form-control-sm">
+  </div>
+  <div class="col-auto d-flex gap-2">
+    <button type="submit" class="btn btn-primary btn-sm">
+      <i class="fas fa-filter me-1"></i>Filtrer
+    </button>
+    <a href="{{ url_for('admin.journal') }}" class="btn btn-outline-secondary btn-sm">
+      <i class="fas fa-times me-1"></i>Réinitialiser
+    </a>
+  </div>
+</form>
+
+{# ── Tableau ── #}
+<div class="card border-0 shadow-sm">
+  <div class="card-header bg-white d-flex justify-content-between align-items-center border-0 py-2">
+    <span class="text-muted small">
+      {{ pagination.total }} entrée(s) — page {{ pagination.page }}/{{ pagination.pages }}
+    </span>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover table-sm align-middle mb-0" style="font-size:.82rem;">
+      <thead class="table-dark">
+        <tr>
+          <th style="width:150px;">Horodatage</th>
+          <th style="width:160px;">Utilisateur</th>
+          <th style="width:120px;">Action</th>
+          <th>Détails</th>
+          <th style="width:100px;">IP</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in entries %}
+        <tr>
+          <td class="text-nowrap font-monospace">
+            {{ e.horodatage.strftime('%d/%m/%Y %H:%M:%S') }}
+          </td>
+          <td>
+            <span class="fw-semibold">{{ e.user_nom or '—' }}</span>
+            {% if e.user_role %}
+            <br><span class="badge
+              {% if e.user_role == 'admin_editeur' %}bg-danger
+              {% elif e.user_role == 'admin_lecteur' %}bg-secondary
+              {% elif e.user_role == 'direction' %}bg-primary
+              {% else %}bg-success{% endif %}
+              " style="font-size:.7rem;">{{ e.user_role }}</span>
+            {% endif %}
+          </td>
+          <td>
+            <span class="badge
+              {% if e.action in ('connexion','deconnexion') %}bg-info text-dark
+              {% elif e.action == 'echec_connexion' %}bg-danger
+              {% elif e.action.startswith('user_') %}bg-warning text-dark
+              {% elif e.action.startswith('annee_') %}bg-primary
+              {% elif e.action == 'suivi_valide' %}bg-success
+              {% elif e.action == 'sauvegarde' %}bg-dark
+              {% else %}bg-secondary{% endif %}
+            ">{{ e.action }}</span>
+          </td>
+          <td class="text-muted">{{ e.details or '' }}</td>
+          <td class="font-monospace text-muted" style="font-size:.75rem;">
+            {{ e.ip or '—' }}
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="5" class="text-center text-muted py-4">
+            <i class="fas fa-inbox me-2"></i>Aucune entrée correspondant aux critères.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {# ── Pagination ── #}
+  {% if pagination.pages > 1 %}
+  <div class="card-footer bg-white border-0 py-2">
+    <nav>
+      <ul class="pagination pagination-sm justify-content-center mb-0">
+        <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+          <a class="page-link" href="{{ url_for('admin.journal',
+              page=pagination.prev_num,
+              action=filtre_action, user=filtre_user, depuis=filtre_depuis) }}">
+            <i class="fas fa-chevron-left"></i>
+          </a>
+        </li>
+        {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+          {% if p %}
+          <li class="page-item {% if p == pagination.page %}active{% endif %}">
+            <a class="page-link" href="{{ url_for('admin.journal',
+                page=p, action=filtre_action, user=filtre_user, depuis=filtre_depuis) }}">{{ p }}</a>
+          </li>
+          {% else %}
+          <li class="page-item disabled"><span class="page-link">…</span></li>
+          {% endif %}
+        {% endfor %}
+        <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+          <a class="page-link" href="{{ url_for('admin.journal',
+              page=pagination.next_num,
+              action=filtre_action, user=filtre_user, depuis=filtre_depuis) }}">
+            <i class="fas fa-chevron-right"></i>
+          </a>
+        </li>
+      </ul>
+    </nav>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

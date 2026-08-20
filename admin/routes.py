@@ -28,6 +28,24 @@ def editeur_required(f):
     return decorated
 
 
+# ─── Sauvegarde manuelle ────────────────────────────────────────────────────
+
+@admin_bp.route('/backup-now', methods=['POST'])
+@editeur_required
+def backup_now():
+    """Déclenche une sauvegarde immédiate par email (admin_editeur uniquement)."""
+    import subprocess, os, sys
+    script = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'backup_pta.py')
+    try:
+        subprocess.run([sys.executable, script], timeout=60, check=True)
+        flash('Sauvegarde envoyée par email avec succès.', 'success')
+    except subprocess.TimeoutExpired:
+        flash('La sauvegarde a dépassé le délai. Vérifiez backup_email.log.', 'warning')
+    except subprocess.CalledProcessError as e:
+        flash(f'Erreur lors de la sauvegarde. Vérifiez backup_email.log.', 'danger')
+    return redirect(url_for('admin.index'))
+
+
 # ─── Tableau de bord ────────────────────────────────────────────────────────
 
 @admin_bp.route('/')

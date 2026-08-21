@@ -410,6 +410,8 @@ class BiblioTache(db.Model):
     details_financement = db.Column(db.Text, nullable=True)
     acteurs_externes = db.Column(db.Text, nullable=True)
     mode_execution = db.Column(db.String(100), nullable=True, default='Direct')
+    periode_debut  = db.Column(db.String(20), nullable=True)
+    periode_fin    = db.Column(db.String(20), nullable=True)
 
     direction_responsable_id = db.Column(db.Integer, db.ForeignKey('directions.id'), nullable=True)
 

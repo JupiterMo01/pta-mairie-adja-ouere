@@ -1,7 +1,8 @@
 from flask import render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
 from functools import wraps
-from models import db, BiblioActivite, BiblioTache, Direction, Service, MODES_EXECUTION, StructureExterne
+from models import (db, BiblioActivite, BiblioTache, Direction, Service,
+                    MODES_EXECUTION, StructureExterne, Annee, Programme, Projet, Activite, Tache)
 from biblio import biblio_bp
 
 
@@ -58,8 +59,8 @@ def _activite_from_form(a):
         a.imputation_budgetaire = request.form.get('imputation_budgetaire', '').strip() or 'NÉANT'
     else:
         a.imputation_budgetaire = 'NÉANT'
-    a.periode_debut = request.form.get('periode_debut', '').strip()
-    a.periode_fin = request.form.get('periode_fin', '').strip()
+    a.periode_debut = request.form.get('periode_debut', '').strip() or None
+    a.periode_fin   = request.form.get('periode_fin',   '').strip() or None
     a.poids = _parse_float(request.form.get('poids'))
     a.ressources_propres = _parse_float(request.form.get('ressources_propres'))
     a.fadec_affecte = _parse_float(request.form.get('fadec_affecte'))
@@ -114,7 +115,9 @@ def _tache_from_form(t):
     t.autres_fonds = _parse_float(request.form.get('autres_fonds'))
     t.details_financement = request.form.get('details_financement', '').strip() or 'RAS'
     t.acteurs_externes = request.form.get('acteurs_externes', '').strip()
-    t.mode_execution = request.form.get('mode_execution', '').strip() or 'Direct'
+    t.mode_execution  = request.form.get('mode_execution',  '').strip() or 'Direct'
+    t.periode_debut   = request.form.get('periode_debut',   '').strip() or None
+    t.periode_fin     = request.form.get('periode_fin',     '').strip() or None
     structures_mode = request.form.get('structures_mode', 'aucun')
     if structures_mode == 'tous_services':
         t.services_concernes = Service.query.order_by(Service.nom).all()
@@ -144,10 +147,21 @@ def index():
     directions = Direction.query.order_by(Direction.nom).all()
     services = Service.query.order_by(Service.nom).all()
     structures_externes = StructureExterne.query.order_by(StructureExterne.nom).all()
+    # Activités PTA de toutes les années (pour import)
+    annees_pta = Annee.query.order_by(Annee.annee.desc()).all()
+    pta_acts = (
+        db.session.query(Annee.annee, Activite.id, Activite.nom)
+        .join(Programme, Programme.annee_id == Annee.id)
+        .join(Projet,    Projet.programme_id == Programme.id)
+        .join(Activite,  Activite.projet_id == Projet.id)
+        .order_by(Annee.annee.desc(), Activite.nom)
+        .all()
+    )
     return render_template('biblio/index.html',
                            activites=activites, directions=directions,
                            services=services, modes_execution=MODES_EXECUTION,
-                           structures_externes=structures_externes)
+                           structures_externes=structures_externes,
+                           pta_acts=pta_acts)
 
 
 # ─── Activités ────────────────────────────────────────────────────────────────
@@ -197,8 +211,23 @@ def tache_add(act_id):
     if not nom:
         flash('Le nom est obligatoire.', 'danger')
         return redirect(url_for('biblio.index'))
-    last = BiblioTache.query.filter_by(biblio_activite_id=act_id).order_by(BiblioTache.numero.desc()).first()
-    numero = (last.numero + 1) if last else 1
+    # Insertion après une tâche existante ?
+    after_id = request.form.get('after_id', type=int)
+    if after_id:
+        ref = BiblioTache.query.filter_by(id=after_id, biblio_activite_id=act_id).first()
+        if ref:
+            apres = BiblioTache.query.filter_by(biblio_activite_id=act_id)\
+                                      .filter(BiblioTache.numero > ref.numero).all()
+            for ta in apres:
+                ta.numero += 1
+            db.session.flush()
+            numero = ref.numero + 1
+        else:
+            last = BiblioTache.query.filter_by(biblio_activite_id=act_id).order_by(BiblioTache.numero.desc()).first()
+            numero = (last.numero + 1) if last else 1
+    else:
+        last = BiblioTache.query.filter_by(biblio_activite_id=act_id).order_by(BiblioTache.numero.desc()).first()
+        numero = (last.numero + 1) if last else 1
     t = BiblioTache(biblio_activite_id=act_id, numero=numero, nom=nom)
     _tache_from_form(t)
     db.session.add(t)
@@ -257,6 +286,8 @@ def tache_duplicate(tache_id):
         direction_responsable_id=t.direction_responsable_id,
         imputation_budgetaire=t.imputation_budgetaire,
         mode_execution=t.mode_execution or 'Direct',
+        periode_debut=t.periode_debut,
+        periode_fin=t.periode_fin,
         ressources_propres=t.ressources_propres or 0,
         fadec_affecte=t.fadec_affecte or 0,
         fadec_non_affecte=t.fadec_non_affecte or 0,
@@ -286,4 +317,193 @@ def tache_delete(tache_id):
     _renumeroter(act_id)
     db.session.commit()
     flash('Tâche supprimée.', 'success')
+    return redirect(url_for('biblio.index', go=f'bact-{act_id}'))
+
+
+# ─── Duplication d'activité ──────────────────────────────────────────────────
+
+@biblio_bp.route('/activite/<int:act_id>/duplicate', methods=['POST'])
+@admin_editeur_only
+def activite_duplicate(act_id):
+    src = BiblioActivite.query.get_or_404(act_id)
+    new_nom = (src.nom + ' (copie)')[:300]
+    a = BiblioActivite(
+        nom=new_nom,
+        description=src.description,
+        direction_responsable_id=src.direction_responsable_id,
+        mode_execution=src.mode_execution,
+        type_activite=src.type_activite,
+        imputation_budgetaire=src.imputation_budgetaire,
+        periode_debut=src.periode_debut,
+        periode_fin=src.periode_fin,
+        poids=src.poids or 0,
+        ressources_propres=src.ressources_propres or 0,
+        fadec_affecte=src.fadec_affecte or 0,
+        fadec_non_affecte=src.fadec_non_affecte or 0,
+        autres_partenaires=src.autres_partenaires or 0,
+        autres_fonds=src.autres_fonds or 0,
+        details_financement=src.details_financement,
+        acteurs_externes=src.acteurs_externes,
+    )
+    a.services_associes   = list(src.services_associes)
+    a.directions_associees = list(src.directions_associees)
+    a.structures_externes  = list(src.structures_externes)
+    db.session.add(a)
+    db.session.flush()
+    for t in sorted(src.taches, key=lambda x: x.numero):
+        nt = BiblioTache(
+            biblio_activite_id=a.id, numero=t.numero, nom=t.nom,
+            description=t.description, poids=t.poids or 0,
+            service_responsable_id=t.service_responsable_id,
+            direction_responsable_id=t.direction_responsable_id,
+            imputation_budgetaire=t.imputation_budgetaire,
+            mode_execution=t.mode_execution or 'Direct',
+            periode_debut=t.periode_debut,
+            periode_fin=t.periode_fin,
+            ressources_propres=t.ressources_propres or 0,
+            fadec_affecte=t.fadec_affecte or 0,
+            fadec_non_affecte=t.fadec_non_affecte or 0,
+            autres_partenaires=t.autres_partenaires or 0,
+            autres_fonds=t.autres_fonds or 0,
+            details_financement=t.details_financement,
+            acteurs_externes=t.acteurs_externes,
+        )
+        nt.services_concernes  = list(t.services_concernes)
+        nt.directions_associees = list(t.directions_associees)
+        nt.structures_externes  = list(t.structures_externes)
+        db.session.add(nt)
+    db.session.commit()
+    flash(f'Activité « {src.nom} » dupliquée.', 'success')
+    return redirect(url_for('biblio.index', go=f'bact-{a.id}'))
+
+
+# ─── Import depuis PTA ───────────────────────────────────────────────────────
+
+def _copier_tache_pta_vers_biblio(t_pta, act_biblio_id, numero):
+    """Copie une Tache PTA vers une BiblioTache."""
+    nt = BiblioTache(
+        biblio_activite_id=act_biblio_id, numero=numero, nom=t_pta.nom,
+        description=t_pta.description, poids=t_pta.poids or 0,
+        service_responsable_id=t_pta.service_responsable_id,
+        direction_responsable_id=t_pta.direction_responsable_id,
+        imputation_budgetaire=t_pta.imputation_budgetaire,
+        mode_execution=t_pta.mode_execution or 'Direct',
+        periode_debut=t_pta.periode_debut,
+        periode_fin=t_pta.periode_fin,
+        ressources_propres=t_pta.ressources_propres or 0,
+        fadec_affecte=t_pta.fadec_affecte or 0,
+        fadec_non_affecte=t_pta.fadec_non_affecte or 0,
+        autres_partenaires=t_pta.autres_partenaires or 0,
+        autres_fonds=t_pta.autres_fonds or 0,
+        details_financement=t_pta.details_financement,
+        acteurs_externes=t_pta.acteurs_externes,
+    )
+    nt.services_concernes  = list(t_pta.services_concernes)
+    nt.directions_associees = list(t_pta.directions_associees)
+    nt.structures_externes  = list(t_pta.structures_externes)
+    return nt
+
+
+@biblio_bp.route('/import-activite-from-pta', methods=['POST'])
+@admin_editeur_only
+def import_activite_from_pta():
+    """Importe une activité PTA (avec toutes ses tâches) dans la bibliothèque."""
+    act_id = request.form.get('pta_activite_id', type=int)
+    if not act_id:
+        flash('Aucune activité sélectionnée.', 'danger')
+        return redirect(url_for('biblio.index'))
+    src = Activite.query.get_or_404(act_id)
+    a = BiblioActivite(
+        nom=src.nom,
+        description=src.description,
+        direction_responsable_id=src.direction_responsable_id,
+        mode_execution=src.mode_execution or 'Direct',
+        type_activite=getattr(src, 'type_activite', None) or 'Activité de fonctionnement',
+        imputation_budgetaire=src.imputation_budgetaire,
+        periode_debut=src.periode_debut,
+        periode_fin=src.periode_fin,
+        poids=src.poids or 0,
+        ressources_propres=src.ressources_propres or 0,
+        fadec_affecte=src.fadec_affecte or 0,
+        fadec_non_affecte=src.fadec_non_affecte or 0,
+        autres_partenaires=src.autres_partenaires or 0,
+        autres_fonds=src.autres_fonds or 0,
+        details_financement=src.details_financement,
+        acteurs_externes=src.acteurs_externes,
+    )
+    a.services_associes    = list(src.services_intervenants)
+    a.directions_associees = list(src.directions_associees)
+    a.structures_externes  = list(src.structures_externes)
+    db.session.add(a)
+    db.session.flush()
+    for i, t in enumerate(sorted(src.taches, key=lambda x: (x.ordre or 0, x.id)), 1):
+        db.session.add(_copier_tache_pta_vers_biblio(t, a.id, i))
+    db.session.commit()
+    flash(f'Activité « {src.nom} » importée depuis le PTA ({len(src.taches)} tâche(s)).', 'success')
+    return redirect(url_for('biblio.index', go=f'bact-{a.id}'))
+
+
+@biblio_bp.route('/activite/<int:act_id>/import-taches-from-pta', methods=['POST'])
+@admin_editeur_only
+def import_taches_from_pta(act_id):
+    """Importe des tâches d'une activité PTA dans une activité bibliothèque existante."""
+    biblio_act = BiblioActivite.query.get_or_404(act_id)
+    pta_act_id = request.form.get('pta_activite_id', type=int)
+    if not pta_act_id:
+        flash('Aucune activité PTA sélectionnée.', 'danger')
+        return redirect(url_for('biblio.index', go=f'bact-{act_id}'))
+    src = Activite.query.get_or_404(pta_act_id)
+    last = BiblioTache.query.filter_by(biblio_activite_id=act_id)\
+                             .order_by(BiblioTache.numero.desc()).first()
+    next_num = (last.numero + 1) if last else 1
+    nb = 0
+    for t in sorted(src.taches, key=lambda x: (x.ordre or 0, x.id)):
+        db.session.add(_copier_tache_pta_vers_biblio(t, act_id, next_num))
+        next_num += 1
+        nb += 1
+    db.session.commit()
+    flash(f'{nb} tâche(s) importée(s) depuis « {src.nom} » (PTA).', 'success')
+    return redirect(url_for('biblio.index', go=f'bact-{act_id}'))
+
+
+@biblio_bp.route('/activite/<int:act_id>/import-taches-from-biblio', methods=['POST'])
+@admin_editeur_only
+def import_taches_from_biblio(act_id):
+    """Importe les tâches d'une autre activité bibliothèque dans celle-ci."""
+    biblio_act = BiblioActivite.query.get_or_404(act_id)
+    src_id = request.form.get('biblio_src_id', type=int)
+    if not src_id or src_id == act_id:
+        flash('Sélectionnez une activité bibliothèque source différente.', 'danger')
+        return redirect(url_for('biblio.index', go=f'bact-{act_id}'))
+    src = BiblioActivite.query.get_or_404(src_id)
+    last = BiblioTache.query.filter_by(biblio_activite_id=act_id)\
+                             .order_by(BiblioTache.numero.desc()).first()
+    next_num = (last.numero + 1) if last else 1
+    nb = 0
+    for t in sorted(src.taches, key=lambda x: x.numero):
+        nt = BiblioTache(
+            biblio_activite_id=act_id, numero=next_num, nom=t.nom,
+            description=t.description, poids=t.poids or 0,
+            service_responsable_id=t.service_responsable_id,
+            direction_responsable_id=t.direction_responsable_id,
+            imputation_budgetaire=t.imputation_budgetaire,
+            mode_execution=t.mode_execution or 'Direct',
+            periode_debut=t.periode_debut,
+            periode_fin=t.periode_fin,
+            ressources_propres=t.ressources_propres or 0,
+            fadec_affecte=t.fadec_affecte or 0,
+            fadec_non_affecte=t.fadec_non_affecte or 0,
+            autres_partenaires=t.autres_partenaires or 0,
+            autres_fonds=t.autres_fonds or 0,
+            details_financement=t.details_financement,
+            acteurs_externes=t.acteurs_externes,
+        )
+        nt.services_concernes  = list(t.services_concernes)
+        nt.directions_associees = list(t.directions_associees)
+        nt.structures_externes  = list(t.structures_externes)
+        db.session.add(nt)
+        next_num += 1
+        nb += 1
+    db.session.commit()
+    flash(f'{nb} tâche(s) importée(s) depuis « {src.nom} » (Bibliothèque).', 'success')
     return redirect(url_for('biblio.index', go=f'bact-{act_id}'))

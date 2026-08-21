@@ -44,7 +44,40 @@
     {% endfor %}
   </select>
 </div>
-<div class="col-md-8"></div>
+
+{# ── Période d'exécution ── #}
+{% set mois_list = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'] %}
+<div class="col-md-4">
+  <label class="form-label fw-semibold">Période — Début <small class="text-muted">(optionnel)</small></label>
+  <select name="periode_debut" class="form-select">
+    <option value="">—</option>
+    {% for m in mois_list %}
+    <option value="{{ m }}" {% if tache and tache.periode_debut == m %}selected{% endif %}>{{ m }}</option>
+    {% endfor %}
+  </select>
+</div>
+<div class="col-md-4">
+  <label class="form-label fw-semibold">Période — Fin <small class="text-muted">(optionnel)</small></label>
+  <select name="periode_fin" class="form-select">
+    <option value="">—</option>
+    {% for m in mois_list %}
+    <option value="{{ m }}" {% if tache and tache.periode_fin == m %}selected{% endif %}>{{ m }}</option>
+    {% endfor %}
+  </select>
+</div>
+
+{# ── Position d'insertion (mode ajout uniquement) ── #}
+{% if not tache and activite and activite.taches %}
+<div class="col-12">
+  <label class="form-label fw-semibold">Position d'insertion</label>
+  <select name="after_id" class="form-select form-select-sm">
+    <option value="">En dernier (après la tâche n°{{ activite.taches|length }})</option>
+    {% for t_ref in activite.taches|sort(attribute='numero') %}
+    <option value="{{ t_ref.id }}">Après tâche n°{{ t_ref.numero }} — {{ t_ref.nom[:60] }}</option>
+    {% endfor %}
+  </select>
+</div>
+{% endif %}
 
 {# ── Imputation budgétaire ── #}
 <div class="col-12">

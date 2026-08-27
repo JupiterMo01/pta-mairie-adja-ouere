@@ -21,6 +21,7 @@
           <th>Identifiant</th>
           <th>Profil</th>
           <th>Rattachement</th>
+          <th>Email</th>
           <th>Statut</th>
           {% if current_user.role == 'admin_editeur' %}<th>Actions</th>{% endif %}
         </tr>
@@ -41,6 +42,15 @@
             {% if u.direction %}{{ u.direction.code }} — {{ u.direction.nom[:30] }}{% endif %}
             {% if u.service %}{{ u.service.code }} — {{ u.service.nom[:30] }}{% endif %}
             {% if not u.direction and not u.service %}<span class="text-muted">—</span>{% endif %}
+          </td>
+          <td class="small">
+            {% if u.email %}
+              <a href="mailto:{{ u.email }}" class="text-decoration-none text-muted">
+                <i class="fas fa-envelope me-1 text-primary opacity-75"></i>{{ u.email }}
+              </a>
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
           </td>
           <td>
             {% if u.actif %}<span class="badge bg-success-subtle text-success border border-success">Actif</span>
@@ -138,6 +148,15 @@
                 <option value="{{ s.id }}">{{ s.code }} — {{ s.nom }}</option>
                 {% endfor %}
               </select>
+            </div>
+            <div class="col-md-12">
+              <label class="form-label fw-semibold">Adresse email</label>
+              <input type="email" name="email" class="form-control"
+                     placeholder="ex: prenom.nom@mairie.bj">
+              <div class="form-text text-muted">
+                <i class="fas fa-info-circle me-1"></i>
+                Facultatif — sert à l'envoi des alertes trimestrielles.
+              </div>
             </div>
           </div>
         </div>

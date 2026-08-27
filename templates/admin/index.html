@@ -87,7 +87,13 @@
         <form method="POST" action="{{ url_for('admin.backup_now') }}"
               onsubmit="return confirm('Lancer une sauvegarde immédiate et l\'envoyer par email ?')">
           <button type="submit" class="btn btn-success w-100">
-            <i class="fas fa-envelope me-2"></i>Sauvegarder maintenant
+            <i class="fas fa-database me-2"></i>Sauvegarder maintenant
+          </button>
+        </form>
+        <form method="POST" action="{{ url_for('admin.alerte_trimestrielle') }}"
+              onsubmit="return confirm('Envoyer le bilan trimestriel par email à tous les utilisateurs ayant une adresse email renseignée ?')">
+          <button type="submit" class="btn btn-outline-primary w-100">
+            <i class="fas fa-paper-plane me-2"></i>Envoyer l'alerte trimestrielle
           </button>
         </form>
         {% endif %}

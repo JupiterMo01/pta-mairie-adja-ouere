@@ -1036,20 +1036,31 @@ def bilan_pta():
     # comme dans l'interface (poids renormalisés new_poids, _statut_agrege)
 
     # ── Agrégation par direction / service / nature ───────────────────────────
-    def _vide():
-        return {'execute': 0, 'en_cours': 0, 'non_execute': 0,
-                'taux_pond': 0.0, 'poids_sum': 0.0}
-
     def _taux_moy(r):
         return round(r['taux_pond'] / r['poids_sum'], 1) if r['poids_sum'] > 0 else 0.0
 
-    dir_stats  = {}
-    svc_stats  = {}
-    nat_stats  = {
-        'fct': dict(_vide(), label='Fonctionnement'),
-        'inv': dict(_vide(), label='Investissement'),
+    # Pré-peupler TOUTES les directions et tous les services depuis la base
+    # → ils apparaissent tous même sans activité liée (taux = 0 %)
+    dir_stats = {
+        d.id: {'code': d.code, 'nom': d.nom, 'taux_pond': 0.0, 'poids_sum': 0.0}
+        for d in Direction.query.order_by(Direction.code).all()
     }
-    glob       = _vide()
+    svc_stats = {
+        s.id: {
+            'code': s.code, 'nom': s.nom,
+            'dir': s.direction.code if s.direction else '—',
+            'taux_pond': 0.0, 'poids_sum': 0.0,
+        }
+        for s in Service.query.order_by(Service.code).all()
+    }
+    nat_stats = {
+        'fct': {'label': 'Fonctionnement', 'execute': 0, 'en_cours': 0, 'non_execute': 0,
+                'taux_pond': 0.0, 'poids_sum': 0.0},
+        'inv': {'label': 'Investissement',  'execute': 0, 'en_cours': 0, 'non_execute': 0,
+                'taux_pond': 0.0, 'poids_sum': 0.0},
+    }
+    glob       = {'execute': 0, 'en_cours': 0, 'non_execute': 0,
+                  'taux_pond': 0.0, 'poids_sum': 0.0}
     total_glob = 0
 
     for pd in data:
@@ -1059,31 +1070,23 @@ def bilan_pta():
                 statut  = ad['statut']        # calculé par _enrich → _statut_agrege
                 taux_a  = ad['taux']          # calculé par _enrich avec new_poids
                 poids_a = ad['new_poids']     # poids renormalisé dans le PTA global
-                dir_obj = act.direction_responsable
 
                 total_glob += 1
 
-                # Par direction
-                if dir_obj:
-                    if dir_obj.id not in dir_stats:
-                        dir_stats[dir_obj.id] = dict(_vide(), code=dir_obj.code, nom=dir_obj.nom)
-                    dir_stats[dir_obj.id][statut]      += 1
-                    dir_stats[dir_obj.id]['taux_pond'] += taux_a * poids_a
-                    dir_stats[dir_obj.id]['poids_sum'] += poids_a
+                # Par direction — taux pondéré (toutes pré-peuplées, juste mise à jour)
+                if act.direction_responsable_id in dir_stats:
+                    dir_stats[act.direction_responsable_id]['taux_pond'] += taux_a * poids_a
+                    dir_stats[act.direction_responsable_id]['poids_sum'] += poids_a
 
-                # Par service — activités (une activité comptée une fois par service)
+                # Par service — une activité comptée une fois par service impliqué
                 svc_vus = set()
                 for td in ad['taches']:
                     svc_obj = td['tache'].service_responsable
                     if svc_obj and svc_obj.id not in svc_vus:
                         svc_vus.add(svc_obj.id)
-                        if svc_obj.id not in svc_stats:
-                            svc_stats[svc_obj.id] = dict(_vide(),
-                                code=svc_obj.code, nom=svc_obj.nom,
-                                dir=dir_obj.code if dir_obj else '—')
-                        svc_stats[svc_obj.id][statut]      += 1
-                        svc_stats[svc_obj.id]['taux_pond'] += taux_a * poids_a
-                        svc_stats[svc_obj.id]['poids_sum'] += poids_a
+                        if svc_obj.id in svc_stats:
+                            svc_stats[svc_obj.id]['taux_pond'] += taux_a * poids_a
+                            svc_stats[svc_obj.id]['poids_sum'] += poids_a
 
                 # Par nature
                 nat_key = 'inv' if 'investissement' in (act.type_activite or '').lower() else 'fct'
@@ -1091,7 +1094,7 @@ def bilan_pta():
                 nat_stats[nat_key]['taux_pond'] += taux_a * poids_a
                 nat_stats[nat_key]['poids_sum'] += poids_a
 
-                # Global (comptage — taux_global vient directement de _enrich)
+                # Global
                 glob[statut] += 1
 
     # ── HTML ──────────────────────────────────────────────────────────────────
@@ -1101,6 +1104,15 @@ def bilan_pta():
 
     def _coul(taux): return VERT if taux >= 75 else (ORANGE if taux >= 30 else ROUGE)
 
+    # Helper taux en cellule colorée (directions et services : juste taux, pas statuts)
+    def _lig_taux(r, accent='#1e3a5f'):
+        tm = _taux_moy(r)
+        return (
+            f"<td style='padding:8px 10px;text-align:center;border-bottom:1px solid #e5e7eb;"
+            f"font-weight:700;font-size:15px;color:{_coul(tm)};'>{tm}%</td>"
+        )
+
+    # Helper ligne statuts (nature et global uniquement)
     def _lig(r):
         total = r['execute'] + r['en_cours'] + r['non_execute']
         tm    = _taux_moy(r)
@@ -1126,29 +1138,40 @@ def bilan_pta():
             f"<th {THC}>⏸ Non exéc.</th><th {THC}>Total</th>"
             f"<th {THC}>Taux moy.</th></tr>"
         )
-    TS   = "width='100%' cellpadding='0' cellspacing='0' style='border-collapse:collapse;font-size:13px;margin:10px 0 18px;'"
-    VIDE = "<tr><td colspan='7' style='padding:10px;color:#9ca3af;text-align:center;'>—</td></tr>"
+    TS    = "width='100%' cellpadding='0' cellspacing='0' style='border-collapse:collapse;font-size:13px;margin:10px 0 18px;'"
+    VIDE  = "<tr><td colspan='7' style='padding:10px;color:#9ca3af;text-align:center;'>—</td></tr>"
+    VIDE3 = "<tr><td colspan='3' style='padding:10px;color:#9ca3af;text-align:center;'>—</td></tr>"
 
-    # Table directions
+    # Table directions — Code | Direction | Taux (toutes les directions)
     lig_d = ''.join(
         f"<tr>"
         f"<td style='padding:8px 10px;border-bottom:1px solid #e5e7eb;font-weight:700;color:#1e3a5f;'>{r['code']}</td>"
         f"<td style='padding:8px 10px;border-bottom:1px solid #e5e7eb;'>{r['nom']}</td>"
-        + _lig(r) + "</tr>"
-        for r in sorted(dir_stats.values(), key=lambda x: x['code'])
-    ) or VIDE
-    bloc_dir = f"<table {TS}>{ENTETE('Direction')}<tbody>{lig_d}</tbody></table>"
+        + _lig_taux(r) + "</tr>"
+        for r in dir_stats.values()          # déjà triées par code (insertion ordonnée)
+    ) or VIDE3
+    entete_d = (
+        f"<tr style='background:#1e3a5f;color:#fff;'>"
+        f"<th {TH}>Code</th><th {TH}>Direction</th>"
+        f"<th {THC}>Taux d'exécution</th></tr>"
+    )
+    bloc_dir = f"<table {TS}>{entete_d}<tbody>{lig_d}</tbody></table>"
 
-    # Table services (activités, pas tâches)
+    # Table services — Code | Service (Dir) | Taux (tous les services)
     lig_s = ''.join(
         f"<tr>"
         f"<td style='padding:8px 10px;border-bottom:1px solid #e5e7eb;font-weight:700;color:#0f6f3a;'>{r['code']}</td>"
         f"<td style='padding:8px 10px;border-bottom:1px solid #e5e7eb;'>{r['nom']} "
         f"<span style='color:#9ca3af;font-size:11px;'>({r['dir']})</span></td>"
-        + _lig(r) + "</tr>"
+        + _lig_taux(r) + "</tr>"
         for r in sorted(svc_stats.values(), key=lambda x: (x['dir'], x['code']))
-    ) or VIDE
-    bloc_svc = f"<table {TS}>{ENTETE('Service (Direction)')}<tbody>{lig_s}</tbody></table>"
+    ) or VIDE3
+    entete_s = (
+        f"<tr style='background:#0f6f3a;color:#fff;'>"
+        f"<th {TH}>Code</th><th {TH}>Service (Direction)</th>"
+        f"<th {THC}>Taux d'exécution</th></tr>"
+    )
+    bloc_svc = f"<table {TS}>{entete_s}<tbody>{lig_s}</tbody></table>"
 
     # Table nature
     lig_n = ''.join(
@@ -1234,14 +1257,12 @@ def bilan_pta():
         f"{glob['en_cours']} en cours | {glob['non_execute']} non exéc. | Taux : {taux_global}%\n\n"
         + "PAR DIRECTION :\n"
         + '\n'.join(
-            f"  {r['code']} — {r['nom']} : {r['execute']} exec. / {r['en_cours']} en cours / "
-            f"{r['non_execute']} non exec. — Taux : {_taux_moy(r)}%"
-            for r in sorted(dir_stats.values(), key=lambda x: x['code'])
+            f"  {r['code']} — {r['nom']} : Taux {_taux_moy(r)}%"
+            for r in dir_stats.values()
         )
         + "\n\nPAR SERVICE :\n"
         + '\n'.join(
-            f"  {r['code']} ({r['dir']}) — {r['nom']} : {r['execute']} exec. / "
-            f"{r['en_cours']} en cours / {r['non_execute']} non exec. — Taux : {_taux_moy(r)}%"
+            f"  {r['code']} ({r['dir']}) — {r['nom']} : Taux {_taux_moy(r)}%"
             for r in sorted(svc_stats.values(), key=lambda x: (x['dir'], x['code']))
         )
         + "\n\n---\nMairie d'Adja-Ouèrè · Système PTA"

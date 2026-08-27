@@ -832,8 +832,422 @@ def backup_restore(backup_id):
     return redirect(url_for('pta.global_pta'))
 
 
-# ─── Alerte trimestrielle ────────────────────────────────────────────────────
+# ─── Emails PTA (rappel saisie + bilan) ──────────────────────────────────────
 
+# Adresses toujours mises en copie (CC)
+_COPIES_FIXES = ['honzounnonluc@gmail.com', 'luc.honzounnon@mairie.bj']
+
+
+def _lire_cfg_smtp():
+    """Lit GMAIL_USER / GMAIL_APP_PASSWORD depuis ~/.pta_backup_config."""
+    import os
+    cfg = {}
+    with open(os.path.expanduser('~/.pta_backup_config'), encoding='utf-8') as f:
+        for ligne in f:
+            ligne = ligne.strip()
+            if '=' in ligne and not ligne.startswith('#'):
+                cle, val = ligne.split('=', 1)
+                cfg[cle.strip()] = val.strip()
+    for cle in ('GMAIL_USER', 'GMAIL_APP_PASSWORD'):
+        if cle not in cfg:
+            raise ValueError(f"Clé manquante dans config : {cle}")
+    return cfg
+
+
+def _get_destinataires():
+    """Emails des utilisateurs actifs ayant une adresse renseignée."""
+    return [
+        u.email.strip()
+        for u in User.query.filter(User.actif == True).all()
+        if u.email and u.email.strip()
+    ]
+
+
+def _envoyer_smtp(cfg, msg, destinataires):
+    """Envoie via Gmail SMTP — BCC : destinataires, CC : copies fixes."""
+    import smtplib
+    tous = [cfg['GMAIL_USER']] + destinataires + _COPIES_FIXES
+    with smtplib.SMTP('smtp.gmail.com', 587) as srv:
+        srv.ehlo()
+        srv.starttls()
+        srv.login(cfg['GMAIL_USER'], cfg['GMAIL_APP_PASSWORD'])
+        srv.sendmail(cfg['GMAIL_USER'], tous, msg.as_string())
+
+
+@admin_bp.route('/rappel-saisie', methods=['POST'])
+@editeur_required
+def rappel_saisie():
+    """Envoie un rappel aux utilisateurs pour qu'ils renseignent leurs données PTA."""
+    import datetime
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.text import MIMEText
+    from utils import get_annee
+
+    annee       = get_annee()
+    annee_label = annee.annee if annee else datetime.date.today().year
+    date_str    = datetime.date.today().strftime('%d/%m/%Y')
+    plateforme  = request.host_url.rstrip('/')
+
+    destinataires = _get_destinataires()
+    if not destinataires:
+        flash("Aucun utilisateur actif n'a d'adresse email renseignée.", 'warning')
+        return redirect(url_for('admin.index'))
+
+    try:
+        cfg = _lire_cfg_smtp()
+    except FileNotFoundError:
+        flash("Fichier de configuration email introuvable (~/.pta_backup_config).", 'danger')
+        return redirect(url_for('admin.index'))
+    except ValueError as e:
+        flash(f"Configuration email incomplète : {e}", 'danger')
+        return redirect(url_for('admin.index'))
+
+    sujet = f"[PTA Mairie {annee_label}] Rappel — Renseigner les données d'exécution"
+
+    html_body = f"""<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#f3f4f6;font-family:Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:24px 0;">
+<tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0"
+       style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,.08);">
+  <tr><td style="background:#1e3a5f;padding:24px 32px;">
+    <p style="margin:0;color:#fcd116;font-size:11px;letter-spacing:1px;text-transform:uppercase;">
+      Mairie d'Adja-Ouèrè · Système PTA {annee_label}</p>
+    <h1 style="margin:8px 0 0;color:#fff;font-size:20px;line-height:1.3;">
+      Rappel — Saisie des données d'exécution</h1>
+    <p style="margin:4px 0 0;color:rgba(255,255,255,.7);font-size:13px;">{date_str}</p>
+  </td></tr>
+  <tr><td style="padding:28px 32px;">
+    <p style="margin:0 0 16px;color:#374151;">Madame, Monsieur,</p>
+    <p style="margin:0 0 16px;color:#374151;line-height:1.7;">
+      Dans le cadre de l'évaluation du Plan de Travail Annuel (PTA) {annee_label}
+      de la Mairie d'Adja-Ouèrè, vous êtes prié(e) de <strong>vous connecter sur la
+      plateforme de gestion du PTA</strong> et de renseigner le niveau réel d'avancement
+      de votre PTA avant la fin du trimestre en cours.
+    </p>
+    <div style="text-align:center;margin:24px 0;">
+      <a href="{plateforme}" target="_blank"
+         style="background:#1e3a5f;color:#fcd116;text-decoration:none;
+                padding:12px 28px;border-radius:8px;font-weight:700;font-size:15px;
+                display:inline-block;">
+        Se connecter à la plateforme →
+      </a>
+    </div>
+    <p style="margin:0 0 8px;color:#374151;line-height:1.7;">
+      Une fois connecté(e), rendez-vous dans l'onglet <strong>« Faire suivi »</strong>
+      pour mettre à jour vos données d'exécution.
+    </p>
+    <p style="margin:16px 0 0;color:#6b7280;font-size:13px;line-height:1.6;">
+      Pour toute difficulté de connexion ou de saisie, contactez l'administrateur du système.
+    </p>
+  </td></tr>
+  <tr><td style="background:#f9fafb;padding:16px 32px;border-top:1px solid #e5e7eb;">
+    <p style="margin:0;color:#9ca3af;font-size:11px;line-height:1.7;">
+      Ce message a été envoyé depuis le Système PTA de la Mairie d'Adja-Ouèrè.<br>
+      Émis par : <strong>Jupiter GBOYOU</strong> ·
+      <a href="mailto:jupiter.gboyou@mairie.bj" style="color:#1e3a5f;">jupiter.gboyou@mairie.bj</a>
+    </p>
+    <p style="margin:6px 0 0;color:#9ca3af;font-size:11px;">
+      &#x1F1E7;&#x1F1EF; République du Bénin &nbsp;·&nbsp; Mairie d'Adja-Ouèrè
+    </p>
+  </td></tr>
+</table>
+</td></tr>
+</table>
+</body></html>"""
+
+    texte_brut = (
+        f"Rappel — Saisie des données d'exécution PTA {annee_label}\n"
+        f"Date : {date_str}\n\n"
+        f"Madame, Monsieur,\n\n"
+        f"Dans le cadre de l'évaluation du PTA {annee_label}, vous êtes prié(e) de vous "
+        f"connecter sur la plateforme ({plateforme}) et de renseigner le niveau réel "
+        f"d'avancement de votre PTA avant la fin du trimestre.\n\n"
+        f"Onglet : Faire suivi\n\n"
+        f"---\nMairie d'Adja-Ouèrè · Système PTA"
+    )
+
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.text import MIMEText
+    msg = MIMEMultipart('alternative')
+    msg['From']     = f"Mairie d'Adja-Ouèrè PTA <{cfg['GMAIL_USER']}>"
+    msg['To']       = cfg['GMAIL_USER']
+    msg['Cc']       = ', '.join(_COPIES_FIXES)
+    msg['Bcc']      = ', '.join(destinataires)
+    msg['Subject']  = sujet
+    msg['Reply-To'] = 'jupiter.gboyou@mairie.bj'
+    msg.attach(MIMEText(texte_brut, 'plain', 'utf-8'))
+    msg.attach(MIMEText(html_body,  'html',  'utf-8'))
+
+    try:
+        _envoyer_smtp(cfg, msg, destinataires)
+    except Exception as e:
+        flash(f"Erreur lors de l'envoi : {e}", 'danger')
+        return redirect(url_for('admin.index'))
+
+    log_audit('rappel_saisie',
+              f"Rappel de saisie PTA {annee_label} envoyé à {len(destinataires)} destinataire(s)")
+    flash(f"Rappel envoyé à {len(destinataires)} destinataire(s) + {len(_COPIES_FIXES)} copie(s).", 'success')
+    return redirect(url_for('admin.index'))
+
+
+@admin_bp.route('/bilan-pta', methods=['POST'])
+@editeur_required
+def bilan_pta():
+    """Envoie le bilan global PTA : par direction, par service, par nature, global."""
+    import datetime
+    from collections import defaultdict
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.text import MIMEText
+    from models import SuiviTache
+    from utils import get_annee
+
+    annee       = get_annee()
+    annee_label = annee.annee if annee else datetime.date.today().year
+    date_str    = datetime.date.today().strftime('%d/%m/%Y')
+
+    destinataires = _get_destinataires()
+    if not destinataires:
+        flash("Aucun utilisateur actif n'a d'adresse email renseignée.", 'warning')
+        return redirect(url_for('admin.index'))
+
+    try:
+        cfg = _lire_cfg_smtp()
+    except FileNotFoundError:
+        flash("Fichier de configuration email introuvable (~/.pta_backup_config).", 'danger')
+        return redirect(url_for('admin.index'))
+    except ValueError as e:
+        flash(f"Configuration email incomplète : {e}", 'danger')
+        return redirect(url_for('admin.index'))
+
+    if not annee:
+        flash("Aucune année PTA active.", 'warning')
+        return redirect(url_for('admin.index'))
+
+    # ── Données ───────────────────────────────────────────────────────────────
+    activites = (
+        Activite.query
+        .join(Projet,    Activite.projet_id == Projet.id)
+        .join(Programme, Projet.programme_id == Programme.id)
+        .filter(Programme.annee_id == annee.id)
+        .all()
+    )
+
+    # Meilleur statut par tâche sur l'année (execute > en_cours > non_execute)
+    POIDS = {'non_execute': 0, 'en_cours': 1, 'execute': 2}
+    meilleur = defaultdict(lambda: 'non_execute')
+    for s in SuiviTache.query.filter_by(annee_id=annee.id).all():
+        if POIDS.get(s.statut, 0) > POIDS.get(meilleur[s.tache_id], 0):
+            meilleur[s.tache_id] = s.statut
+
+    def statut_act(act):
+        if not act.taches:
+            return 'non_execute'
+        st = [meilleur[t.id] for t in act.taches]
+        if all(s == 'execute' for s in st):  return 'execute'
+        if any(s in ('execute', 'en_cours') for s in st): return 'en_cours'
+        return 'non_execute'
+
+    # Agrégation
+    dir_stats = {}   # dir_id → {code, nom, execute, en_cours, non_execute}
+    svc_stats = {}   # svc_id → {code, nom, dir, execute, en_cours, non_execute}
+    nat_stats = {
+        'fct': {'label': 'Fonctionnement', 'execute': 0, 'en_cours': 0, 'non_execute': 0},
+        'inv': {'label': 'Investissement',  'execute': 0, 'en_cours': 0, 'non_execute': 0},
+    }
+    glob = {'execute': 0, 'en_cours': 0, 'non_execute': 0}
+
+    for act in activites:
+        statut  = statut_act(act)
+        dir_obj = act.direction_responsable
+
+        # Par direction (activités)
+        if dir_obj:
+            if dir_obj.id not in dir_stats:
+                dir_stats[dir_obj.id] = {
+                    'code': dir_obj.code, 'nom': dir_obj.nom,
+                    'execute': 0, 'en_cours': 0, 'non_execute': 0
+                }
+            dir_stats[dir_obj.id][statut] += 1
+
+        # Par service (tâches — chaque tâche compte pour son service)
+        for tache in act.taches:
+            svc_obj = tache.service_responsable
+            if svc_obj:
+                if svc_obj.id not in svc_stats:
+                    svc_stats[svc_obj.id] = {
+                        'code': svc_obj.code, 'nom': svc_obj.nom,
+                        'dir': dir_obj.code if dir_obj else '—',
+                        'execute': 0, 'en_cours': 0, 'non_execute': 0
+                    }
+                svc_stats[svc_obj.id][meilleur[tache.id]] += 1
+
+        # Par nature
+        nat_key = 'inv' if 'investissement' in (act.type_activite or '').lower() else 'fct'
+        nat_stats[nat_key][statut] += 1
+
+        # Global
+        glob[statut] += 1
+
+    total_glob = sum(glob.values())
+
+    # ── HTML ──────────────────────────────────────────────────────────────────
+    VERT   = '#16a34a'
+    ORANGE = '#f59e0b'
+    ROUGE  = '#dc2626'
+
+    def _lig(r):
+        total = r['execute'] + r['en_cours'] + r['non_execute']
+        c = VERT if (r['execute'] / total >= .75 if total else False) else (ORANGE if total and r['non_execute'] / total < .7 else ROUGE)
+        return (
+            f"<td style='padding:8px 10px;text-align:center;border-bottom:1px solid #e5e7eb;'>"
+            f"<b style='color:{VERT};'>{r['execute']}</b></td>"
+            f"<td style='padding:8px 10px;text-align:center;border-bottom:1px solid #e5e7eb;'>"
+            f"<b style='color:{ORANGE};'>{r['en_cours']}</b></td>"
+            f"<td style='padding:8px 10px;text-align:center;border-bottom:1px solid #e5e7eb;'>"
+            f"<b style='color:{ROUGE};'>{r['non_execute']}</b></td>"
+            f"<td style='padding:8px 10px;text-align:center;border-bottom:1px solid #e5e7eb;font-weight:700;color:{c};'>{total}</td>"
+        )
+
+    TH = "style='padding:10px;text-align:left;'"
+    TH_C = "style='padding:10px;text-align:center;'"
+    ENTETE = (
+        f"<tr style='background:#1e3a5f;color:#fff;'>"
+        f"<th {TH}>Code</th><th {TH}>{{col}}</th>"
+        f"<th {TH_C}>✅ Exéc.</th>"
+        f"<th {TH_C}>🔄 En cours</th>"
+        f"<th {TH_C}>⏸ Non exéc.</th>"
+        f"<th {TH_C}>Total</th></tr>"
+    )
+    TABLE_S = "width='100%' cellpadding='0' cellspacing='0' style='border-collapse:collapse;font-size:13px;margin:10px 0 18px;'"
+    VIDE    = "<tr><td colspan='6' style='padding:10px;color:#9ca3af;text-align:center;'>—</td></tr>"
+
+    # Table directions
+    lig_d = ''.join(
+        f"<tr><td style='padding:8px 10px;border-bottom:1px solid #e5e7eb;font-weight:700;color:#1e3a5f;'>{r['code']}</td>"
+        f"<td style='padding:8px 10px;border-bottom:1px solid #e5e7eb;'>{r['nom']}</td>"
+        + _lig(r) + "</tr>"
+        for r in sorted(dir_stats.values(), key=lambda x: x['code'])
+    ) or VIDE
+    bloc_dir = f"<table {TABLE_S}>{ENTETE.format(col='Direction')}<tbody>{lig_d}</tbody></table>"
+
+    # Table services
+    lig_s = ''.join(
+        f"<tr><td style='padding:8px 10px;border-bottom:1px solid #e5e7eb;font-weight:700;color:#0f6f3a;'>{r['code']}</td>"
+        f"<td style='padding:8px 10px;border-bottom:1px solid #e5e7eb;'>{r['nom']} "
+        f"<span style='color:#9ca3af;font-size:11px;'>({r['dir']})</span></td>"
+        + _lig(r) + "</tr>"
+        for r in sorted(svc_stats.values(), key=lambda x: (x['dir'], x['code']))
+    ) or VIDE
+    bloc_svc = f"<table {TABLE_S}>{ENTETE.format(col='Service (Direction)')}<tbody>{lig_s}</tbody></table>"
+
+    # Table nature
+    lig_n = ''.join(
+        f"<tr><td colspan='2' style='padding:8px 10px;border-bottom:1px solid #e5e7eb;font-weight:700;'>{r['label']}</td>"
+        + _lig(r) + "</tr>"
+        for r in nat_stats.values()
+    )
+    bloc_nat = f"<table {TABLE_S}>{ENTETE.format(col='')}<tbody>{lig_n}</tbody></table>"
+
+    # Synthèse
+    pct_e = round(glob['execute']     / total_glob * 100, 1) if total_glob else 0
+    pct_c = round(glob['en_cours']    / total_glob * 100, 1) if total_glob else 0
+    pct_n = round(glob['non_execute'] / total_glob * 100, 1) if total_glob else 0
+    cg = VERT if pct_e >= 75 else (ORANGE if pct_e >= 30 else ROUGE)
+    bloc_glob = (
+        f"<table width='100%' cellpadding='0' cellspacing='0' style='border-collapse:collapse;font-size:14px;'>"
+        f"<tr style='background:#f1f5f9;'>"
+        f"<td style='padding:12px;font-weight:700;color:#1e3a5f;'>TOTAL — {total_glob} activité(s)</td>"
+        f"<td style='padding:12px;text-align:center;'><span style='color:{VERT};font-weight:700;font-size:18px;'>{glob['execute']}</span><br>"
+        f"<span style='font-size:11px;color:#6b7280;'>exécutée(s) ({pct_e}%)</span></td>"
+        f"<td style='padding:12px;text-align:center;'><span style='color:{ORANGE};font-weight:700;font-size:18px;'>{glob['en_cours']}</span><br>"
+        f"<span style='font-size:11px;color:#6b7280;'>en cours ({pct_c}%)</span></td>"
+        f"<td style='padding:12px;text-align:center;'><span style='color:{ROUGE};font-weight:700;font-size:18px;'>{glob['non_execute']}</span><br>"
+        f"<span style='font-size:11px;color:#6b7280;'>non exécutée(s) ({pct_n}%)</span></td>"
+        f"</tr></table>"
+    )
+
+    def sec(titre): return f"<h2 style='margin:20px 0 6px;color:#1e3a5f;font-size:15px;border-bottom:2px solid #1e3a5f;padding-bottom:5px;'>{titre}</h2>"
+
+    html_body = f"""<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#f3f4f6;font-family:Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:24px 0;">
+<tr><td align="center">
+<table width="700" cellpadding="0" cellspacing="0"
+       style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,.08);">
+  <tr><td style="background:#1e3a5f;padding:24px 32px;">
+    <p style="margin:0;color:#fcd116;font-size:11px;letter-spacing:1px;text-transform:uppercase;">
+      Mairie d'Adja-Ouèrè · Système PTA {annee_label}</p>
+    <h1 style="margin:8px 0 0;color:#fff;font-size:20px;line-height:1.3;">Bilan global du PTA</h1>
+    <p style="margin:4px 0 0;color:rgba(255,255,255,.7);font-size:13px;">État au {date_str}</p>
+  </td></tr>
+  <tr><td style="padding:28px 32px;">
+    <p style="margin:0 0 20px;color:#374151;line-height:1.6;">
+      Bonjour,<br>Ci-dessous le bilan d'avancement du PTA {annee_label} à la date du <strong>{date_str}</strong>.
+    </p>
+    {sec('📊 Par direction — activités')}
+    {bloc_dir}
+    {sec('🏢 Par service — tâches')}
+    {bloc_svc}
+    {sec('🏷️ Par nature — activités')}
+    {bloc_nat}
+    {sec('🌐 Synthèse globale')}
+    {bloc_glob}
+    <p style="margin:20px 0 0;color:#6b7280;font-size:12px;">
+      Pour le détail complet, connectez-vous au système PTA.
+    </p>
+  </td></tr>
+  <tr><td style="background:#f9fafb;padding:16px 32px;border-top:1px solid #e5e7eb;">
+    <p style="margin:0;color:#9ca3af;font-size:11px;line-height:1.7;">
+      Message envoyé automatiquement depuis le Système PTA de la Mairie d'Adja-Ouèrè.<br>
+      Émis par : <strong>Jupiter GBOYOU</strong> ·
+      <a href="mailto:jupiter.gboyou@mairie.bj" style="color:#1e3a5f;">jupiter.gboyou@mairie.bj</a>
+    </p>
+    <p style="margin:6px 0 0;color:#9ca3af;font-size:11px;">
+      &#x1F1E7;&#x1F1EF; République du Bénin &nbsp;·&nbsp; Mairie d'Adja-Ouèrè
+    </p>
+  </td></tr>
+</table>
+</td></tr>
+</table>
+</body></html>"""
+
+    texte_brut = (
+        f"Bilan global PTA {annee_label} — État au {date_str}\n\n"
+        f"GLOBAL : {total_glob} activités | {glob['execute']} exéc. | {glob['en_cours']} en cours | {glob['non_execute']} non exéc.\n\n"
+        + "PAR DIRECTION :\n"
+        + '\n'.join(f"  {r['code']} — {r['nom']} : {r['execute']} exec. / {r['en_cours']} en cours / {r['non_execute']} non exec."
+                    for r in sorted(dir_stats.values(), key=lambda x: x['code']))
+        + "\n\n---\nMairie d'Adja-Ouèrè · Système PTA"
+    )
+
+    sujet = f"[PTA Mairie {annee_label}] Bilan global — État au {date_str}"
+
+    msg = MIMEMultipart('alternative')
+    msg['From']     = f"Mairie d'Adja-Ouèrè PTA <{cfg['GMAIL_USER']}>"
+    msg['To']       = cfg['GMAIL_USER']
+    msg['Cc']       = ', '.join(_COPIES_FIXES)
+    msg['Bcc']      = ', '.join(destinataires)
+    msg['Subject']  = sujet
+    msg['Reply-To'] = 'jupiter.gboyou@mairie.bj'
+    msg.attach(MIMEText(texte_brut, 'plain', 'utf-8'))
+    msg.attach(MIMEText(html_body,  'html',  'utf-8'))
+
+    try:
+        _envoyer_smtp(cfg, msg, destinataires)
+    except Exception as e:
+        flash(f"Erreur lors de l'envoi : {e}", 'danger')
+        return redirect(url_for('admin.index'))
+
+    log_audit('bilan_pta',
+              f"Bilan PTA {annee_label} envoyé à {len(destinataires)} destinataire(s) — {total_glob} activité(s)")
+    flash(f"Bilan envoyé à {len(destinataires)} destinataire(s) + {len(_COPIES_FIXES)} copie(s).", 'success')
+    return redirect(url_for('admin.index'))
+
+
+# ─── ROUTE SUPPRIMÉE — remplacée par rappel_saisie + bilan_pta ───────────────
 @admin_bp.route('/alerte-trimestrielle', methods=['POST'])
 @editeur_required
 def alerte_trimestrielle():

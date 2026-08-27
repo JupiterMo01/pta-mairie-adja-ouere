@@ -998,7 +998,7 @@ def rappel_saisie():
 @admin_bp.route('/bilan-pta', methods=['POST'])
 @editeur_required
 def bilan_pta():
-    """Envoie le bilan global PTA : par direction, par service, par nature, global."""
+    """Envoie le bilan global PTA : par direction, par service (activités), par nature, global + taux."""
     import datetime
     from collections import defaultdict
     from email.mime.multipart import MIMEMultipart
@@ -1037,72 +1037,103 @@ def bilan_pta():
         .all()
     )
 
-    # Meilleur statut par tâche sur l'année (execute > en_cours > non_execute)
+    # Meilleur statut + taux par tâche sur l'année (execute > en_cours > non_execute)
     POIDS = {'non_execute': 0, 'en_cours': 1, 'execute': 2}
-    meilleur = defaultdict(lambda: 'non_execute')
+    meilleur = defaultdict(lambda: ('non_execute', 0.0))   # tache_id → (statut, taux%)
     for s in SuiviTache.query.filter_by(annee_id=annee.id).all():
-        if POIDS.get(s.statut, 0) > POIDS.get(meilleur[s.tache_id], 0):
-            meilleur[s.tache_id] = s.statut
+        if POIDS.get(s.statut, 0) > POIDS.get(meilleur[s.tache_id][0], 0):
+            if s.statut == 'execute':
+                t = 100.0
+            elif s.statut == 'en_cours':
+                t = float(s.taux_execution or 0)
+            else:
+                t = 0.0
+            meilleur[s.tache_id] = (s.statut, t)
 
     def statut_act(act):
         if not act.taches:
             return 'non_execute'
-        st = [meilleur[t.id] for t in act.taches]
-        if all(s == 'execute' for s in st):  return 'execute'
+        st = [meilleur[t.id][0] for t in act.taches]
+        if all(s == 'execute' for s in st):               return 'execute'
         if any(s in ('execute', 'en_cours') for s in st): return 'en_cours'
         return 'non_execute'
 
+    def taux_act(act):
+        """Taux moyen d'exécution de l'activité (moyenne de ses tâches)."""
+        if not act.taches:
+            return 0.0
+        return sum(meilleur[t.id][1] for t in act.taches) / len(act.taches)
+
+    def _vide_stat(extra=None):
+        d = {'execute': 0, 'en_cours': 0, 'non_execute': 0, 'taux_sum': 0.0, 'nb': 0}
+        if extra:
+            d.update(extra)
+        return d
+
+    def _taux_moy(r):
+        return round(r['taux_sum'] / r['nb'], 1) if r['nb'] else 0.0
+
     # Agrégation
-    dir_stats = {}   # dir_id → {code, nom, execute, en_cours, non_execute}
-    svc_stats = {}   # svc_id → {code, nom, dir, execute, en_cours, non_execute}
+    dir_stats = {}   # dir_id → {code, nom, execute, en_cours, non_execute, taux_sum, nb}
+    svc_stats = {}   # svc_id → {code, nom, dir, execute, en_cours, non_execute, taux_sum, nb}
     nat_stats = {
-        'fct': {'label': 'Fonctionnement', 'execute': 0, 'en_cours': 0, 'non_execute': 0},
-        'inv': {'label': 'Investissement',  'execute': 0, 'en_cours': 0, 'non_execute': 0},
+        'fct': _vide_stat({'label': 'Fonctionnement'}),
+        'inv': _vide_stat({'label': 'Investissement'}),
     }
-    glob = {'execute': 0, 'en_cours': 0, 'non_execute': 0}
+    glob = _vide_stat()
 
     for act in activites:
         statut  = statut_act(act)
+        taux    = taux_act(act)
         dir_obj = act.direction_responsable
 
         # Par direction (activités)
         if dir_obj:
             if dir_obj.id not in dir_stats:
-                dir_stats[dir_obj.id] = {
-                    'code': dir_obj.code, 'nom': dir_obj.nom,
-                    'execute': 0, 'en_cours': 0, 'non_execute': 0
-                }
-            dir_stats[dir_obj.id][statut] += 1
+                dir_stats[dir_obj.id] = _vide_stat({'code': dir_obj.code, 'nom': dir_obj.nom})
+            dir_stats[dir_obj.id][statut]     += 1
+            dir_stats[dir_obj.id]['taux_sum'] += taux
+            dir_stats[dir_obj.id]['nb']       += 1
 
-        # Par service (tâches — chaque tâche compte pour son service)
+        # Par service — activités (une activité comptée une fois par service impliqué)
+        svc_vus = set()
         for tache in act.taches:
             svc_obj = tache.service_responsable
-            if svc_obj:
+            if svc_obj and svc_obj.id not in svc_vus:
+                svc_vus.add(svc_obj.id)
                 if svc_obj.id not in svc_stats:
-                    svc_stats[svc_obj.id] = {
+                    svc_stats[svc_obj.id] = _vide_stat({
                         'code': svc_obj.code, 'nom': svc_obj.nom,
-                        'dir': dir_obj.code if dir_obj else '—',
-                        'execute': 0, 'en_cours': 0, 'non_execute': 0
-                    }
-                svc_stats[svc_obj.id][meilleur[tache.id]] += 1
+                        'dir': dir_obj.code if dir_obj else '—'
+                    })
+                svc_stats[svc_obj.id][statut]     += 1
+                svc_stats[svc_obj.id]['taux_sum'] += taux
+                svc_stats[svc_obj.id]['nb']       += 1
 
         # Par nature
         nat_key = 'inv' if 'investissement' in (act.type_activite or '').lower() else 'fct'
-        nat_stats[nat_key][statut] += 1
+        nat_stats[nat_key][statut]     += 1
+        nat_stats[nat_key]['taux_sum'] += taux
+        nat_stats[nat_key]['nb']       += 1
 
         # Global
-        glob[statut] += 1
+        glob[statut]     += 1
+        glob['taux_sum'] += taux
+        glob['nb']       += 1
 
-    total_glob = sum(glob.values())
+    total_glob  = sum(glob[k] for k in ('execute', 'en_cours', 'non_execute'))
+    taux_global = _taux_moy(glob)
 
     # ── HTML ──────────────────────────────────────────────────────────────────
     VERT   = '#16a34a'
     ORANGE = '#f59e0b'
     ROUGE  = '#dc2626'
 
+    def _coul(taux): return VERT if taux >= 75 else (ORANGE if taux >= 30 else ROUGE)
+
     def _lig(r):
         total = r['execute'] + r['en_cours'] + r['non_execute']
-        c = VERT if (r['execute'] / total >= .75 if total else False) else (ORANGE if total and r['non_execute'] / total < .7 else ROUGE)
+        tm    = _taux_moy(r)
         return (
             f"<td style='padding:8px 10px;text-align:center;border-bottom:1px solid #e5e7eb;'>"
             f"<b style='color:{VERT};'>{r['execute']}</b></td>"
@@ -1110,75 +1141,85 @@ def bilan_pta():
             f"<b style='color:{ORANGE};'>{r['en_cours']}</b></td>"
             f"<td style='padding:8px 10px;text-align:center;border-bottom:1px solid #e5e7eb;'>"
             f"<b style='color:{ROUGE};'>{r['non_execute']}</b></td>"
-            f"<td style='padding:8px 10px;text-align:center;border-bottom:1px solid #e5e7eb;font-weight:700;color:{c};'>{total}</td>"
+            f"<td style='padding:8px 10px;text-align:center;border-bottom:1px solid #e5e7eb;font-weight:700;'>{total}</td>"
+            f"<td style='padding:8px 10px;text-align:center;border-bottom:1px solid #e5e7eb;"
+            f"font-weight:700;font-size:15px;color:{_coul(tm)};'>{tm}%</td>"
         )
 
-    TH = "style='padding:10px;text-align:left;'"
-    TH_C = "style='padding:10px;text-align:center;'"
-    ENTETE = (
-        f"<tr style='background:#1e3a5f;color:#fff;'>"
-        f"<th {TH}>Code</th><th {TH}>{{col}}</th>"
-        f"<th {TH_C}>✅ Exéc.</th>"
-        f"<th {TH_C}>🔄 En cours</th>"
-        f"<th {TH_C}>⏸ Non exéc.</th>"
-        f"<th {TH_C}>Total</th></tr>"
-    )
-    TABLE_S = "width='100%' cellpadding='0' cellspacing='0' style='border-collapse:collapse;font-size:13px;margin:10px 0 18px;'"
-    VIDE    = "<tr><td colspan='6' style='padding:10px;color:#9ca3af;text-align:center;'>—</td></tr>"
+    TH  = "style='padding:10px;text-align:left;'"
+    THC = "style='padding:10px;text-align:center;'"
+    def ENTETE(col):
+        return (
+            f"<tr style='background:#1e3a5f;color:#fff;'>"
+            f"<th {TH}>Code</th><th {TH}>{col}</th>"
+            f"<th {THC}>✅ Exéc.</th><th {THC}>🔄 En cours</th>"
+            f"<th {THC}>⏸ Non exéc.</th><th {THC}>Total</th>"
+            f"<th {THC}>Taux moy.</th></tr>"
+        )
+    TS   = "width='100%' cellpadding='0' cellspacing='0' style='border-collapse:collapse;font-size:13px;margin:10px 0 18px;'"
+    VIDE = "<tr><td colspan='7' style='padding:10px;color:#9ca3af;text-align:center;'>—</td></tr>"
 
     # Table directions
     lig_d = ''.join(
-        f"<tr><td style='padding:8px 10px;border-bottom:1px solid #e5e7eb;font-weight:700;color:#1e3a5f;'>{r['code']}</td>"
+        f"<tr>"
+        f"<td style='padding:8px 10px;border-bottom:1px solid #e5e7eb;font-weight:700;color:#1e3a5f;'>{r['code']}</td>"
         f"<td style='padding:8px 10px;border-bottom:1px solid #e5e7eb;'>{r['nom']}</td>"
         + _lig(r) + "</tr>"
         for r in sorted(dir_stats.values(), key=lambda x: x['code'])
     ) or VIDE
-    bloc_dir = f"<table {TABLE_S}>{ENTETE.format(col='Direction')}<tbody>{lig_d}</tbody></table>"
+    bloc_dir = f"<table {TS}>{ENTETE('Direction')}<tbody>{lig_d}</tbody></table>"
 
-    # Table services
+    # Table services (activités, pas tâches)
     lig_s = ''.join(
-        f"<tr><td style='padding:8px 10px;border-bottom:1px solid #e5e7eb;font-weight:700;color:#0f6f3a;'>{r['code']}</td>"
+        f"<tr>"
+        f"<td style='padding:8px 10px;border-bottom:1px solid #e5e7eb;font-weight:700;color:#0f6f3a;'>{r['code']}</td>"
         f"<td style='padding:8px 10px;border-bottom:1px solid #e5e7eb;'>{r['nom']} "
         f"<span style='color:#9ca3af;font-size:11px;'>({r['dir']})</span></td>"
         + _lig(r) + "</tr>"
         for r in sorted(svc_stats.values(), key=lambda x: (x['dir'], x['code']))
     ) or VIDE
-    bloc_svc = f"<table {TABLE_S}>{ENTETE.format(col='Service (Direction)')}<tbody>{lig_s}</tbody></table>"
+    bloc_svc = f"<table {TS}>{ENTETE('Service (Direction)')}<tbody>{lig_s}</tbody></table>"
 
     # Table nature
     lig_n = ''.join(
-        f"<tr><td colspan='2' style='padding:8px 10px;border-bottom:1px solid #e5e7eb;font-weight:700;'>{r['label']}</td>"
+        f"<tr>"
+        f"<td colspan='2' style='padding:8px 10px;border-bottom:1px solid #e5e7eb;font-weight:700;'>{r['label']}</td>"
         + _lig(r) + "</tr>"
         for r in nat_stats.values()
     )
-    bloc_nat = f"<table {TABLE_S}>{ENTETE.format(col='')}<tbody>{lig_n}</tbody></table>"
+    bloc_nat = f"<table {TS}>{ENTETE('')}<tbody>{lig_n}</tbody></table>"
 
-    # Synthèse
+    # Synthèse globale
     pct_e = round(glob['execute']     / total_glob * 100, 1) if total_glob else 0
     pct_c = round(glob['en_cours']    / total_glob * 100, 1) if total_glob else 0
     pct_n = round(glob['non_execute'] / total_glob * 100, 1) if total_glob else 0
-    cg = VERT if pct_e >= 75 else (ORANGE if pct_e >= 30 else ROUGE)
     bloc_glob = (
         f"<table width='100%' cellpadding='0' cellspacing='0' style='border-collapse:collapse;font-size:14px;'>"
         f"<tr style='background:#f1f5f9;'>"
         f"<td style='padding:12px;font-weight:700;color:#1e3a5f;'>TOTAL — {total_glob} activité(s)</td>"
-        f"<td style='padding:12px;text-align:center;'><span style='color:{VERT};font-weight:700;font-size:18px;'>{glob['execute']}</span><br>"
+        f"<td style='padding:12px;text-align:center;'>"
+        f"<span style='color:{VERT};font-weight:700;font-size:18px;'>{glob['execute']}</span><br>"
         f"<span style='font-size:11px;color:#6b7280;'>exécutée(s) ({pct_e}%)</span></td>"
-        f"<td style='padding:12px;text-align:center;'><span style='color:{ORANGE};font-weight:700;font-size:18px;'>{glob['en_cours']}</span><br>"
+        f"<td style='padding:12px;text-align:center;'>"
+        f"<span style='color:{ORANGE};font-weight:700;font-size:18px;'>{glob['en_cours']}</span><br>"
         f"<span style='font-size:11px;color:#6b7280;'>en cours ({pct_c}%)</span></td>"
-        f"<td style='padding:12px;text-align:center;'><span style='color:{ROUGE};font-weight:700;font-size:18px;'>{glob['non_execute']}</span><br>"
-        f"<span style='font-size:11px;color:#6b7280;'>non exécutée(s) ({pct_n}%)</span></td>"
+        f"<td style='padding:12px;text-align:center;'>"
+        f"<span style='color:{ROUGE};font-weight:700;font-size:18px;'>{glob['non_execute']}</span><br>"
+        f"<span style='font-size:11px;color:#6b7280;'>non exéc. ({pct_n}%)</span></td>"
+        f"<td style='padding:12px;text-align:center;'>"
+        f"<span style='color:{_coul(taux_global)};font-weight:700;font-size:22px;'>{taux_global}%</span><br>"
+        f"<span style='font-size:11px;color:#6b7280;'>taux global</span></td>"
         f"</tr></table>"
     )
 
-    def sec(titre): return f"<h2 style='margin:20px 0 6px;color:#1e3a5f;font-size:15px;border-bottom:2px solid #1e3a5f;padding-bottom:5px;'>{titre}</h2>"
+    def sec(t): return f"<h2 style='margin:20px 0 6px;color:#1e3a5f;font-size:15px;border-bottom:2px solid #1e3a5f;padding-bottom:5px;'>{t}</h2>"
 
     html_body = f"""<!DOCTYPE html>
 <html lang="fr"><head><meta charset="UTF-8"></head>
 <body style="margin:0;padding:0;background:#f3f4f6;font-family:Arial,sans-serif;">
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:24px 0;">
 <tr><td align="center">
-<table width="700" cellpadding="0" cellspacing="0"
+<table width="720" cellpadding="0" cellspacing="0"
        style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,.08);">
   <tr><td style="background:#1e3a5f;padding:24px 32px;">
     <p style="margin:0;color:#fcd116;font-size:11px;letter-spacing:1px;text-transform:uppercase;">
@@ -1188,11 +1229,11 @@ def bilan_pta():
   </td></tr>
   <tr><td style="padding:28px 32px;">
     <p style="margin:0 0 20px;color:#374151;line-height:1.6;">
-      Bonjour,<br>Ci-dessous le bilan d'avancement du PTA {annee_label} à la date du <strong>{date_str}</strong>.
+      Bonjour,<br>Bilan d'avancement du PTA {annee_label} à la date du <strong>{date_str}</strong>.
     </p>
     {sec('📊 Par direction — activités')}
     {bloc_dir}
-    {sec('🏢 Par service — tâches')}
+    {sec('🏢 Par service — activités')}
     {bloc_svc}
     {sec('🏷️ Par nature — activités')}
     {bloc_nat}
@@ -1219,10 +1260,20 @@ def bilan_pta():
 
     texte_brut = (
         f"Bilan global PTA {annee_label} — État au {date_str}\n\n"
-        f"GLOBAL : {total_glob} activités | {glob['execute']} exéc. | {glob['en_cours']} en cours | {glob['non_execute']} non exéc.\n\n"
+        f"GLOBAL : {total_glob} activité(s) | {glob['execute']} exéc. | "
+        f"{glob['en_cours']} en cours | {glob['non_execute']} non exéc. | Taux : {taux_global}%\n\n"
         + "PAR DIRECTION :\n"
-        + '\n'.join(f"  {r['code']} — {r['nom']} : {r['execute']} exec. / {r['en_cours']} en cours / {r['non_execute']} non exec."
-                    for r in sorted(dir_stats.values(), key=lambda x: x['code']))
+        + '\n'.join(
+            f"  {r['code']} — {r['nom']} : {r['execute']} exec. / {r['en_cours']} en cours / "
+            f"{r['non_execute']} non exec. — Taux : {_taux_moy(r)}%"
+            for r in sorted(dir_stats.values(), key=lambda x: x['code'])
+        )
+        + "\n\nPAR SERVICE :\n"
+        + '\n'.join(
+            f"  {r['code']} ({r['dir']}) — {r['nom']} : {r['execute']} exec. / "
+            f"{r['en_cours']} en cours / {r['non_execute']} non exec. — Taux : {_taux_moy(r)}%"
+            for r in sorted(svc_stats.values(), key=lambda x: (x['dir'], x['code']))
+        )
         + "\n\n---\nMairie d'Adja-Ouèrè · Système PTA"
     )
 
@@ -1245,7 +1296,8 @@ def bilan_pta():
         return redirect(url_for('admin.index'))
 
     log_audit('bilan_pta',
-              f"Bilan PTA {annee_label} envoyé à {len(destinataires)} destinataire(s) — {total_glob} activité(s)")
+              f"Bilan PTA {annee_label} envoyé à {len(destinataires)} destinataire(s) "
+              f"— {total_glob} activité(s), taux global {taux_global}%")
     flash(f"Bilan envoyé à {len(destinataires)} destinataire(s) + {len(_COPIES_FIXES)} copie(s).", 'success')
     return redirect(url_for('admin.index'))
 

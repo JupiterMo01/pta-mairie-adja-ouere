@@ -288,7 +288,7 @@
     {% set a_tot = a_rp + a_fa + a_fn + a_ap + a_af %}
     {% set poids_taches = act.taches|sum(attribute='poids') if act.taches else 0 %}
     <tr id="row-act-{{ act.id }}" style="background:#D3D3D3;font-weight:700;"
-        data-nature="{{ 'inv' if act.type_activite == \"Activité d'investissement\" else 'fct' }}"
+        data-nature="{{ 'inv' if 'investissement' in (act.type_activite or '') else 'fct' }}"
         data-proj="{{ projet.id }}" data-prog="{{ prog.id }}">
       <td class="text-center">{{ act.code }}</td>
       <td>{{ act.nom }}
@@ -416,7 +416,7 @@
     {% for tache in act.taches %}
     {% set ma_tache = (mon_service_id and tache.service_responsable_id == mon_service_id) or (ma_direction_id and tache.direction_responsable_id == ma_direction_id) %}
     <tr id="row-tache-{{ tache.id }}" class="{% if ma_tache %}table-warning{% endif %}"
-        data-nature="{{ 'inv' if act.type_activite == \"Activité d'investissement\" else 'fct' }}"
+        data-nature="{{ 'inv' if 'investissement' in (act.type_activite or '') else 'fct' }}"
         data-act="{{ act.id }}">
       <td class="ps-3 text-muted text-center">{{ tache.code }}</td>
       <td class="ps-3">

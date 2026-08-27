@@ -148,6 +148,11 @@ def create_app():
 
 
 if __name__ == '__main__':
+    import os as _os, secrets as _sec
+    # En local (développement) : générer une clé temporaire si absente
+    # Cette clé change à chaque redémarrage — normal en dev, jamais en prod
+    if not _os.environ.get('SECRET_KEY'):
+        _os.environ['SECRET_KEY'] = _sec.token_hex(32)
     app = create_app()
     with app.app_context():
         db.create_all()

@@ -835,7 +835,10 @@ def backup_restore(backup_id):
 # ─── Emails PTA (rappel saisie + bilan) ──────────────────────────────────────
 
 # Adresses toujours mises en copie (CC)
-_COPIES_FIXES = ['honzounnonluc@gmail.com', 'luc.honzounnon@mairie.bj']
+# Décommenter les deux lignes suivantes après validation en test :
+# 'honzounnonluc@gmail.com'
+# 'luc.honzounnon@mairie.bj'
+_COPIES_FIXES = ['jupiter.gboyou@mairie.bj']
 
 
 def _lire_cfg_smtp():

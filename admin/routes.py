@@ -123,6 +123,10 @@ def user_edit(user_id):
         if not all([nom, prenom, role]):
             flash('Nom, prénom et rôle sont obligatoires.', 'danger')
             return redirect(url_for('admin.user_edit', user_id=user_id))
+        # Empêcher un admin de rétrograder son propre rôle (perte d'accès)
+        if user.id == current_user.id and role != 'admin_editeur':
+            flash('Vous ne pouvez pas modifier votre propre rôle d\'administrateur.', 'danger')
+            return redirect(url_for('admin.user_edit', user_id=user_id))
         user.nom = nom
         user.prenom = prenom
         user.role = role
@@ -246,6 +250,9 @@ def direction_delete(dir_id):
     if d.services:
         flash('Impossible : des services sont rattachés à cette direction.', 'danger')
         return redirect(url_for('admin.directions'))
+    if User.query.filter_by(direction_id=dir_id).first():
+        flash('Impossible : des utilisateurs sont rattachés à cette direction.', 'danger')
+        return redirect(url_for('admin.directions'))
     db.session.delete(d)
     db.session.commit()
     flash('Direction supprimée.', 'success')
@@ -306,6 +313,9 @@ def service_edit(svc_id):
 @editeur_required
 def service_delete(svc_id):
     s = Service.query.get_or_404(svc_id)
+    if User.query.filter_by(service_id=svc_id).first():
+        flash('Impossible : des utilisateurs sont rattachés à ce service.', 'danger')
+        return redirect(url_for('admin.services'))
     db.session.delete(s)
     db.session.commit()
     flash('Service supprimé.', 'success')
@@ -429,9 +439,10 @@ def annee_copier_pta(ann_id):
                     poids                   = act_src.poids,
                     observations            = act_src.observations,
                 )
-                # Many-to-many : services et directions intervenants
+                # Many-to-many : services, directions et structures externes intervenants
                 act_new.services_intervenants = list(act_src.services_intervenants)
                 act_new.directions_associees  = list(act_src.directions_associees)
+                act_new.structures_externes   = list(act_src.structures_externes)
                 db.session.add(act_new)
                 db.session.flush()
                 nb_act += 1
@@ -460,9 +471,10 @@ def annee_copier_pta(ann_id):
                         periode_fin             = tache_src.periode_fin,
                         observations            = tache_src.observations,
                     )
-                    # Many-to-many : services et directions concernés
+                    # Many-to-many : services, directions et structures externes concernés
                     tache_new.services_concernes   = list(tache_src.services_concernes)
                     tache_new.directions_associees = list(tache_src.directions_associees)
+                    tache_new.structures_externes  = list(tache_src.structures_externes)
                     db.session.add(tache_new)
                     nb_tache += 1
 

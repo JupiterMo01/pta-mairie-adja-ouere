@@ -118,6 +118,7 @@ def _tache_from_form(t):
     t.mode_execution  = request.form.get('mode_execution',  '').strip() or 'Direct'
     t.periode_debut   = request.form.get('periode_debut',   '').strip() or None
     t.periode_fin     = request.form.get('periode_fin',     '').strip() or None
+    t.observations    = request.form.get('observations',    '').strip() or None
     structures_mode = request.form.get('structures_mode', 'aucun')
     if structures_mode == 'tous_services':
         t.services_concernes = Service.query.order_by(Service.nom).all()
@@ -143,7 +144,21 @@ def _tache_from_form(t):
 @biblio_bp.route('/')
 @admin_ou_lecteur
 def index():
-    activites = BiblioActivite.query.order_by(BiblioActivite.nom).all()
+    # ── Recherche / filtre ──────────────────────────────────────────────────
+    recherche     = request.args.get('q', '').strip()
+    filtre_dir_id = request.args.get('dir_id', type=int)
+    filtre_type   = request.args.get('type_act', '').strip()
+
+    q = BiblioActivite.query
+    if recherche:
+        like = f'%{recherche}%'
+        q = q.filter(BiblioActivite.nom.ilike(like))
+    if filtre_dir_id:
+        q = q.filter(BiblioActivite.direction_responsable_id == filtre_dir_id)
+    if filtre_type:
+        q = q.filter(BiblioActivite.type_activite == filtre_type)
+    activites = q.order_by(BiblioActivite.nom).all()
+
     directions = Direction.query.order_by(Direction.nom).all()
     services = Service.query.order_by(Service.nom).all()
     structures_externes = StructureExterne.query.order_by(StructureExterne.nom).all()
@@ -161,7 +176,10 @@ def index():
                            activites=activites, directions=directions,
                            services=services, modes_execution=MODES_EXECUTION,
                            structures_externes=structures_externes,
-                           pta_acts=pta_acts)
+                           pta_acts=pta_acts,
+                           recherche=recherche,
+                           filtre_dir_id=filtre_dir_id,
+                           filtre_type=filtre_type)
 
 
 # ─── Activités ────────────────────────────────────────────────────────────────
@@ -295,6 +313,7 @@ def tache_duplicate(tache_id):
         autres_fonds=t.autres_fonds or 0,
         details_financement=t.details_financement,
         acteurs_externes=t.acteurs_externes,
+        observations=t.observations,
     )
     nt.services_concernes = list(t.services_concernes)
     nt.directions_associees = list(t.directions_associees)
@@ -367,6 +386,7 @@ def activite_duplicate(act_id):
             autres_fonds=t.autres_fonds or 0,
             details_financement=t.details_financement,
             acteurs_externes=t.acteurs_externes,
+            observations=t.observations,
         )
         nt.services_concernes  = list(t.services_concernes)
         nt.directions_associees = list(t.directions_associees)
@@ -397,6 +417,7 @@ def _copier_tache_pta_vers_biblio(t_pta, act_biblio_id, numero):
         autres_fonds=t_pta.autres_fonds or 0,
         details_financement=t_pta.details_financement,
         acteurs_externes=t_pta.acteurs_externes,
+        observations=t_pta.observations,
     )
     nt.services_concernes  = list(t_pta.services_concernes)
     nt.directions_associees = list(t_pta.directions_associees)
@@ -497,6 +518,7 @@ def import_taches_from_biblio(act_id):
             autres_fonds=t.autres_fonds or 0,
             details_financement=t.details_financement,
             acteurs_externes=t.acteurs_externes,
+            observations=t.observations,
         )
         nt.services_concernes  = list(t.services_concernes)
         nt.directions_associees = list(t.directions_associees)

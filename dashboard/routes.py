@@ -16,6 +16,14 @@ from dashboard import dashboard_bp
 INVEST = "Activité d'investissement"
 
 
+def _fr(v, d=1):
+    """Formate un nombre décimal avec virgule comme séparateur (norme française)."""
+    try:
+        return ('{:.' + str(d) + 'f}').format(float(v or 0)).replace('.', ',')
+    except (TypeError, ValueError):
+        return ('0,' + '0' * d)
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 #  Helpers
 # ─────────────────────────────────────────────────────────────────────────────
@@ -643,9 +651,9 @@ def _build_dashboard_word(annee, titre, stats, synthese, static_img_path):
     for ci, t in enumerate((1, 2, 3, 4), 1):
         v = stats['cibles'].get(t, 0)
         bg_c = 'D4E6F1' if v >= 50 else 'FDEBD0'
-        data_cell(r_cib.cells[ci], f"{v:.1f} %", align='center', bold=True, size=9,
+        data_cell(r_cib.cells[ci], f"{_fr(v)} %", align='center', bold=True, size=9,
                   fg=(0x1F, 0x4E, 0x79), bg=bg_c)
-    data_cell(r_cib.cells[5], f"{stats['cibles'][0]:.1f} %",
+    data_cell(r_cib.cells[5], f"{_fr(stats['cibles'][0])} %",
               align='center', bold=True, size=9, fg=(0x1F, 0x4E, 0x79), bg='D1F0DA')
 
     # Ligne taux réel (uniquement Global)
@@ -654,23 +662,23 @@ def _build_dashboard_word(annee, titre, stats, synthese, static_img_path):
     for ci in range(1, 5):
         data_cell(r_tx.cells[ci], '—', align='center', size=9, bg='F8F9FA')
     taux_gl = stats['suivi'][0]['taux']
-    data_cell(r_tx.cells[5], f"{taux_gl:.1f} %",
+    data_cell(r_tx.cells[5], f"{_fr(taux_gl)} %",
               align='center', bold=True, size=9,
               fg=taux_color(taux_gl), bg='D1F0DA')
 
     ecart = taux_gl - stats['cibles'][0]
     signe = '+' if ecart >= 0 else ''
     if ecart >= 0:
-        cmt_tx = (f"Le taux de réalisation global s'établit à {taux_gl:.1f} %, "
-                  f"soit {signe}{ecart:.1f} point(s) par rapport à la cible de 100 %. "
+        cmt_tx = (f"Le taux de réalisation global s'établit à {_fr(taux_gl)} %, "
+                  f"soit {signe}{_fr(ecart)} point(s) par rapport à la cible de 100 %. "
                   f"L'entité dépasse ses objectifs.")
     elif ecart >= -20:
-        cmt_tx = (f"Le taux de réalisation global atteint {taux_gl:.1f} %, "
-                  f"accusant un retard de {abs(ecart):.1f} point(s) par rapport à la cible de 100 %. "
+        cmt_tx = (f"Le taux de réalisation global atteint {_fr(taux_gl)} %, "
+                  f"accusant un retard de {_fr(abs(ecart))} point(s) par rapport à la cible de 100 %. "
                   f"Des efforts soutenus sont nécessaires pour combler l'écart.")
     else:
-        cmt_tx = (f"Le taux de réalisation global est de {taux_gl:.1f} %, "
-                  f"soit un retard significatif de {abs(ecart):.1f} point(s) par rapport à la cible de 100 %. "
+        cmt_tx = (f"Le taux de réalisation global est de {_fr(taux_gl)} %, "
+                  f"soit un retard significatif de {_fr(abs(ecart))} point(s) par rapport à la cible de 100 %. "
                   f"Une revue des facteurs bloquants et une accélération de l'exécution s'imposent.")
     doc.add_paragraph()
     interp(doc, cmt_tx)
@@ -744,7 +752,7 @@ def _build_dashboard_word(annee, titre, stats, synthese, static_img_path):
             data_cell(r.cells[0],
                       f"{item['direction'].code} — {item['direction'].nom}",
                       bold=True, size=9, bg='E8EAF6')
-            data_cell(r.cells[1], f"{td:.1f} %",
+            data_cell(r.cells[1], f"{_fr(td)} %",
                       align='center', bold=True, size=9,
                       fg=taux_color(td), bg=taux_bg(td))
 
@@ -755,7 +763,7 @@ def _build_dashboard_word(annee, titre, stats, synthese, static_img_path):
                 data_cell(rs.cells[0],
                           f"   {sv['service'].code} — {sv['service'].nom}",
                           size=9, bg='FDFEFE')
-                data_cell(rs.cells[1], f"{ts:.1f} %",
+                data_cell(rs.cells[1], f"{_fr(ts)} %",
                           align='center', size=9,
                           fg=taux_color(ts), bg=taux_bg(ts))
 
@@ -767,11 +775,11 @@ def _build_dashboard_word(annee, titre, stats, synthese, static_img_path):
             best = max(dirs_only, key=lambda x: x[1])
             worst = min(dirs_only, key=lambda x: x[1])
             if best[0] == worst[0]:
-                interp(doc, (f"La direction {best[0]} affiche un taux de {best[1]:.1f} %."))
+                interp(doc, (f"La direction {best[0]} affiche un taux de {_fr(best[1])} %."))
             else:
                 interp(doc, (
-                    f"La direction la plus avancée est {best[0]} avec {best[1]:.1f} %. "
-                    f"La direction {worst[0]} affiche le taux le plus bas ({worst[1]:.1f} %) "
+                    f"La direction la plus avancée est {best[0]} avec {_fr(best[1])} %. "
+                    f"La direction {worst[0]} affiche le taux le plus bas ({_fr(worst[1])} %) "
                     f"et mérite une attention particulière."
                 ))
 

@@ -34,14 +34,15 @@ def create_app():
     @app.template_filter('pct')
     def pct_filter(v):
         try:
-            return '{:.2f}'.format(float(v or 0))
+            return '{:.2f}'.format(float(v or 0)).replace('.', ',')
         except (TypeError, ValueError):
-            return '0.00'
+            return '0,00'
 
     @app.template_filter('pct_nat')
     def pct_nat_filter(v):
         try:
-            return '{:.2f}'.format(float(v or 0)).rstrip('0').rstrip('.')
+            s = '{:.2f}'.format(float(v or 0)).rstrip('0').rstrip('.')
+            return s.replace('.', ',')
         except (TypeError, ValueError):
             return '0'
 
@@ -88,7 +89,7 @@ def create_app():
     # ── Route de déclenchement de la sauvegarde (appelée par cron-job.org) ──────
     @app.route('/api/backup')
     def api_backup():
-        import os, subprocess
+        import os
         from flask import jsonify
         # Vérification du token secret
         token_recu  = request.args.get('token', '')
@@ -103,8 +104,11 @@ def create_app():
             abort(403)
         # Lancer la sauvegarde
         try:
+            import importlib.util
             script = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'backup_pta.py')
-            subprocess.run(['python', script], timeout=60, check=True)
+            spec = importlib.util.spec_from_file_location('backup_pta', script)
+            mod  = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
             return jsonify({'status': 'ok', 'message': 'Sauvegarde effectuée'})
         except Exception as e:
             return jsonify({'status': 'erreur', 'message': str(e)}), 500

@@ -33,6 +33,14 @@ def _fmt(v):
         return '0'
 
 
+def _fr(v, d=1):
+    """Formate un nombre décimal avec virgule comme séparateur (norme française)."""
+    try:
+        return ('{:.' + str(d) + 'f}').format(float(v or 0)).replace('.', ',')
+    except (TypeError, ValueError):
+        return ('0,' + '0' * d)
+
+
 def _compute_stats(annee):
     programmes = Programme.query.filter_by(annee_id=annee.id).order_by(Programme.numero).all()
     directions = Direction.query.order_by(Direction.nom).all()
@@ -680,7 +688,7 @@ def _build_word(annee, s, static_img_path, cibles=None, cibles_directions=None, 
         elif v < 50:  col = 'FDEBD0'   # orange clair — moins de la moitié
         elif v < 75:  col = 'D6EAF8'   # bleu clair   — moins des trois quarts
         else:         col = 'D5F5E3'   # vert clair   — objectif atteint ou proche
-        data_cell(cell, f"{v:.1f} %", align='center', bold=True, size=9)
+        data_cell(cell, f"{_fr(v)} %", align='center', bold=True, size=9)
         shade(cell, col)
 
     # ── Fonctions de construction de tableaux ─────────────────────────────────
@@ -701,7 +709,7 @@ def _build_word(annee, s, static_img_path, cibles=None, cibles_directions=None, 
                 (f"Programme {prog['code']} : {prog['nom']}", 'left',  True),
                 (str(prog['nb_activites']),                  'center', True),
                 (str(prog['nb_taches']),                     'center', True),
-                (f"{prog['poids']:.1f}",                     'center', True),
+                (_fr(prog['poids']),                          'center', True),
                 (_fmt(prog['budget']),                        'right',  True),
             ]):
                 data_cell(r.cells[ci], val, align=al, bold=bd, size=9)
@@ -714,7 +722,7 @@ def _build_word(annee, s, static_img_path, cibles=None, cibles_directions=None, 
                     (f"  Projet {proj['code']} : {proj['nom']}", 'left',  False),
                     (str(proj['nb_activites']),                  'center', False),
                     (str(proj['nb_taches']),                     'center', False),
-                    (f"{proj['poids']:.1f}",                     'center', False),
+                    (_fr(proj['poids']),                          'center', False),
                     (_fmt(proj['budget']),                        'right',  False),
                 ]):
                     data_cell(r.cells[ci], val, align=al, bold=bd, size=9)
@@ -745,7 +753,7 @@ def _build_word(annee, s, static_img_path, cibles=None, cibles_directions=None, 
             r = tbl.rows[i]
             data_cell(r.cells[0], lbl, size=9)
             data_cell(r.cells[1], _fmt(val), align='right', size=9)
-            data_cell(r.cells[2], f"{pct_fn(val)} %", align='center', size=9)
+            data_cell(r.cells[2], f"{_fr(pct_fn(val))} %", align='center', size=9)
             for cell in r.cells:
                 shade(cell, col)
         tot_row = tbl.rows[-1]
@@ -805,7 +813,7 @@ def _build_word(annee, s, static_img_path, cibles=None, cibles_directions=None, 
                 (a['nom'],             'left',   False),
                 (a['direction'],       'center', False),
                 (a['periode'],         'center', False),
-                (f"{a['poids']:.1f}",  'center', False),
+                (_fr(a['poids']),       'center', False),
                 (_fmt(a['rp']),        'right',  False),
                 (_fmt(a['fa']),        'right',  False),
                 (_fmt(a['fn']),        'right',  False),
@@ -937,20 +945,22 @@ def _build_word(annee, s, static_img_path, cibles=None, cibles_directions=None, 
         if total == 0:
             return "Aucun budget renseigné pour cette catégorie."
         nom_src, val_src = _src_principale(rp, fa, fn, ap, af)
-        pct_src  = pct_fn(val_src)
+        pct_src  = _fr(pct_fn(val_src))
         ext_val  = total - rp
-        pct_ext  = round(ext_val / total * 100, 1)
-        pct_rp   = round(rp / total * 100, 1)
+        pct_ext  = _fr(round(ext_val / total * 100, 1))
+        pct_rp   = _fr(round(rp / total * 100, 1))
+        pct_rp_f = round(rp / total * 100, 1)   # valeur numérique pour la condition
+        pct_ext_f = round(ext_val / total * 100, 1)
         parties  = []
         parties.append(
             f"La principale source de financement est {nom_src} "
             f"avec {_fmt(val_src)} F CFA ({pct_src} % du budget)."
         )
-        if pct_rp >= 50:
+        if pct_rp_f >= 50:
             parties.append(
                 f"La commune finance {pct_rp} % de ce budget sur ses ressources propres."
             )
-        elif pct_ext >= 50:
+        elif pct_ext_f >= 50:
             parties.append(
                 f"Les financements extérieurs (PTFs, FADEC, partenaires) couvrent "
                 f"{pct_ext} % du budget, témoignant d'un fort appui externe."
@@ -1043,10 +1053,10 @@ def _build_word(annee, s, static_img_path, cibles=None, cibles_directions=None, 
     doc.add_paragraph()
 
     # ── Commentaire dynamique I ───────────────────────────────────────────────
-    pct_inv = round(s['inv_budget'] / s['total_budget'] * 100, 1) if s['total_budget'] else 0
-    pct_fct = round(s['fct_budget'] / s['total_budget'] * 100, 1) if s['total_budget'] else 0
+    pct_inv = _fr(round(s['inv_budget'] / s['total_budget'] * 100, 1)) if s['total_budget'] else '0,0'
+    pct_fct = _fr(round(s['fct_budget'] / s['total_budget'] * 100, 1)) if s['total_budget'] else '0,0'
     avg_bud = round(s['total_budget'] / s['nb_activites']) if s['nb_activites'] else 0
-    avg_tch = round(s['nb_taches'] / s['nb_activites'], 1) if s['nb_activites'] else 0
+    avg_tch = _fr(round(s['nb_taches'] / s['nb_activites'], 1)) if s['nb_activites'] else '0,0'
     interp(doc,
         f"Le PTA {annee.annee} comprend {s['nb_programmes']} programme(s) répartis en "
         f"{s['nb_projets']} projet(s), {s['nb_activites']} activité(s) et "
@@ -1313,9 +1323,9 @@ def _build_word(annee, s, static_img_path, cibles=None, cibles_directions=None, 
         # L'intérêt est la courbe trimestrielle : T1, T2, T3 révèlent la saisonnalité.
         _c = [
             f"Selon la planification actuelle, le PTA {annee.annee} devrait atteindre "
-            f"{g.get(1, 0):.1f} % d'exécution à fin mars (T1), "
-            f"{g.get(2, 0):.1f} % à fin juin (T2) et "
-            f"{g.get(3, 0):.1f} % à fin septembre (T3)."
+            f"{_fr(g.get(1, 0))} % d'exécution à fin mars (T1), "
+            f"{_fr(g.get(2, 0))} % à fin juin (T2) et "
+            f"{_fr(g.get(3, 0))} % à fin septembre (T3)."
         ]
         if len(progs_c) > 1:
             top_p1 = max(progs_c, key=lambda p: p['cibles'].get(1, 0))
@@ -1324,15 +1334,15 @@ def _build_word(annee, s, static_img_path, cibles=None, cibles_directions=None, 
             bot_p3 = min(progs_c, key=lambda p: p['cibles'].get(3, 0))
             _c.append(
                 f"Dès le premier trimestre, le Programme {top_p1['code']} est le plus avancé "
-                f"({top_p1['cibles'].get(1, 0):.1f} %) ; "
+                f"({_fr(top_p1['cibles'].get(1, 0))} %) ; "
                 f"le Programme {bot_p1['code']} est le moins avancé "
-                f"({bot_p1['cibles'].get(1, 0):.1f} %)."
+                f"({_fr(bot_p1['cibles'].get(1, 0))} %)."
             )
             if top_p3['code'] != top_p1['code'] or bot_p3['code'] != bot_p1['code']:
                 _c.append(
                     f"À fin T3, le Programme {top_p3['code']} mène avec "
-                    f"{top_p3['cibles'].get(3, 0):.1f} % ; "
-                    f"le Programme {bot_p3['code']} affiche {bot_p3['cibles'].get(3, 0):.1f} %."
+                    f"{_fr(top_p3['cibles'].get(3, 0))} % ; "
+                    f"le Programme {bot_p3['code']} affiche {_fr(bot_p3['cibles'].get(3, 0))} %."
                 )
         interp(doc, ' '.join(_c))
 
@@ -1357,24 +1367,24 @@ def _build_word(annee, s, static_img_path, cibles=None, cibles_directions=None, 
         bot_d3  = min(cibles_directions, key=lambda d: d['cibles'].get(3, 0))
         _c = [
             f"{len(cibles_directions)} direction(s) ont des tâches planifiées dans ce PTA. "
-            f"En moyenne, {avg_t1d:.1f} % des tâches devraient être exécutées à fin T1 "
-            f"et {avg_t3d:.1f} % à fin T3."
+            f"En moyenne, {_fr(avg_t1d)} % des tâches devraient être exécutées à fin T1 "
+            f"et {_fr(avg_t3d)} % à fin T3."
         ]
         _c.append(
             f"La direction la plus avancée dès T1 est {top_d1['code']} "
-            f"({top_d1['cibles'].get(1, 0):.1f} %), signe d'activités concentrées "
+            f"({_fr(top_d1['cibles'].get(1, 0))} %), signe d'activités concentrées "
             f"en début d'année."
         )
         if len(cibles_directions) > 1 and bot_d1['code'] != top_d1['code']:
             _c.append(
                 f"À l'inverse, {bot_d1['code']} n'atteint que "
-                f"{bot_d1['cibles'].get(1, 0):.1f} % en T1, "
+                f"{_fr(bot_d1['cibles'].get(1, 0))} % en T1, "
                 f"avec des activités davantage concentrées en fin d'année."
             )
         if len(cibles_directions) > 1 and (top_d3['code'] != top_d1['code'] or bot_d3['code'] != bot_d1['code']):
             _c.append(
-                f"À fin T3, {top_d3['code']} est la plus avancée ({top_d3['cibles'].get(3, 0):.1f} %) "
-                f"et {bot_d3['code']} la moins avancée ({bot_d3['cibles'].get(3, 0):.1f} %)."
+                f"À fin T3, {top_d3['code']} est la plus avancée ({_fr(top_d3['cibles'].get(3, 0))} %) "
+                f"et {bot_d3['code']} la moins avancée ({_fr(bot_d3['cibles'].get(3, 0))} %)."
             )
         interp(doc, ' '.join(_c))
 
@@ -1398,24 +1408,24 @@ def _build_word(annee, s, static_img_path, cibles=None, cibles_directions=None, 
         bot_s3  = min(cibles_services, key=lambda sv: sv['cibles'].get(3, 0))
         _c = [
             f"{len(cibles_services)} service(s) ont des tâches planifiées dans ce PTA. "
-            f"En moyenne, {avg_t1s:.1f} % des tâches devraient être exécutées à fin T1 "
-            f"et {avg_t3s:.1f} % à fin T3."
+            f"En moyenne, {_fr(avg_t1s)} % des tâches devraient être exécutées à fin T1 "
+            f"et {_fr(avg_t3s)} % à fin T3."
         ]
         _c.append(
             f"Le service le plus avancé dès T1 est {top_s1['code']} "
-            f"({top_s1['direction_code']}, {top_s1['cibles'].get(1, 0):.1f} %), "
+            f"({top_s1['direction_code']}, {_fr(top_s1['cibles'].get(1, 0))} %), "
             f"reflétant des activités concentrées en début d'année."
         )
         if len(cibles_services) > 1 and bot_s1['code'] != top_s1['code']:
             _c.append(
                 f"Le service {bot_s1['code']} ({bot_s1['direction_code']}) "
-                f"n'atteint que {bot_s1['cibles'].get(1, 0):.1f} % en T1, "
+                f"n'atteint que {_fr(bot_s1['cibles'].get(1, 0))} % en T1, "
                 f"avec des tâches planifiées plutôt en seconde partie d'année."
             )
         if len(cibles_services) > 1 and (top_s3['code'] != top_s1['code'] or bot_s3['code'] != bot_s1['code']):
             _c.append(
-                f"À fin T3 : {top_s3['code']} est le plus avancé ({top_s3['cibles'].get(3, 0):.1f} %) "
-                f"et {bot_s3['code']} le moins ({bot_s3['cibles'].get(3, 0):.1f} %)."
+                f"À fin T3 : {top_s3['code']} est le plus avancé ({_fr(top_s3['cibles'].get(3, 0))} %) "
+                f"et {bot_s3['code']} le moins ({_fr(bot_s3['cibles'].get(3, 0))} %)."
             )
         interp(doc, ' '.join(_c))
 

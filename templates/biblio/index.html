@@ -550,4 +550,25 @@
 </div>
 {% endif %}
 
+{% endblock %}{# /content #}
+
+{% block scripts %}
+<script>
+/* ── Scroll vers l'élément indiqué par ?go=... (même logique que PTA Global) ── */
+document.addEventListener('DOMContentLoaded', function () {
+  var goParam = new URLSearchParams(window.location.search).get('go');
+  if (goParam) {
+    var target = document.getElementById('row-' + goParam);
+    if (target) {
+      setTimeout(function () {
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        /* Mise en évidence brève (contour bleu 2 secondes) */
+        target.style.transition = 'outline 0.3s';
+        target.style.outline = '3px solid #0d6efd';
+        setTimeout(function () { target.style.outline = ''; }, 2000);
+      }, 150);
+    }
+  }
+});
+</script>
 {% endblock %}

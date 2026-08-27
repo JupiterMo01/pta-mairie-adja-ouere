@@ -144,18 +144,13 @@ def _tache_from_form(t):
 @biblio_bp.route('/')
 @admin_ou_lecteur
 def index():
-    # ── Recherche par nom ───────────────────────────────────────────────────
-    recherche = request.args.get('q', '').strip()
-    q = BiblioActivite.query
-    if recherche:
-        q = q.filter(BiblioActivite.nom.ilike(f'%{recherche}%'))
-    activites = q.order_by(BiblioActivite.nom).all()
+    # Toutes les activités — la recherche est gérée côté client (JS)
+    activites = BiblioActivite.query.order_by(BiblioActivite.nom).all()
 
     directions = Direction.query.order_by(Direction.nom).all()
     services = Service.query.order_by(Service.nom).all()
     structures_externes = StructureExterne.query.order_by(StructureExterne.nom).all()
     # Activités PTA de toutes les années (pour import)
-    annees_pta = Annee.query.order_by(Annee.annee.desc()).all()
     pta_acts = (
         db.session.query(Annee.annee, Activite.id, Activite.nom)
         .join(Programme, Programme.annee_id == Annee.id)
@@ -168,8 +163,7 @@ def index():
                            activites=activites, directions=directions,
                            services=services, modes_execution=MODES_EXECUTION,
                            structures_externes=structures_externes,
-                           pta_acts=pta_acts,
-                           recherche=recherche)
+                           pta_acts=pta_acts)
 
 
 # ─── Activités ────────────────────────────────────────────────────────────────

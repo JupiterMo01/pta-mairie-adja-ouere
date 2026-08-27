@@ -22,32 +22,27 @@
   {% endif %}
 </div>
 
-{# ── Barre de recherche ── #}
-<form method="get" action="{{ url_for('biblio.index') }}"
-      class="d-flex align-items-center gap-2 mb-3">
-  <div class="input-group input-group-sm" style="max-width:380px;">
-    <span class="input-group-text"><i class="fas fa-search"></i></span>
-    <input type="text" name="q" class="form-control"
-           placeholder="Rechercher une activité par nom…"
-           value="{{ recherche or '' }}" autocomplete="off">
-    <button type="submit" class="btn btn-primary">Chercher</button>
-    {% if recherche %}
-    <a href="{{ url_for('biblio.index') }}" class="btn btn-outline-secondary"
-       title="Effacer la recherche"><i class="fas fa-times"></i></a>
-    {% endif %}
-  </div>
-  {% if recherche %}
-  <span class="small text-muted">{{ activites|length }} résultat(s)</span>
-  {% endif %}
-</form>
+{# ── Barre de recherche (client-side, même logique que PTA Global) ── #}
+{% if activites %}
+<div class="d-flex align-items-center gap-2 mb-2 px-1 py-2 bg-light border rounded">
+  <i class="fas fa-search text-muted"></i>
+  <input type="text" id="biblioSearch" class="form-control form-control-sm"
+         placeholder="Rechercher (nom, description, service…)"
+         style="max-width:320px;" autocomplete="off">
+  <span id="biblioSearchCount" class="small fw-semibold ms-1"></span>
+  <button class="btn btn-xs btn-outline-danger" id="biblioClear" title="Effacer la recherche">
+    <i class="fas fa-times"></i>
+  </button>
+  <span class="text-muted small ms-2">Échap = effacer</span>
+</div>
+<div id="biblioNoResult" class="alert alert-warning py-2 d-none">
+  <i class="fas fa-search me-2"></i>Aucune activité ne correspond à la recherche.
+</div>
+{% endif %}
 
-{% if not activites and not recherche %}
+{% if not activites %}
 <div class="alert alert-info">
   <i class="fas fa-info-circle me-2"></i>La bibliothèque est vide. Ajoutez des activités types ou exportez-en depuis le PTA.
-</div>
-{% elif not activites and recherche %}
-<div class="alert alert-warning py-2">
-  <i class="fas fa-search me-2"></i>Aucune activité ne correspond à « {{ recherche }} ».
 </div>
 {% endif %}
 
@@ -554,21 +549,76 @@
 
 {% block scripts %}
 <script>
-/* ── Scroll vers l'élément indiqué par ?go=... (même logique que PTA Global) ── */
-document.addEventListener('DOMContentLoaded', function () {
+(function () {
+  /* ── Recherche live (même logique que PTA Global) ── */
+  var inp      = document.getElementById('biblioSearch');
+  var countEl  = document.getElementById('biblioSearchCount');
+  var clearBtn = document.getElementById('biblioClear');
+  var noResult = document.getElementById('biblioNoResult');
+  var timer;
+
+  function doSearch() {
+    if (!inp) return;
+    var q     = inp.value.trim().toLowerCase();
+    var cards = document.querySelectorAll('[id^="row-bact-"]');
+    var found = 0;
+
+    cards.forEach(function (card) {
+      if (!q) {
+        card.style.display = '';
+        found++;
+        return;
+      }
+      var text = card.textContent.toLowerCase();
+      var show = text.includes(q);
+      card.style.display = show ? '' : 'none';
+      if (show) found++;
+    });
+
+    /* Compteur */
+    if (countEl) {
+      if (!q) {
+        countEl.innerHTML = '';
+      } else if (found === 0) {
+        countEl.innerHTML = '<span class="text-danger">Aucun résultat</span>';
+      } else {
+        countEl.innerHTML = '<span class="text-success fw-bold">' + found + ' activité(s)</span>';
+      }
+    }
+
+    /* Bannière aucun résultat */
+    if (noResult) noResult.classList.toggle('d-none', !q || found > 0);
+  }
+
+  if (inp) {
+    inp.addEventListener('keyup', function (e) {
+      if (e.key === 'Escape') { inp.value = ''; doSearch(); return; }
+      clearTimeout(timer); timer = setTimeout(doSearch, 200);
+    });
+    inp.addEventListener('input', function () {
+      clearTimeout(timer); timer = setTimeout(doSearch, 200);
+    });
+  }
+  if (clearBtn) {
+    clearBtn.addEventListener('click', function () {
+      if (inp) { inp.value = ''; inp.focus(); }
+      doSearch();
+    });
+  }
+
+  /* ── Scroll vers l'élément indiqué par ?go=... ── */
   var goParam = new URLSearchParams(window.location.search).get('go');
   if (goParam) {
     var target = document.getElementById('row-' + goParam);
     if (target) {
       setTimeout(function () {
         target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        /* Mise en évidence brève (contour bleu 2 secondes) */
         target.style.transition = 'outline 0.3s';
         target.style.outline = '3px solid #0d6efd';
         setTimeout(function () { target.style.outline = ''; }, 2000);
       }, 150);
     }
   }
-});
+})();
 </script>
 {% endblock %}

@@ -674,6 +674,33 @@ def journal():
     )
 
 
+@admin_bp.route('/journal/purge', methods=['POST'])
+@editeur_required
+def journal_purge():
+    """Purge tout ou partie du journal d'audit."""
+    from models import AuditLog
+    import datetime as _dt
+
+    mode = request.form.get('mode', 'tout')   # 'tout' ou 'avant'
+    nb   = 0
+
+    if mode == 'avant':
+        avant_str = request.form.get('avant_date', '').strip()
+        try:
+            avant = _dt.datetime.strptime(avant_str, '%Y-%m-%d')
+            nb = AuditLog.query.filter(AuditLog.horodatage < avant).delete()
+        except ValueError:
+            flash('Date invalide. Aucune entrée supprimée.', 'danger')
+            return redirect(url_for('admin.journal'))
+    else:
+        nb = AuditLog.query.delete()
+
+    db.session.commit()
+    log_audit('journal_purge', f"Journal d'audit purgé : {nb} entrée(s) supprimée(s) (mode : {mode})")
+    flash(f'Journal purgé : {nb} entrée(s) supprimée(s).', 'success')
+    return redirect(url_for('admin.journal'))
+
+
 # ─── Sauvegardes PTA ─────────────────────────────────────────────────────────
 
 @admin_bp.route('/backups')

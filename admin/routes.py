@@ -1078,15 +1078,16 @@ def bilan_pta():
                     dir_stats[act.direction_responsable_id]['taux_pond'] += taux_a * poids_a
                     dir_stats[act.direction_responsable_id]['poids_sum'] += poids_a
 
-                # Par service — une activité comptée une fois par service impliqué
+                # Par service — même logique que svcpta : services_concernes (many-to-many)
+                # Une activité comptée une fois par service impliqué
                 svc_vus = set()
                 for td in ad['taches']:
-                    svc_obj = td['tache'].service_responsable
-                    if svc_obj and svc_obj.id not in svc_vus:
-                        svc_vus.add(svc_obj.id)
-                        if svc_obj.id in svc_stats:
-                            svc_stats[svc_obj.id]['taux_pond'] += taux_a * poids_a
-                            svc_stats[svc_obj.id]['poids_sum'] += poids_a
+                    for svc_obj in td['tache'].services_concernes:
+                        if svc_obj.id not in svc_vus:
+                            svc_vus.add(svc_obj.id)
+                            if svc_obj.id in svc_stats:
+                                svc_stats[svc_obj.id]['taux_pond'] += taux_a * poids_a
+                                svc_stats[svc_obj.id]['poids_sum'] += poids_a
 
                 # Par nature
                 nat_key = 'inv' if 'investissement' in (act.type_activite or '').lower() else 'fct'

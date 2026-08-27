@@ -231,6 +231,13 @@
   <textarea name="description" class="form-control" rows="2">{{ tache.description or '' if tache else '' }}</textarea>
 </div>
 
+{# ── Observations ── #}
+<div class="col-12">
+  <label class="form-label fw-semibold">Observations</label>
+  <textarea name="observations" class="form-control" rows="2"
+            placeholder="Remarques, points d'attention…">{{ tache.observations or '' if tache else '' }}</textarea>
+</div>
+
 <script>
 function btToggleImp(radio, tid) {
   var txt = document.getElementById('bt_imp_text_' + tid);

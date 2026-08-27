@@ -22,7 +22,50 @@
   {% endif %}
 </div>
 
-{% if not activites %}
+{# ── Barre de recherche / filtres ── #}
+<form method="get" action="{{ url_for('biblio.index') }}" class="row g-2 mb-3 align-items-end">
+  <div class="col-md-5">
+    <label class="form-label small fw-semibold mb-1">Rechercher une activité</label>
+    <div class="input-group input-group-sm">
+      <span class="input-group-text"><i class="fas fa-search"></i></span>
+      <input type="text" name="q" class="form-control" placeholder="Nom de l'activité…"
+             value="{{ recherche or '' }}">
+    </div>
+  </div>
+  <div class="col-md-3">
+    <label class="form-label small fw-semibold mb-1">Direction responsable</label>
+    <select name="dir_id" class="form-select form-select-sm">
+      <option value="">— Toutes —</option>
+      {% for d in directions %}
+        <option value="{{ d.id }}" {% if filtre_dir_id == d.id %}selected{% endif %}>{{ d.code }} — {{ d.nom }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md-3">
+    <label class="form-label small fw-semibold mb-1">Nature</label>
+    <select name="type_act" class="form-select form-select-sm">
+      <option value="">— Toutes —</option>
+      <option value="Activité d'investissement" {% if filtre_type == "Activité d'investissement" %}selected{% endif %}>Investissement</option>
+      <option value="Activité de fonctionnement" {% if filtre_type == "Activité de fonctionnement" %}selected{% endif %}>Fonctionnement</option>
+    </select>
+  </div>
+  <div class="col-md-1 d-flex gap-1">
+    <button type="submit" class="btn btn-primary btn-sm w-100"><i class="fas fa-filter"></i></button>
+    {% if recherche or filtre_dir_id or filtre_type %}
+      <a href="{{ url_for('biblio.index') }}" class="btn btn-outline-secondary btn-sm" title="Effacer les filtres"><i class="fas fa-times"></i></a>
+    {% endif %}
+  </div>
+</form>
+
+{% if recherche or filtre_dir_id or filtre_type %}
+<div class="alert alert-info py-1 px-2 small mb-2">
+  <i class="fas fa-filter me-1"></i>
+  {% if activites|length == 0 %}Aucune activité ne correspond aux critères.
+  {% else %}{{ activites|length }} activité(s) trouvée(s).{% endif %}
+</div>
+{% endif %}
+
+{% if not activites and not recherche and not filtre_dir_id and not filtre_type %}
 <div class="alert alert-info">
   <i class="fas fa-info-circle me-2"></i>La bibliothèque est vide. Ajoutez des activités types ou exportez-en depuis le PTA.
 </div>

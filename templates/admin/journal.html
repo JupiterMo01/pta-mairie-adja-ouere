@@ -29,10 +29,60 @@
       <i class="fas fa-filter me-1"></i>Filtrer
     </button>
     <a href="{{ url_for('admin.journal') }}" class="btn btn-outline-secondary btn-sm">
-      <i class="fas fa-times me-1"></i>Réinitialiser
+      <i class="fas fa-times me-1"></i>Réinitialiser les filtres
     </a>
+    <button type="button" class="btn btn-outline-danger btn-sm ms-2"
+            data-bs-toggle="modal" data-bs-target="#modalPurgeJournal">
+      <i class="fas fa-trash-alt me-1"></i>Purger le journal
+    </button>
   </div>
 </form>
+
+{# ── Modal purge journal ── #}
+<div class="modal fade" id="modalPurgeJournal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white py-2">
+        <h5 class="modal-title"><i class="fas fa-exclamation-triangle me-2"></i>Purger le journal d'audit</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-3 text-muted small">Cette action est <strong>irréversible</strong>. Les entrées supprimées ne peuvent pas être récupérées.</p>
+
+        {# Option 1 : tout supprimer #}
+        <form method="POST" action="{{ url_for('admin.journal_purge') }}"
+              onsubmit="return confirm('Supprimer TOUTES les entrées du journal ? Cette action est définitive.');">
+          <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+          <input type="hidden" name="mode" value="tout">
+          <div class="d-grid mb-3">
+            <button type="submit" class="btn btn-danger">
+              <i class="fas fa-trash me-1"></i>Supprimer toutes les entrées
+            </button>
+          </div>
+        </form>
+
+        <hr class="my-2">
+        <p class="small fw-semibold mb-2">Ou supprimer les entrées <strong>antérieures</strong> à une date :</p>
+
+        {# Option 2 : supprimer avant une date #}
+        <form method="POST" action="{{ url_for('admin.journal_purge') }}"
+              onsubmit="return confirm('Supprimer toutes les entrées avant cette date ? Cette action est définitive.');">
+          <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+          <input type="hidden" name="mode" value="avant">
+          <div class="input-group input-group-sm">
+            <input type="date" name="avant_date" class="form-control" required>
+            <button type="submit" class="btn btn-outline-danger">
+              <i class="fas fa-calendar-times me-1"></i>Purger avant cette date
+            </button>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer py-2">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Annuler</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 {# ── Tableau ── #}
 <div class="card border-0 shadow-sm">

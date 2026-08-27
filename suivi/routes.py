@@ -20,25 +20,7 @@ from models import db, Programme, Tache, SuiviTache, Annee, Direction, Service
 from svcpta.routes import _compute_pta_service, _renorm
 from dirpta.routes import _compute_pta_direction
 from suivi import suivi_bp
-from utils import log_audit
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-#  Constantes
-# ─────────────────────────────────────────────────────────────────────────────
-
-MOIS_ORDRE = {
-    'Janvier': 1, 'Février': 2, 'Mars': 3,
-    'Avril': 4,   'Mai': 5,    'Juin': 6,
-    'Juillet': 7, 'Août': 8,   'Septembre': 9,
-    'Octobre': 10,'Novembre': 11,'Décembre': 12,
-}
-MOIS_COURT = {
-    'Janvier':'Janv','Février':'Fév','Mars':'Mars','Avril':'Avr',
-    'Mai':'Mai','Juin':'Juin','Juillet':'Juil','Août':'Août',
-    'Septembre':'Sept','Octobre':'Oct','Novembre':'Nov','Décembre':'Déc',
-}
-TRIMESTRE_RANGE = {1: (1,3), 2: (4,6), 3: (7,9), 4: (10,12)}
+from utils import log_audit, get_annee, MOIS_COURT, MOIS_ORDRE, TRIMESTRE_RANGE
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -46,10 +28,7 @@ TRIMESTRE_RANGE = {1: (1,3), 2: (4,6), 3: (7,9), 4: (10,12)}
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _get_annee():
-    annee_id = session.get('annee_id')
-    if annee_id:
-        return Annee.query.get(annee_id)
-    return Annee.query.filter_by(actif=True).first()
+    return get_annee()
 
 
 def _compute_pta_global(annee):

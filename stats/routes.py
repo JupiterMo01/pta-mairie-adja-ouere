@@ -6,24 +6,12 @@ from flask_login import login_required
 from sqlalchemy import func
 from models import db, Programme, Projet, Activite, Tache, Direction, Service, Annee
 from stats import stats_bp
+from utils import get_annee, MOIS_ORDRE as MOIS_NUM
 
 INVEST = "Activité d'investissement"
 FONCT  = "Activité de fonctionnement"
 
-MOIS_NUM = {
-    'Janvier':1,'Février':2,'Mars':3,'Avril':4,'Mai':5,'Juin':6,
-    'Juillet':7,'Août':8,'Septembre':9,'Octobre':10,'Novembre':11,'Décembre':12,
-}
 END_TRIM = {1: 3, 2: 6, 3: 9, 4: 12}
-
-
-# ── Helpers ───────────────────────────────────────────────────────────────────
-
-def get_annee():
-    annee_id = session.get('annee_id')
-    if annee_id:
-        return Annee.query.get(annee_id)
-    return Annee.query.filter_by(actif=True).first()
 
 
 def _fmt(v):

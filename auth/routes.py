@@ -3,6 +3,7 @@ from flask_login import login_user, logout_user, login_required, current_user
 from models import User, Annee
 from auth import auth_bp
 from utils import log_audit
+from extensions import limiter
 
 
 @auth_bp.route('/')
@@ -13,6 +14,7 @@ def index():
 
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
+@limiter.limit('10 per minute; 30 per hour', error_message='Trop de tentatives de connexion. Veuillez patienter quelques minutes.')
 def login():
     if current_user.is_authenticated:
         return redirect(url_for('auth.index'))
@@ -23,14 +25,18 @@ def login():
         user = User.query.filter_by(login=login_val, actif=True).first()
 
         if user and user.check_password(password):
-            login_user(user, remember=True)
+            login_user(user, remember=False)   # pas de cookie persistant — session expire à la fermeture
+            session.permanent = True           # applique PERMANENT_SESSION_LIFETIME (8h)
             annee_active = Annee.query.filter_by(actif=True).first()
             if annee_active:
                 session['annee_id'] = annee_active.id
                 session['annee'] = annee_active.annee
             log_audit('connexion', f"Connexion réussie — {user.role_label}")
             flash(f'Bienvenue, {user.prenom} {user.nom} !', 'success')
+            # Validation du paramètre next : doit être une URL interne (pas de redirect externe)
             next_page = request.args.get('next')
+            if next_page and (next_page.startswith('http') or next_page.startswith('//')):
+                next_page = None   # URL externe détectée → on ignore
             return redirect(next_page or url_for('auth.index'))
         else:
             log_audit('echec_connexion', f"Échec connexion pour l'identifiant : {login_val}")

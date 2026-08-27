@@ -1,6 +1,34 @@
 from models import SuiviTache, Programme
 
 
+# ── Constantes partagées ──────────────────────────────────────────────────────
+
+MOIS_COURT = {
+    'Janvier': 'Janv', 'Février': 'Fév', 'Mars': 'Mars', 'Avril': 'Avr',
+    'Mai': 'Mai', 'Juin': 'Juin', 'Juillet': 'Juil', 'Août': 'Août',
+    'Septembre': 'Sept', 'Octobre': 'Oct', 'Novembre': 'Nov', 'Décembre': 'Déc',
+}
+
+MOIS_ORDRE = {
+    'Janvier': 1, 'Février': 2, 'Mars': 3,
+    'Avril': 4,   'Mai': 5,    'Juin': 6,
+    'Juillet': 7, 'Août': 8,   'Septembre': 9,
+    'Octobre': 10, 'Novembre': 11, 'Décembre': 12,
+}
+
+TRIMESTRE_RANGE = {1: (1, 3), 2: (4, 6), 3: (7, 9), 4: (10, 12)}
+
+
+def get_annee():
+    """Retourne l'année PTA sélectionnée en session, ou l'année active par défaut."""
+    from flask import session
+    from models import Annee
+    annee_id = session.get('annee_id')
+    if annee_id:
+        return Annee.query.get(annee_id)
+    return Annee.query.filter_by(actif=True).first()
+
+
 def log_audit(action, details=None):
     """Enregistre une entrée dans le journal d'audit.
     Ne lève jamais d'exception — un échec de log ne doit pas bloquer l'app."""

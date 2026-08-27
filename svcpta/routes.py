@@ -3,13 +3,7 @@ from flask import render_template, redirect, url_for, flash, request, session, s
 from flask_login import login_required, current_user
 from models import db, Programme, Direction, Service, Annee
 from svcpta import svcpta_bp
-
-
-def get_annee():
-    annee_id = session.get('annee_id')
-    if annee_id:
-        return Annee.query.get(annee_id)
-    return Annee.query.filter_by(actif=True).first()
+from utils import get_annee
 
 
 # ── Renormalisation des poids ─────────────────────────────────────────────────

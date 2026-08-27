@@ -905,50 +905,60 @@ document.addEventListener('DOMContentLoaded', function () {
 {# ── JS Filtre Fonctionnement / Investissement ── #}
 <script>
 (function() {
-  var _nature = '';   // '' = toutes, 'fct', 'inv'
+  var STORAGE_KEY = 'pta_nature_filter';
 
-  window.filterNature = function(nat) {
-    _nature = nat;
-
-    // 1. Mettre à jour les boutons actifs
-    ['toutes', 'fct', 'inv'].forEach(function(k) {
-      var btn = document.getElementById('btn-nat-' + (k === 'toutes' ? 'toutes' : k));
-      if (btn) btn.classList.toggle('active', k === (nat || 'toutes'));
+  function applyFilter(nat) {
+    // 1. Boutons actifs
+    document.querySelectorAll('#natureFilter .btn').forEach(function(b) {
+      b.classList.remove('active');
     });
+    var activeId = nat === 'fct' ? 'btn-nat-fct' : nat === 'inv' ? 'btn-nat-inv' : 'btn-nat-toutes';
+    var activeBtn = document.getElementById(activeId);
+    if (activeBtn) activeBtn.classList.add('active');
 
-    // 2. Mettre à jour les liens Imprimer et Excel
+    // 2. Liens Imprimer et Excel
     var param = nat ? '?nature=' + nat : '';
     ['printLink', 'excelLink'].forEach(function(id) {
       var el = document.getElementById(id);
       if (el && el.dataset.base) el.href = el.dataset.base + param;
     });
 
-    // 3. Afficher / masquer les lignes activité et tâche
+    // 3. Lignes activité et tâche (ont data-nature)
     document.querySelectorAll('[data-nature]').forEach(function(row) {
-      var show = !nat || row.dataset.nature === nat;
-      row.style.display = show ? '' : 'none';
+      row.style.display = (!nat || row.dataset.nature === nat) ? '' : 'none';
     });
 
-    // 4. Masquer les lignes projet sans aucune activité visible
+    // 4. Lignes projet — masquer si aucune activité visible
     document.querySelectorAll('[id^="row-projet-"]').forEach(function(projRow) {
-      var projId = projRow.id.replace('row-projet-', '');
       if (!nat) { projRow.style.display = ''; return; }
-      var anyVisible = Array.from(
-        document.querySelectorAll('[data-proj="' + projId + '"]')
-      ).some(function(r) { return r.style.display !== 'none'; });
-      projRow.style.display = anyVisible ? '' : 'none';
+      var projId = projRow.id.replace('row-projet-', '');
+      var any = Array.from(document.querySelectorAll('[data-proj="' + projId + '"]'))
+                     .some(function(r) { return r.style.display !== 'none'; });
+      projRow.style.display = any ? '' : 'none';
     });
 
-    // 5. Masquer les lignes programme sans aucune activité visible
+    // 5. Lignes programme — masquer si aucune activité visible
     document.querySelectorAll('[id^="row-prog-"]').forEach(function(progRow) {
-      var progId = progRow.id.replace('row-prog-', '');
       if (!nat) { progRow.style.display = ''; return; }
-      var anyVisible = Array.from(
-        document.querySelectorAll('[data-prog="' + progId + '"]')
-      ).some(function(r) { return r.style.display !== 'none'; });
-      progRow.style.display = anyVisible ? '' : 'none';
+      var progId = progRow.id.replace('row-prog-', '');
+      var any = Array.from(document.querySelectorAll('[data-prog="' + progId + '"]'))
+                     .some(function(r) { return r.style.display !== 'none'; });
+      progRow.style.display = any ? '' : 'none';
     });
+  }
+
+  // Bouton cliqué : mémoriser + appliquer
+  window.filterNature = function(nat) {
+    try { sessionStorage.setItem(STORAGE_KEY, nat); } catch(e) {}
+    applyFilter(nat);
   };
+
+  // Au chargement : restaurer le filtre mémorisé
+  document.addEventListener('DOMContentLoaded', function() {
+    var saved = '';
+    try { saved = sessionStorage.getItem(STORAGE_KEY) || ''; } catch(e) {}
+    if (saved) applyFilter(saved);
+  });
 })();
 </script>
 {% endblock %}

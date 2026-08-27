@@ -17,6 +17,8 @@ Planification : PythonAnywhere > Tasks > Daily 00:30 UTC
 
 import os
 import datetime
+import gzip
+import shutil
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.base       import MIMEBase
@@ -53,41 +55,68 @@ def lire_config():
             raise ValueError(f"Clé manquante dans config : {cle}")
     return cfg
 
+LIMITE_GMAIL_MO = 20   # alerte si la DB compressée dépasse ce seuil (Mo)
+
+
+def compresser_db(db_path, gz_path):
+    """Compresse db_path en gzip → gz_path. Retourne la taille en Ko."""
+    with open(db_path, 'rb') as f_in, gzip.open(gz_path, 'wb', compresslevel=6) as f_out:
+        shutil.copyfileobj(f_in, f_out)
+    return os.path.getsize(gz_path) / 1024
+
+
 def envoyer_backup(cfg, db_path, nom_fichier):
-    """Envoyer le fichier .db en pièce jointe par email."""
+    """Compresse la DB en gzip puis l'envoie en pièce jointe par email."""
     date_lisible = datetime.datetime.now().strftime('%d/%m/%Y à %Hh%M')
-    taille_ko    = os.path.getsize(db_path) / 1024
+    taille_brute_ko = os.path.getsize(db_path) / 1024
 
-    msg = MIMEMultipart()
-    msg['From']    = cfg['GMAIL_USER']
-    msg['To']      = cfg['DEST_EMAIL']
-    msg['Subject'] = f"[PTA Mairie] Sauvegarde automatique — {date_lisible}"
+    # Compression temporaire
+    gz_path = db_path + '.gz'
+    try:
+        taille_gz_ko = compresser_db(db_path, gz_path)
+        nom_gz = nom_fichier + '.gz'
 
-    corps = (
-        f"Bonjour,\n\n"
-        f"Sauvegarde automatique de la base PTA de la Mairie d'Adja-Ouèrè.\n\n"
-        f"  Fichier  : {nom_fichier}\n"
-        f"  Taille   : {taille_ko:.1f} Ko\n"
-        f"  Date     : {date_lisible}\n\n"
-        f"Ce message est généré automatiquement — ne pas répondre.\n"
-        f"Mairie d'Adja-Ouèrè · Système PTA"
-    )
-    msg.attach(MIMEText(corps, 'plain', 'utf-8'))
+        # Alerte si fichier compressé > seuil Gmail
+        if taille_gz_ko > LIMITE_GMAIL_MO * 1024:
+            log(f"AVERTISSEMENT : fichier compressé trop volumineux ({taille_gz_ko/1024:.1f} Mo > {LIMITE_GMAIL_MO} Mo). Envoi annulé.")
+            return
 
-    # Pièce jointe
-    with open(db_path, 'rb') as f:
-        part = MIMEBase('application', 'octet-stream')
-        part.set_payload(f.read())
-    encoders.encode_base64(part)
-    part.add_header('Content-Disposition', f'attachment; filename="{nom_fichier}"')
-    msg.attach(part)
+        msg = MIMEMultipart()
+        msg['From']    = cfg['GMAIL_USER']
+        msg['To']      = cfg['DEST_EMAIL']
+        msg['Subject'] = f"[PTA Mairie] Sauvegarde automatique — {date_lisible}"
 
-    # Envoi via Gmail SMTP
-    with smtplib.SMTP('smtp.gmail.com', 587) as srv:
-        srv.ehlo()
-        srv.starttls()
-        srv.login(cfg['GMAIL_USER'], cfg['GMAIL_APP_PASSWORD'])
-        srv.sendmail(cfg['GMAIL_USER'], cfg['DEST_EMAIL'], msg.as_string())
+        corps = (
+            f"Bonjour,\n\n"
+            f"Sauvegarde automatique de la base PTA de la Mairie d'Adja-Ouèrè.\n\n"
+            f"  Fichier  : {nom_gz}\n"
+            f"  Taille   : {taille_gz_ko:.1f} Ko (compressé) / {taille_brute_ko:.1f} Ko (brut)\n"
+            f"  Date     : {date_lisible}\n\n"
+            f"Pour restaurer : décompresser le fichier .gz avec 7-Zip ou gunzip.\n\n"
+            f"Ce message est généré automatiquement — ne pas répondre.\n"
+            f"Mairie d'Adja-Ouèrè · Système PTA"
+        )
+        msg.attach(MIMEText(corps, 'plain', 'utf-8'))
+
+        # Pièce jointe (fichier compressé)
+        with open(gz_path, 'rb') as f:
+            part = MIMEBase('application', 'gzip')
+            part.set_payload(f.read())
+        encoders.encode_base64(part)
+        part.add_header('Content-Disposition', f'attachment; filename="{nom_gz}"')
+        msg.attach(part)
+
+        # Envoi via Gmail SMTP
+        with smtplib.SMTP('smtp.gmail.com', 587) as srv:
+            srv.ehlo()
+            srv.starttls()
+            srv.login(cfg['GMAIL_USER'], cfg['GMAIL_APP_PASSWORD'])
+            srv.sendmail(cfg['GMAIL_USER'], cfg['DEST_EMAIL'], msg.as_string())
+
+    finally:
+        # Toujours supprimer le fichier temporaire
+        if os.path.exists(gz_path):
+            os.remove(gz_path)
 
 # ── Sauvegarde principale ──────────────────────────────────────────────────────
 def run():

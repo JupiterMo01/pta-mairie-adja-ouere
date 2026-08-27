@@ -3,6 +3,7 @@ from flask import Flask, redirect, url_for, session, request, abort
 from config import Config
 from models import db
 from flask_login import LoginManager
+from extensions import limiter
 
 
 def create_app():
@@ -10,6 +11,7 @@ def create_app():
     app.config.from_object(Config)
 
     db.init_app(app)
+    limiter.init_app(app)
 
     login_manager = LoginManager()
     login_manager.init_app(app)
@@ -134,6 +136,13 @@ def create_app():
     app.register_blueprint(exportation_bp, url_prefix='/exportation')
     app.register_blueprint(suivi_bp, url_prefix='/suivi')
     app.register_blueprint(dashboard_bp, url_prefix='/dashboard')
+
+    # Gestionnaire d'erreur 429 (trop de tentatives de connexion)
+    from flask import render_template as _rt
+    @app.errorhandler(429)
+    def trop_de_requetes(e):
+        return _rt('auth/login.html',
+                   erreur_limite="Trop de tentatives de connexion. Veuillez patienter quelques minutes avant de réessayer."), 429
 
     return app
 

@@ -6,13 +6,7 @@ from flask_login import login_required, current_user
 from sqlalchemy.orm import subqueryload
 from models import db, Programme, Projet, Activite, Tache, Direction, Service, Annee, MODES_EXECUTION, BiblioActivite, BiblioTache, StructureExterne, PTABackup
 from pta import pta_bp
-
-
-def get_annee():
-    annee_id = session.get('annee_id')
-    if annee_id:
-        return Annee.query.get(annee_id)
-    return Annee.query.filter_by(actif=True).first()
+from utils import get_annee
 
 
 def editeur_only(f):

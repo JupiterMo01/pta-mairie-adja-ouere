@@ -3,15 +3,7 @@ from flask import render_template, request, redirect, url_for, flash, session, s
 from flask_login import login_required
 from models import db, Programme, Direction, Service, Annee
 from exportation import exportation_bp
-
-
-# ── Utilitaires ───────────────────────────────────────────────────────────────
-
-def get_annee():
-    annee_id = session.get('annee_id')
-    if annee_id:
-        return Annee.query.get(annee_id)
-    return Annee.query.filter_by(actif=True).first()
+from utils import get_annee
 
 
 def _sheet_name(name, used, prefix=''):

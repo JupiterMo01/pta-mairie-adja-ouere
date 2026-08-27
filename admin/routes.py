@@ -1059,19 +1059,25 @@ def bilan_pta():
         return 'non_execute'
 
     def taux_act(act):
-        """Taux moyen d'exécution de l'activité (moyenne de ses tâches)."""
+        """Taux d'exécution de l'activité — moyenne pondérée par tache.poids."""
         if not act.taches:
             return 0.0
-        return sum(meilleur[t.id][1] for t in act.taches) / len(act.taches)
+        poids_total = sum(t.poids or 0 for t in act.taches)
+        if poids_total == 0:
+            # Pas de poids définis : simple moyenne
+            return sum(meilleur[t.id][1] for t in act.taches) / len(act.taches)
+        return sum((t.poids or 0) * meilleur[t.id][1] for t in act.taches) / poids_total
 
     def _vide_stat(extra=None):
-        d = {'execute': 0, 'en_cours': 0, 'non_execute': 0, 'taux_sum': 0.0, 'nb': 0}
+        # taux_pond = somme(taux * poids), poids_sum = somme(poids) → taux moy = taux_pond/poids_sum
+        d = {'execute': 0, 'en_cours': 0, 'non_execute': 0, 'taux_pond': 0.0, 'poids_sum': 0.0}
         if extra:
             d.update(extra)
         return d
 
     def _taux_moy(r):
-        return round(r['taux_sum'] / r['nb'], 1) if r['nb'] else 0.0
+        """Taux moyen pondéré par activite.poids."""
+        return round(r['taux_pond'] / r['poids_sum'], 1) if r['poids_sum'] > 0 else 0.0
 
     # Agrégation
     dir_stats = {}   # dir_id → {code, nom, execute, en_cours, non_execute, taux_sum, nb}
@@ -1083,17 +1089,18 @@ def bilan_pta():
     glob = _vide_stat()
 
     for act in activites:
-        statut  = statut_act(act)
-        taux    = taux_act(act)
-        dir_obj = act.direction_responsable
+        statut    = statut_act(act)
+        taux      = taux_act(act)
+        poids_act = act.poids or 0          # poids de l'activité dans son projet
+        dir_obj   = act.direction_responsable
 
-        # Par direction (activités)
+        # Par direction (activités) — taux pondéré par act.poids
         if dir_obj:
             if dir_obj.id not in dir_stats:
                 dir_stats[dir_obj.id] = _vide_stat({'code': dir_obj.code, 'nom': dir_obj.nom})
-            dir_stats[dir_obj.id][statut]     += 1
-            dir_stats[dir_obj.id]['taux_sum'] += taux
-            dir_stats[dir_obj.id]['nb']       += 1
+            dir_stats[dir_obj.id][statut]       += 1
+            dir_stats[dir_obj.id]['taux_pond']  += taux * poids_act
+            dir_stats[dir_obj.id]['poids_sum']  += poids_act
 
         # Par service — activités (une activité comptée une fois par service impliqué)
         svc_vus = set()
@@ -1106,20 +1113,20 @@ def bilan_pta():
                         'code': svc_obj.code, 'nom': svc_obj.nom,
                         'dir': dir_obj.code if dir_obj else '—'
                     })
-                svc_stats[svc_obj.id][statut]     += 1
-                svc_stats[svc_obj.id]['taux_sum'] += taux
-                svc_stats[svc_obj.id]['nb']       += 1
+                svc_stats[svc_obj.id][statut]       += 1
+                svc_stats[svc_obj.id]['taux_pond']  += taux * poids_act
+                svc_stats[svc_obj.id]['poids_sum']  += poids_act
 
         # Par nature
         nat_key = 'inv' if 'investissement' in (act.type_activite or '').lower() else 'fct'
-        nat_stats[nat_key][statut]     += 1
-        nat_stats[nat_key]['taux_sum'] += taux
-        nat_stats[nat_key]['nb']       += 1
+        nat_stats[nat_key][statut]       += 1
+        nat_stats[nat_key]['taux_pond']  += taux * poids_act
+        nat_stats[nat_key]['poids_sum']  += poids_act
 
         # Global
-        glob[statut]     += 1
-        glob['taux_sum'] += taux
-        glob['nb']       += 1
+        glob[statut]       += 1
+        glob['taux_pond']  += taux * poids_act
+        glob['poids_sum']  += poids_act
 
     total_glob  = sum(glob[k] for k in ('execute', 'en_cours', 'non_execute'))
     taux_global = _taux_moy(glob)

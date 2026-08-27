@@ -97,7 +97,9 @@
 <body>
 
 <div class="screen-bar">
-  <span>📄 PTA {{ annee.annee }} — Aperçu avant impression</span>
+  <span>📄 PTA {{ annee.annee }}
+    {% if nature_filtre == 'inv' %} — Activités d'Investissement{% elif nature_filtre == 'fct' %} — Activités de Fonctionnement{% endif %}
+    — Aperçu avant impression</span>
   <button class="btn-p" onclick="window.print()">🖨️ Imprimer / Enregistrer PDF</button>
   <button class="btn-c" onclick="window.close()">✕ Fermer</button>
 </div>
@@ -120,7 +122,9 @@
 </div>
 
 <div class="titre-pta">
-  <div class="titre-pta-h1">PLAN DE TRAVAIL ANNUEL</div>
+  <div class="titre-pta-h1">PLAN DE TRAVAIL ANNUEL
+    {% if nature_filtre == 'inv' %} — INVESTISSEMENT{% elif nature_filtre == 'fct' %} — FONCTIONNEMENT{% endif %}
+  </div>
   <div class="titre-pta-h2">Exercice {{ annee.annee }}</div>
 </div>
 
@@ -216,6 +220,12 @@
       </tr>
 
       {% for act in projet.activites %}
+        {# Filtre par nature si demandé #}
+        {% set act_inv = act.type_activite == "Activité d'investissement" %}
+        {% set act_visible = (not nature_filtre)
+            or (nature_filtre == 'inv' and act_inv)
+            or (nature_filtre == 'fct' and not act_inv) %}
+        {% if act_visible %}
         {% if act.taches %}
           {% set a_rp = act.taches|sum(attribute='ressources_propres') %}
           {% set a_fa = act.taches|sum(attribute='fadec_affecte') %}
@@ -342,6 +352,7 @@
 
           {% endif %}
         {% endfor %}
+        {% endif %}{# /act_visible #}
       {% endfor %}
     {% endfor %}
   {% endfor %}

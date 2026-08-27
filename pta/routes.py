@@ -985,6 +985,7 @@ def print_view():
         flash('Aucune année active.', 'danger')
         return redirect(url_for('pta.global_pta'))
     service_filtre = current_user.service_id if current_user.role == 'service' else None
+    nature_filtre  = request.args.get('nature', '').strip()   # 'inv', 'fct' ou ''
     programmes = Programme.query.filter_by(annee_id=annee.id).order_by(Programme.numero).all()
     nb_services = Service.query.count()
     nb_directions = Direction.query.count()
@@ -992,6 +993,7 @@ def print_view():
                            annee=annee,
                            programmes=programmes,
                            service_filtre=service_filtre,
+                           nature_filtre=nature_filtre,
                            nb_services=nb_services,
                            nb_directions=nb_directions)
 
@@ -1012,7 +1014,9 @@ def export_excel():
 
     wb = Workbook()
     ws = wb.active
-    ws.title = f"PTA {annee.annee}"
+    _nature_label = {'inv': ' - Investissement', 'fct': ' - Fonctionnement'}.get(
+        request.args.get('nature', '').strip(), '')
+    ws.title = f"PTA {annee.annee}{_nature_label}"[:31]
 
     thin = Side(style='thin')
     brd = Border(left=thin, right=thin, top=thin, bottom=thin)
@@ -1026,6 +1030,7 @@ def export_excel():
     f_tch  = PatternFill("solid", fgColor="FFFFFF")   # blanc
 
     service_filtre = current_user.service_id if current_user.role == 'service' else None
+    nature_filtre  = request.args.get('nature', '').strip()   # 'inv', 'fct' ou ''
 
     import os as _os
     from flask import current_app
@@ -1234,6 +1239,12 @@ def export_excel():
             row += 1
 
             for act in projet.activites:
+                # Filtre par nature
+                _act_inv = act.type_activite == "Activité d'investissement"
+                if nature_filtre == 'inv' and not _act_inv:
+                    continue
+                if nature_filtre == 'fct' and _act_inv:
+                    continue
                 resp = act.direction_responsable.code if act.direction_responsable else ''
                 nb_sa = len(act.services_intervenants)
                 nb_da = len(act.directions_associees)

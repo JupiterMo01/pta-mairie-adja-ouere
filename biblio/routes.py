@@ -144,19 +144,11 @@ def _tache_from_form(t):
 @biblio_bp.route('/')
 @admin_ou_lecteur
 def index():
-    # ── Recherche / filtre ──────────────────────────────────────────────────
-    recherche     = request.args.get('q', '').strip()
-    filtre_dir_id = request.args.get('dir_id', type=int)
-    filtre_type   = request.args.get('type_act', '').strip()
-
+    # ── Recherche par nom ───────────────────────────────────────────────────
+    recherche = request.args.get('q', '').strip()
     q = BiblioActivite.query
     if recherche:
-        like = f'%{recherche}%'
-        q = q.filter(BiblioActivite.nom.ilike(like))
-    if filtre_dir_id:
-        q = q.filter(BiblioActivite.direction_responsable_id == filtre_dir_id)
-    if filtre_type:
-        q = q.filter(BiblioActivite.type_activite == filtre_type)
+        q = q.filter(BiblioActivite.nom.ilike(f'%{recherche}%'))
     activites = q.order_by(BiblioActivite.nom).all()
 
     directions = Direction.query.order_by(Direction.nom).all()
@@ -177,9 +169,7 @@ def index():
                            services=services, modes_execution=MODES_EXECUTION,
                            structures_externes=structures_externes,
                            pta_acts=pta_acts,
-                           recherche=recherche,
-                           filtre_dir_id=filtre_dir_id,
-                           filtre_type=filtre_type)
+                           recherche=recherche)
 
 
 # ─── Activités ────────────────────────────────────────────────────────────────

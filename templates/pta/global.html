@@ -30,10 +30,28 @@
   </button>
   {% endif %}
   {% if annee %}
-  <a href="{{ url_for('pta.export_excel') }}" class="btn btn-success btn-sm ms-auto">
+  {# ── Filtre par nature (Fonctionnement / Investissement) ── #}
+  <div class="btn-group btn-group-sm ms-auto" role="group" id="natureFilter">
+    <button type="button" class="btn btn-outline-secondary active"
+            onclick="filterNature('')" id="btn-nat-toutes">
+      <i class="fas fa-list me-1"></i>Toutes
+    </button>
+    <button type="button" class="btn btn-outline-success"
+            onclick="filterNature('fct')" id="btn-nat-fct">
+      <i class="fas fa-cog me-1"></i>Fonctionnement
+    </button>
+    <button type="button" class="btn btn-outline-danger"
+            onclick="filterNature('inv')" id="btn-nat-inv">
+      <i class="fas fa-hammer me-1"></i>Investissement
+    </button>
+  </div>
+  <a href="{{ url_for('pta.export_excel') }}" id="excelLink"
+     data-base="{{ url_for('pta.export_excel') }}"
+     class="btn btn-success btn-sm">
     <i class="fas fa-file-excel me-1"></i>Exporter Excel
   </a>
-  <a href="{{ url_for('pta.print_view') }}" target="_blank"
+  <a href="{{ url_for('pta.print_view') }}" target="_blank" id="printLink"
+     data-base="{{ url_for('pta.print_view') }}"
      class="btn btn-outline-secondary btn-sm">
     <i class="fas fa-print me-1"></i>Imprimer
   </a>
@@ -269,7 +287,9 @@
     {% set a_af = act.taches|sum(attribute='autres_fonds') if act.taches else (act.autres_fonds or 0) %}
     {% set a_tot = a_rp + a_fa + a_fn + a_ap + a_af %}
     {% set poids_taches = act.taches|sum(attribute='poids') if act.taches else 0 %}
-    <tr id="row-act-{{ act.id }}" style="background:#D3D3D3;font-weight:700;">
+    <tr id="row-act-{{ act.id }}" style="background:#D3D3D3;font-weight:700;"
+        data-nature="{{ 'inv' if act.type_activite == \"Activité d'investissement\" else 'fct' }}"
+        data-proj="{{ projet.id }}" data-prog="{{ prog.id }}">
       <td class="text-center">{{ act.code }}</td>
       <td>{{ act.nom }}
         {% if can_edit and act.taches %}
@@ -395,7 +415,9 @@
     <!-- Tâches -->
     {% for tache in act.taches %}
     {% set ma_tache = (mon_service_id and tache.service_responsable_id == mon_service_id) or (ma_direction_id and tache.direction_responsable_id == ma_direction_id) %}
-    <tr id="row-tache-{{ tache.id }}" class="{% if ma_tache %}table-warning{% endif %}">
+    <tr id="row-tache-{{ tache.id }}" class="{% if ma_tache %}table-warning{% endif %}"
+        data-nature="{{ 'inv' if act.type_activite == \"Activité d'investissement\" else 'fct' }}"
+        data-act="{{ act.id }}">
       <td class="ps-3 text-muted text-center">{{ tache.code }}</td>
       <td class="ps-3">
         <i class="fas fa-angle-right text-muted me-1"></i>{{ tache.nom }}
@@ -877,6 +899,56 @@ document.addEventListener('DOMContentLoaded', function () {
   if (prevBtn) prevBtn.addEventListener('click', function () { goTo(cur - 1); });
   if (nextBtn) nextBtn.addEventListener('click', function () { goTo(cur + 1); });
   if (clearBtn) clearBtn.addEventListener('click', function () { inp.value = ''; doSearch(); inp.focus(); });
+})();
+</script>
+
+{# ── JS Filtre Fonctionnement / Investissement ── #}
+<script>
+(function() {
+  var _nature = '';   // '' = toutes, 'fct', 'inv'
+
+  window.filterNature = function(nat) {
+    _nature = nat;
+
+    // 1. Mettre à jour les boutons actifs
+    ['toutes', 'fct', 'inv'].forEach(function(k) {
+      var btn = document.getElementById('btn-nat-' + (k === 'toutes' ? 'toutes' : k));
+      if (btn) btn.classList.toggle('active', k === (nat || 'toutes'));
+    });
+
+    // 2. Mettre à jour les liens Imprimer et Excel
+    var param = nat ? '?nature=' + nat : '';
+    ['printLink', 'excelLink'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el && el.dataset.base) el.href = el.dataset.base + param;
+    });
+
+    // 3. Afficher / masquer les lignes activité et tâche
+    document.querySelectorAll('[data-nature]').forEach(function(row) {
+      var show = !nat || row.dataset.nature === nat;
+      row.style.display = show ? '' : 'none';
+    });
+
+    // 4. Masquer les lignes projet sans aucune activité visible
+    document.querySelectorAll('[id^="row-projet-"]').forEach(function(projRow) {
+      var projId = projRow.id.replace('row-projet-', '');
+      if (!nat) { projRow.style.display = ''; return; }
+      var anyVisible = Array.from(
+        document.querySelectorAll('[data-proj="' + projId + '"]')
+      ).some(function(r) { return r.style.display !== 'none'; });
+      projRow.style.display = anyVisible ? '' : 'none';
+    });
+
+    // 5. Masquer les lignes programme sans aucune activité visible
+    document.querySelectorAll('[id^="row-prog-"]').forEach(function(progRow) {
+      var progId = progRow.id.replace('row-prog-', '');
+      if (!nat) { progRow.style.display = ''; return; }
+      var anyVisible = Array.from(
+        document.querySelectorAll('[data-prog="' + progId + '"]')
+      ).some(function(r) { return r.style.display !== 'none'; });
+      progRow.style.display = anyVisible ? '' : 'none';
+    });
+  };
 })();
 </script>
 {% endblock %}

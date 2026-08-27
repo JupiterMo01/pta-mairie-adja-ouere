@@ -203,9 +203,20 @@ def activite_edit(act_id):
 @admin_editeur_only
 def activite_delete(act_id):
     a = BiblioActivite.query.get_or_404(act_id)
+    # Trouver l'activité voisine (précédente ou suivante) pour le scroll de retour
+    toutes = [x.id for x in BiblioActivite.query.order_by(BiblioActivite.nom).all()]
+    idx = toutes.index(act_id) if act_id in toutes else -1
+    voisine_id = None
+    if idx >= 0:
+        if idx + 1 < len(toutes):
+            voisine_id = toutes[idx + 1]   # suivante (préférence)
+        elif idx > 0:
+            voisine_id = toutes[idx - 1]   # précédente si c'était la dernière
     db.session.delete(a)
     db.session.commit()
     flash('Activité supprimée de la bibliothèque.', 'success')
+    if voisine_id:
+        return redirect(url_for('biblio.index', go=f'bact-{voisine_id}'))
     return redirect(url_for('biblio.index'))
 
 

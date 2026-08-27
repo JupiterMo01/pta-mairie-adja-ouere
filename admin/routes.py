@@ -998,13 +998,13 @@ def rappel_saisie():
 @admin_bp.route('/bilan-pta', methods=['POST'])
 @editeur_required
 def bilan_pta():
-    """Envoie le bilan global PTA : par direction, par service (activités), par nature, global + taux."""
+    """Envoie le bilan global PTA — taux et statuts identiques à l'interface Suivi."""
     import datetime
-    from collections import defaultdict
     from email.mime.multipart import MIMEMultipart
     from email.mime.text import MIMEText
-    from models import SuiviTache
     from utils import get_annee
+    # Réutilise exactement les mêmes helpers que le module suivi
+    from suivi.routes import (_compute_pta_global, _load_suivis_global, _enrich)
 
     annee       = get_annee()
     annee_label = annee.annee if annee else datetime.date.today().year
@@ -1028,108 +1028,71 @@ def bilan_pta():
         flash("Aucune année PTA active.", 'warning')
         return redirect(url_for('admin.index'))
 
-    # ── Données ───────────────────────────────────────────────────────────────
-    activites = (
-        Activite.query
-        .join(Projet,    Activite.projet_id == Projet.id)
-        .join(Programme, Projet.programme_id == Programme.id)
-        .filter(Programme.annee_id == annee.id)
-        .all()
-    )
+    # ── Données — même calcul que l'onglet "Suivi Global" ────────────────────
+    data            = _compute_pta_global(annee)
+    suivi_map       = _load_suivis_global(annee.id)
+    taux_global, _  = _enrich(data, suivi_map, peut_modifier_fn=None)
+    # Après _enrich : ad['taux'], ad['statut'] sont calculés exactement
+    # comme dans l'interface (poids renormalisés new_poids, _statut_agrege)
 
-    # Meilleur statut + taux par tâche sur l'année (execute > en_cours > non_execute)
-    POIDS = {'non_execute': 0, 'en_cours': 1, 'execute': 2}
-    meilleur = defaultdict(lambda: ('non_execute', 0.0))   # tache_id → (statut, taux%)
-    for s in SuiviTache.query.filter_by(annee_id=annee.id).all():
-        if POIDS.get(s.statut, 0) > POIDS.get(meilleur[s.tache_id][0], 0):
-            if s.statut == 'execute':
-                t = 100.0
-            elif s.statut == 'en_cours':
-                t = float(s.taux_execution or 0)
-            else:
-                t = 0.0
-            meilleur[s.tache_id] = (s.statut, t)
-
-    def statut_act(act):
-        if not act.taches:
-            return 'non_execute'
-        st = [meilleur[t.id][0] for t in act.taches]
-        if all(s == 'execute' for s in st):               return 'execute'
-        if any(s in ('execute', 'en_cours') for s in st): return 'en_cours'
-        return 'non_execute'
-
-    def taux_act(act):
-        """Taux d'exécution de l'activité — moyenne pondérée par tache.poids."""
-        if not act.taches:
-            return 0.0
-        poids_total = sum(t.poids or 0 for t in act.taches)
-        if poids_total == 0:
-            # Pas de poids définis : simple moyenne
-            return sum(meilleur[t.id][1] for t in act.taches) / len(act.taches)
-        return sum((t.poids or 0) * meilleur[t.id][1] for t in act.taches) / poids_total
-
-    def _vide_stat(extra=None):
-        # taux_pond = somme(taux * poids), poids_sum = somme(poids) → taux moy = taux_pond/poids_sum
-        d = {'execute': 0, 'en_cours': 0, 'non_execute': 0, 'taux_pond': 0.0, 'poids_sum': 0.0}
-        if extra:
-            d.update(extra)
-        return d
+    # ── Agrégation par direction / service / nature ───────────────────────────
+    def _vide():
+        return {'execute': 0, 'en_cours': 0, 'non_execute': 0,
+                'taux_pond': 0.0, 'poids_sum': 0.0}
 
     def _taux_moy(r):
-        """Taux moyen pondéré par activite.poids."""
         return round(r['taux_pond'] / r['poids_sum'], 1) if r['poids_sum'] > 0 else 0.0
 
-    # Agrégation
-    dir_stats = {}   # dir_id → {code, nom, execute, en_cours, non_execute, taux_sum, nb}
-    svc_stats = {}   # svc_id → {code, nom, dir, execute, en_cours, non_execute, taux_sum, nb}
-    nat_stats = {
-        'fct': _vide_stat({'label': 'Fonctionnement'}),
-        'inv': _vide_stat({'label': 'Investissement'}),
+    dir_stats  = {}
+    svc_stats  = {}
+    nat_stats  = {
+        'fct': dict(_vide(), label='Fonctionnement'),
+        'inv': dict(_vide(), label='Investissement'),
     }
-    glob = _vide_stat()
+    glob       = _vide()
+    total_glob = 0
 
-    for act in activites:
-        statut    = statut_act(act)
-        taux      = taux_act(act)
-        poids_act = act.poids or 0          # poids de l'activité dans son projet
-        dir_obj   = act.direction_responsable
+    for pd in data:
+        for pjd in pd['projets']:
+            for ad in pjd['activites']:
+                act     = ad['activite']
+                statut  = ad['statut']        # calculé par _enrich → _statut_agrege
+                taux_a  = ad['taux']          # calculé par _enrich avec new_poids
+                poids_a = ad['new_poids']     # poids renormalisé dans le PTA global
+                dir_obj = act.direction_responsable
 
-        # Par direction (activités) — taux pondéré par act.poids
-        if dir_obj:
-            if dir_obj.id not in dir_stats:
-                dir_stats[dir_obj.id] = _vide_stat({'code': dir_obj.code, 'nom': dir_obj.nom})
-            dir_stats[dir_obj.id][statut]       += 1
-            dir_stats[dir_obj.id]['taux_pond']  += taux * poids_act
-            dir_stats[dir_obj.id]['poids_sum']  += poids_act
+                total_glob += 1
 
-        # Par service — activités (une activité comptée une fois par service impliqué)
-        svc_vus = set()
-        for tache in act.taches:
-            svc_obj = tache.service_responsable
-            if svc_obj and svc_obj.id not in svc_vus:
-                svc_vus.add(svc_obj.id)
-                if svc_obj.id not in svc_stats:
-                    svc_stats[svc_obj.id] = _vide_stat({
-                        'code': svc_obj.code, 'nom': svc_obj.nom,
-                        'dir': dir_obj.code if dir_obj else '—'
-                    })
-                svc_stats[svc_obj.id][statut]       += 1
-                svc_stats[svc_obj.id]['taux_pond']  += taux * poids_act
-                svc_stats[svc_obj.id]['poids_sum']  += poids_act
+                # Par direction
+                if dir_obj:
+                    if dir_obj.id not in dir_stats:
+                        dir_stats[dir_obj.id] = dict(_vide(), code=dir_obj.code, nom=dir_obj.nom)
+                    dir_stats[dir_obj.id][statut]      += 1
+                    dir_stats[dir_obj.id]['taux_pond'] += taux_a * poids_a
+                    dir_stats[dir_obj.id]['poids_sum'] += poids_a
 
-        # Par nature
-        nat_key = 'inv' if 'investissement' in (act.type_activite or '').lower() else 'fct'
-        nat_stats[nat_key][statut]       += 1
-        nat_stats[nat_key]['taux_pond']  += taux * poids_act
-        nat_stats[nat_key]['poids_sum']  += poids_act
+                # Par service — activités (une activité comptée une fois par service)
+                svc_vus = set()
+                for td in ad['taches']:
+                    svc_obj = td['tache'].service_responsable
+                    if svc_obj and svc_obj.id not in svc_vus:
+                        svc_vus.add(svc_obj.id)
+                        if svc_obj.id not in svc_stats:
+                            svc_stats[svc_obj.id] = dict(_vide(),
+                                code=svc_obj.code, nom=svc_obj.nom,
+                                dir=dir_obj.code if dir_obj else '—')
+                        svc_stats[svc_obj.id][statut]      += 1
+                        svc_stats[svc_obj.id]['taux_pond'] += taux_a * poids_a
+                        svc_stats[svc_obj.id]['poids_sum'] += poids_a
 
-        # Global
-        glob[statut]       += 1
-        glob['taux_pond']  += taux * poids_act
-        glob['poids_sum']  += poids_act
+                # Par nature
+                nat_key = 'inv' if 'investissement' in (act.type_activite or '').lower() else 'fct'
+                nat_stats[nat_key][statut]      += 1
+                nat_stats[nat_key]['taux_pond'] += taux_a * poids_a
+                nat_stats[nat_key]['poids_sum'] += poids_a
 
-    total_glob  = sum(glob[k] for k in ('execute', 'en_cours', 'non_execute'))
-    taux_global = _taux_moy(glob)
+                # Global (comptage — taux_global vient directement de _enrich)
+                glob[statut] += 1
 
     # ── HTML ──────────────────────────────────────────────────────────────────
     VERT   = '#16a34a'
@@ -1306,234 +1269,4 @@ def bilan_pta():
               f"Bilan PTA {annee_label} envoyé à {len(destinataires)} destinataire(s) "
               f"— {total_glob} activité(s), taux global {taux_global}%")
     flash(f"Bilan envoyé à {len(destinataires)} destinataire(s) + {len(_COPIES_FIXES)} copie(s).", 'success')
-    return redirect(url_for('admin.index'))
-
-
-# ─── ROUTE SUPPRIMÉE — remplacée par rappel_saisie + bilan_pta ───────────────
-@admin_bp.route('/alerte-trimestrielle', methods=['POST'])
-@editeur_required
-def alerte_trimestrielle():
-    """Envoie un bilan trimestriel par email à tous les utilisateurs ayant une adresse renseignée."""
-    import smtplib
-    import datetime
-    import os
-    from email.mime.multipart import MIMEMultipart
-    from email.mime.text import MIMEText
-    from sqlalchemy import func
-    from utils import get_annee
-
-    # ── Trimestre courant ─────────────────────────────────────────────────────
-    aujourd_hui = datetime.date.today()
-    mois        = aujourd_hui.month
-    trimestre   = (mois - 1) // 3 + 1
-    noms_trim   = {1: '1ᵉʳ', 2: '2ème', 3: '3ème', 4: '4ème'}
-    nom_trim    = noms_trim.get(trimestre, str(trimestre))
-    annee       = get_annee()
-    annee_label = annee.annee if annee else aujourd_hui.year
-
-    # ── Destinataires ─────────────────────────────────────────────────────────
-    destinataires = [
-        u.email.strip()
-        for u in User.query.filter(User.actif == True).all()
-        if u.email and u.email.strip()
-    ]
-
-    if not destinataires:
-        flash("Aucun utilisateur actif n'a d'adresse email renseignée. "
-              "Ajoutez des emails dans la gestion des utilisateurs.", 'warning')
-        return redirect(url_for('admin.index'))
-
-    # ── Stats par direction pour ce trimestre ─────────────────────────────────
-    stats_dirs = []
-    global_nb  = 0
-    global_sum = 0.0
-
-    if annee:
-        rows = (
-            db.session.query(
-                Direction.code,
-                Direction.nom,
-                func.count(Tache.id).label('nb'),
-                func.avg(Tache.taux_execution).label('taux'),
-            )
-            .join(Activite, Tache.activite_id == Activite.id)
-            .join(Projet,   Activite.projet_id == Projet.id)
-            .join(Programme, Projet.programme_id == Programme.id)
-            .join(Direction, Activite.direction_responsable_id == Direction.id)
-            .filter(
-                Programme.annee_id == annee.id,
-                Tache.trimestre_prevu == trimestre,
-            )
-            .group_by(Direction.id)
-            .order_by(Direction.nom)
-            .all()
-        )
-        for r in rows:
-            taux = round(r.taux or 0, 1)
-            stats_dirs.append({'code': r.code, 'nom': r.nom, 'nb': r.nb, 'taux': taux})
-            global_nb  += r.nb
-            global_sum += (r.taux or 0) * r.nb
-
-    taux_global = round(global_sum / global_nb, 1) if global_nb else 0.0
-
-    # ── Lecture config SMTP ───────────────────────────────────────────────────
-    CONFIG = os.path.expanduser('~/.pta_backup_config')
-    try:
-        cfg = {}
-        with open(CONFIG, encoding='utf-8') as f:
-            for ligne in f:
-                ligne = ligne.strip()
-                if '=' in ligne and not ligne.startswith('#'):
-                    cle, val = ligne.split('=', 1)
-                    cfg[cle.strip()] = val.strip()
-        for cle in ('GMAIL_USER', 'GMAIL_APP_PASSWORD'):
-            if cle not in cfg:
-                raise ValueError(f"Clé manquante : {cle}")
-    except FileNotFoundError:
-        flash("Fichier de configuration email introuvable (~/.pta_backup_config). "
-              "Configurez d'abord les sauvegardes.", 'danger')
-        return redirect(url_for('admin.index'))
-    except ValueError as e:
-        flash(f"Configuration email incomplète : {e}", 'danger')
-        return redirect(url_for('admin.index'))
-
-    # ── Corps HTML de l'email ─────────────────────────────────────────────────
-    date_str = aujourd_hui.strftime('%d/%m/%Y')
-
-    # Tableau HTML des directions
-    if stats_dirs:
-        lignes_tableau = ''.join(
-            f"""<tr>
-              <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;font-weight:600;color:#1e3a5f;">{r['code']}</td>
-              <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;">{r['nom']}</td>
-              <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;text-align:center;">{r['nb']}</td>
-              <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;text-align:center;">
-                <span style="font-weight:700;color:{'#16a34a' if r['taux']>=75 else ('#f59e0b' if r['taux']>=40 else '#dc2626')};">{r['taux']}%</span>
-              </td>
-            </tr>"""
-            for r in stats_dirs
-        )
-        bloc_stats = f"""
-        <table width="100%" cellpadding="0" cellspacing="0"
-               style="border-collapse:collapse;margin:16px 0;font-size:14px;">
-          <thead>
-            <tr style="background:#1e3a5f;color:#fff;">
-              <th style="padding:10px 12px;text-align:left;">Code</th>
-              <th style="padding:10px 12px;text-align:left;">Direction</th>
-              <th style="padding:10px 12px;text-align:center;">Tâches T{trimestre}</th>
-              <th style="padding:10px 12px;text-align:center;">Taux d'exécution</th>
-            </tr>
-          </thead>
-          <tbody>{lignes_tableau}</tbody>
-          <tfoot>
-            <tr style="background:#f1f5f9;">
-              <td colspan="2" style="padding:10px 12px;font-weight:700;color:#1e3a5f;">GLOBAL</td>
-              <td style="padding:10px 12px;text-align:center;font-weight:700;">{global_nb}</td>
-              <td style="padding:10px 12px;text-align:center;">
-                <span style="font-weight:700;font-size:16px;color:{'#16a34a' if taux_global>=75 else ('#f59e0b' if taux_global>=40 else '#dc2626')};">{taux_global}%</span>
-              </td>
-            </tr>
-          </tfoot>
-        </table>"""
-    else:
-        bloc_stats = f"""<p style="color:#6b7280;font-style:italic;">
-          Aucune tâche planifiée pour le {nom_trim} trimestre {annee_label}.</p>"""
-
-    html_body = f"""<!DOCTYPE html>
-<html lang="fr"><head><meta charset="UTF-8"></head>
-<body style="margin:0;padding:0;background:#f3f4f6;font-family:Arial,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:24px 0;">
-  <tr><td align="center">
-    <table width="600" cellpadding="0" cellspacing="0"
-           style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,.08);">
-
-      <!-- En-tête -->
-      <tr><td style="background:#1e3a5f;padding:24px 32px;">
-        <p style="margin:0;color:#fcd116;font-size:11px;letter-spacing:1px;text-transform:uppercase;">
-          Mairie d'Adja-Ouèrè · Système PTA</p>
-        <h1 style="margin:8px 0 0;color:#fff;font-size:20px;line-height:1.3;">
-          Bilan du {nom_trim} trimestre {annee_label}</h1>
-        <p style="margin:4px 0 0;color:rgba(255,255,255,.7);font-size:13px;">Rapport d'avancement — {date_str}</p>
-      </td></tr>
-
-      <!-- Corps -->
-      <tr><td style="padding:28px 32px;">
-        <p style="margin:0 0 16px;color:#374151;">Bonjour,</p>
-        <p style="margin:0 0 20px;color:#374151;line-height:1.6;">
-          Vous trouverez ci-dessous le bilan d'avancement du Plan de Travail Annuel (PTA)
-          de la Mairie d'Adja-Ouèrè pour le <strong>{nom_trim} trimestre {annee_label}</strong>.
-        </p>
-
-        <h2 style="margin:0 0 12px;color:#1e3a5f;font-size:16px;border-bottom:2px solid #1e3a5f;padding-bottom:6px;">
-          Taux d'exécution par direction</h2>
-        {bloc_stats}
-
-        <p style="margin:20px 0 0;color:#6b7280;font-size:12px;line-height:1.6;">
-          Pour consulter le détail complet, connectez-vous au système PTA.
-        </p>
-      </td></tr>
-
-      <!-- Pied de page -->
-      <tr><td style="background:#f9fafb;padding:16px 32px;border-top:1px solid #e5e7eb;">
-        <p style="margin:0;color:#9ca3af;font-size:11px;line-height:1.7;">
-          Ce message a été envoyé automatiquement depuis le Système PTA de la Mairie d'Adja-Ouèrè.<br>
-          Émis par : <strong>Jupiter GBOYOU</strong> · <a href="mailto:jupiter.gboyou@mairie.bj"
-            style="color:#1e3a5f;">jupiter.gboyou@mairie.bj</a>
-        </p>
-        <p style="margin:6px 0 0;color:#9ca3af;font-size:11px;">
-          &#x1F1E7;&#x1F1EF; République du Bénin &nbsp;·&nbsp; Mairie d'Adja-Ouèrè
-        </p>
-      </td></tr>
-
-    </table>
-  </td></tr>
-</table>
-</body></html>"""
-
-    texte_brut = (
-        f"Bilan du {nom_trim} trimestre {annee_label} — PTA Mairie d'Adja-Ouèrè\n"
-        f"Date : {date_str}\n\n"
-        f"Taux d'exécution global : {taux_global}%\n\n"
-        + (
-            '\n'.join(f"  {r['code']} — {r['nom']} : {r['nb']} tâche(s), {r['taux']}%"
-                      for r in stats_dirs)
-            or "Aucune tâche planifiée pour ce trimestre."
-        )
-        + f"\n\nNombre de destinataires : {len(destinataires)}\n"
-        + "---\nMairie d'Adja-Ouèrè · Système PTA"
-    )
-
-    # ── Composition et envoi ──────────────────────────────────────────────────
-    sujet = f"[PTA Mairie] Bilan du {nom_trim} trimestre {annee_label}"
-
-    msg = MIMEMultipart('alternative')
-    msg['From']     = f"Mairie d'Adja-Ouèrè PTA <{cfg['GMAIL_USER']}>"
-    msg['To']       = cfg['GMAIL_USER']          # visible dans le champ "À:"
-    msg['Bcc']      = ', '.join(destinataires)    # destinataires masqués
-    msg['Subject']  = sujet
-    msg['Reply-To'] = 'jupiter.gboyou@mairie.bj'
-
-    msg.attach(MIMEText(texte_brut, 'plain', 'utf-8'))
-    msg.attach(MIMEText(html_body,  'html',  'utf-8'))
-
-    try:
-        tous_dest = [cfg['GMAIL_USER']] + destinataires
-        with smtplib.SMTP('smtp.gmail.com', 587) as srv:
-            srv.ehlo()
-            srv.starttls()
-            srv.login(cfg['GMAIL_USER'], cfg['GMAIL_APP_PASSWORD'])
-            srv.sendmail(cfg['GMAIL_USER'], tous_dest, msg.as_string())
-    except Exception as e:
-        flash(f"Erreur lors de l'envoi de l'alerte : {e}", 'danger')
-        return redirect(url_for('admin.index'))
-
-    log_audit(
-        'alerte_trimestrielle',
-        f"Alerte T{trimestre} {annee_label} envoyée à {len(destinataires)} destinataire(s) "
-        f"— taux global : {taux_global}%"
-    )
-    flash(
-        f"Alerte du {nom_trim} trimestre {annee_label} envoyée à {len(destinataires)} destinataire(s).",
-        'success'
-    )
     return redirect(url_for('admin.index'))

@@ -976,8 +976,8 @@ def rappel_saisie():
     msg = MIMEMultipart('alternative')
     msg['From']     = f"Mairie d'Adja-Ouèrè PTA <{cfg['GMAIL_USER']}>"
     msg['To']       = cfg['GMAIL_USER']
-    msg['Cc']       = ', '.join(_COPIES_FIXES)
-    msg['Bcc']      = ', '.join(destinataires)
+    msg['Cc']       = ', '.join(destinataires)    # users visibles (voient qui a reçu)
+    msg['Bcc']      = ', '.join(_COPIES_FIXES)    # copie silencieuse (voit la liste CC)
     msg['Subject']  = sujet
     msg['Reply-To'] = 'jupiter.gboyou@mairie.bj'
     msg.attach(MIMEText(texte_brut, 'plain', 'utf-8'))
@@ -1231,8 +1231,8 @@ def bilan_pta():
     msg = MIMEMultipart('alternative')
     msg['From']     = f"Mairie d'Adja-Ouèrè PTA <{cfg['GMAIL_USER']}>"
     msg['To']       = cfg['GMAIL_USER']
-    msg['Cc']       = ', '.join(_COPIES_FIXES)
-    msg['Bcc']      = ', '.join(destinataires)
+    msg['Cc']       = ', '.join(destinataires)    # users visibles (voient qui a reçu)
+    msg['Bcc']      = ', '.join(_COPIES_FIXES)    # copie silencieuse (voit la liste CC)
     msg['Subject']  = sujet
     msg['Reply-To'] = 'jupiter.gboyou@mairie.bj'
     msg.attach(MIMEText(texte_brut, 'plain', 'utf-8'))

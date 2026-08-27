@@ -96,10 +96,13 @@ def user_add():
         flash(f"L'identifiant « {login_val} » est déjà utilisé.", 'danger')
         return redirect(url_for('admin.users'))
 
+    email_val = request.form.get('email', '').strip() or None
+
     user = User(
         nom=nom, prenom=prenom, login=login_val, role=role,
         direction_id=int(direction_id) if direction_id else None,
         service_id=int(service_id) if service_id else None,
+        email=email_val,
     )
     user.set_password(password)
     db.session.add(user)
@@ -139,6 +142,7 @@ def user_edit(user_id):
             flash('Identifiant de direction ou service invalide.', 'danger')
             return redirect(url_for('admin.user_edit', user_id=user_id))
         user.actif = ('actif' in request.form)
+        user.email = request.form.get('email', '').strip() or None
         new_pw = request.form.get('password', '').strip()
         if new_pw:
             user.set_password(new_pw)
@@ -826,3 +830,234 @@ def backup_restore(backup_id):
         'success'
     )
     return redirect(url_for('pta.global_pta'))
+
+
+# ─── Alerte trimestrielle ────────────────────────────────────────────────────
+
+@admin_bp.route('/alerte-trimestrielle', methods=['POST'])
+@editeur_required
+def alerte_trimestrielle():
+    """Envoie un bilan trimestriel par email à tous les utilisateurs ayant une adresse renseignée."""
+    import smtplib
+    import datetime
+    import os
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.text import MIMEText
+    from sqlalchemy import func
+    from utils import get_annee
+
+    # ── Trimestre courant ─────────────────────────────────────────────────────
+    aujourd_hui = datetime.date.today()
+    mois        = aujourd_hui.month
+    trimestre   = (mois - 1) // 3 + 1
+    noms_trim   = {1: '1ᵉʳ', 2: '2ème', 3: '3ème', 4: '4ème'}
+    nom_trim    = noms_trim.get(trimestre, str(trimestre))
+    annee       = get_annee()
+    annee_label = annee.annee if annee else aujourd_hui.year
+
+    # ── Destinataires ─────────────────────────────────────────────────────────
+    destinataires = [
+        u.email.strip()
+        for u in User.query.filter(User.actif == True).all()
+        if u.email and u.email.strip()
+    ]
+
+    if not destinataires:
+        flash("Aucun utilisateur actif n'a d'adresse email renseignée. "
+              "Ajoutez des emails dans la gestion des utilisateurs.", 'warning')
+        return redirect(url_for('admin.index'))
+
+    # ── Stats par direction pour ce trimestre ─────────────────────────────────
+    stats_dirs = []
+    global_nb  = 0
+    global_sum = 0.0
+
+    if annee:
+        rows = (
+            db.session.query(
+                Direction.code,
+                Direction.nom,
+                func.count(Tache.id).label('nb'),
+                func.avg(Tache.taux_execution).label('taux'),
+            )
+            .join(Activite, Tache.activite_id == Activite.id)
+            .join(Projet,   Activite.projet_id == Projet.id)
+            .join(Programme, Projet.programme_id == Programme.id)
+            .join(Direction, Activite.direction_responsable_id == Direction.id)
+            .filter(
+                Programme.annee_id == annee.id,
+                Tache.trimestre_prevu == trimestre,
+            )
+            .group_by(Direction.id)
+            .order_by(Direction.nom)
+            .all()
+        )
+        for r in rows:
+            taux = round(r.taux or 0, 1)
+            stats_dirs.append({'code': r.code, 'nom': r.nom, 'nb': r.nb, 'taux': taux})
+            global_nb  += r.nb
+            global_sum += (r.taux or 0) * r.nb
+
+    taux_global = round(global_sum / global_nb, 1) if global_nb else 0.0
+
+    # ── Lecture config SMTP ───────────────────────────────────────────────────
+    CONFIG = os.path.expanduser('~/.pta_backup_config')
+    try:
+        cfg = {}
+        with open(CONFIG, encoding='utf-8') as f:
+            for ligne in f:
+                ligne = ligne.strip()
+                if '=' in ligne and not ligne.startswith('#'):
+                    cle, val = ligne.split('=', 1)
+                    cfg[cle.strip()] = val.strip()
+        for cle in ('GMAIL_USER', 'GMAIL_APP_PASSWORD'):
+            if cle not in cfg:
+                raise ValueError(f"Clé manquante : {cle}")
+    except FileNotFoundError:
+        flash("Fichier de configuration email introuvable (~/.pta_backup_config). "
+              "Configurez d'abord les sauvegardes.", 'danger')
+        return redirect(url_for('admin.index'))
+    except ValueError as e:
+        flash(f"Configuration email incomplète : {e}", 'danger')
+        return redirect(url_for('admin.index'))
+
+    # ── Corps HTML de l'email ─────────────────────────────────────────────────
+    date_str = aujourd_hui.strftime('%d/%m/%Y')
+
+    # Tableau HTML des directions
+    if stats_dirs:
+        lignes_tableau = ''.join(
+            f"""<tr>
+              <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;font-weight:600;color:#1e3a5f;">{r['code']}</td>
+              <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;">{r['nom']}</td>
+              <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;text-align:center;">{r['nb']}</td>
+              <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;text-align:center;">
+                <span style="font-weight:700;color:{'#16a34a' if r['taux']>=75 else ('#f59e0b' if r['taux']>=40 else '#dc2626')};">{r['taux']}%</span>
+              </td>
+            </tr>"""
+            for r in stats_dirs
+        )
+        bloc_stats = f"""
+        <table width="100%" cellpadding="0" cellspacing="0"
+               style="border-collapse:collapse;margin:16px 0;font-size:14px;">
+          <thead>
+            <tr style="background:#1e3a5f;color:#fff;">
+              <th style="padding:10px 12px;text-align:left;">Code</th>
+              <th style="padding:10px 12px;text-align:left;">Direction</th>
+              <th style="padding:10px 12px;text-align:center;">Tâches T{trimestre}</th>
+              <th style="padding:10px 12px;text-align:center;">Taux d'exécution</th>
+            </tr>
+          </thead>
+          <tbody>{lignes_tableau}</tbody>
+          <tfoot>
+            <tr style="background:#f1f5f9;">
+              <td colspan="2" style="padding:10px 12px;font-weight:700;color:#1e3a5f;">GLOBAL</td>
+              <td style="padding:10px 12px;text-align:center;font-weight:700;">{global_nb}</td>
+              <td style="padding:10px 12px;text-align:center;">
+                <span style="font-weight:700;font-size:16px;color:{'#16a34a' if taux_global>=75 else ('#f59e0b' if taux_global>=40 else '#dc2626')};">{taux_global}%</span>
+              </td>
+            </tr>
+          </tfoot>
+        </table>"""
+    else:
+        bloc_stats = f"""<p style="color:#6b7280;font-style:italic;">
+          Aucune tâche planifiée pour le {nom_trim} trimestre {annee_label}.</p>"""
+
+    html_body = f"""<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#f3f4f6;font-family:Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:24px 0;">
+  <tr><td align="center">
+    <table width="600" cellpadding="0" cellspacing="0"
+           style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,.08);">
+
+      <!-- En-tête -->
+      <tr><td style="background:#1e3a5f;padding:24px 32px;">
+        <p style="margin:0;color:#fcd116;font-size:11px;letter-spacing:1px;text-transform:uppercase;">
+          Mairie d'Adja-Ouèrè · Système PTA</p>
+        <h1 style="margin:8px 0 0;color:#fff;font-size:20px;line-height:1.3;">
+          Bilan du {nom_trim} trimestre {annee_label}</h1>
+        <p style="margin:4px 0 0;color:rgba(255,255,255,.7);font-size:13px;">Rapport d'avancement — {date_str}</p>
+      </td></tr>
+
+      <!-- Corps -->
+      <tr><td style="padding:28px 32px;">
+        <p style="margin:0 0 16px;color:#374151;">Bonjour,</p>
+        <p style="margin:0 0 20px;color:#374151;line-height:1.6;">
+          Vous trouverez ci-dessous le bilan d'avancement du Plan de Travail Annuel (PTA)
+          de la Mairie d'Adja-Ouèrè pour le <strong>{nom_trim} trimestre {annee_label}</strong>.
+        </p>
+
+        <h2 style="margin:0 0 12px;color:#1e3a5f;font-size:16px;border-bottom:2px solid #1e3a5f;padding-bottom:6px;">
+          Taux d'exécution par direction</h2>
+        {bloc_stats}
+
+        <p style="margin:20px 0 0;color:#6b7280;font-size:12px;line-height:1.6;">
+          Pour consulter le détail complet, connectez-vous au système PTA.
+        </p>
+      </td></tr>
+
+      <!-- Pied de page -->
+      <tr><td style="background:#f9fafb;padding:16px 32px;border-top:1px solid #e5e7eb;">
+        <p style="margin:0;color:#9ca3af;font-size:11px;line-height:1.7;">
+          Ce message a été envoyé automatiquement depuis le Système PTA de la Mairie d'Adja-Ouèrè.<br>
+          Émis par : <strong>Jupiter GBOYOU</strong> · <a href="mailto:jupiter.gboyou@mairie.bj"
+            style="color:#1e3a5f;">jupiter.gboyou@mairie.bj</a>
+        </p>
+        <p style="margin:6px 0 0;color:#9ca3af;font-size:11px;">
+          &#x1F1E7;&#x1F1EF; République du Bénin &nbsp;·&nbsp; Mairie d'Adja-Ouèrè
+        </p>
+      </td></tr>
+
+    </table>
+  </td></tr>
+</table>
+</body></html>"""
+
+    texte_brut = (
+        f"Bilan du {nom_trim} trimestre {annee_label} — PTA Mairie d'Adja-Ouèrè\n"
+        f"Date : {date_str}\n\n"
+        f"Taux d'exécution global : {taux_global}%\n\n"
+        + (
+            '\n'.join(f"  {r['code']} — {r['nom']} : {r['nb']} tâche(s), {r['taux']}%"
+                      for r in stats_dirs)
+            or "Aucune tâche planifiée pour ce trimestre."
+        )
+        + f"\n\nNombre de destinataires : {len(destinataires)}\n"
+        + "---\nMairie d'Adja-Ouèrè · Système PTA"
+    )
+
+    # ── Composition et envoi ──────────────────────────────────────────────────
+    sujet = f"[PTA Mairie] Bilan du {nom_trim} trimestre {annee_label}"
+
+    msg = MIMEMultipart('alternative')
+    msg['From']     = f"Mairie d'Adja-Ouèrè PTA <{cfg['GMAIL_USER']}>"
+    msg['To']       = cfg['GMAIL_USER']          # visible dans le champ "À:"
+    msg['Bcc']      = ', '.join(destinataires)    # destinataires masqués
+    msg['Subject']  = sujet
+    msg['Reply-To'] = 'jupiter.gboyou@mairie.bj'
+
+    msg.attach(MIMEText(texte_brut, 'plain', 'utf-8'))
+    msg.attach(MIMEText(html_body,  'html',  'utf-8'))
+
+    try:
+        tous_dest = [cfg['GMAIL_USER']] + destinataires
+        with smtplib.SMTP('smtp.gmail.com', 587) as srv:
+            srv.ehlo()
+            srv.starttls()
+            srv.login(cfg['GMAIL_USER'], cfg['GMAIL_APP_PASSWORD'])
+            srv.sendmail(cfg['GMAIL_USER'], tous_dest, msg.as_string())
+    except Exception as e:
+        flash(f"Erreur lors de l'envoi de l'alerte : {e}", 'danger')
+        return redirect(url_for('admin.index'))
+
+    log_audit(
+        'alerte_trimestrielle',
+        f"Alerte T{trimestre} {annee_label} envoyée à {len(destinataires)} destinataire(s) "
+        f"— taux global : {taux_global}%"
+    )
+    flash(
+        f"Alerte du {nom_trim} trimestre {annee_label} envoyée à {len(destinataires)} destinataire(s).",
+        'success'
+    )
+    return redirect(url_for('admin.index'))

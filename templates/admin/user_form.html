@@ -60,6 +60,16 @@
                 {% endfor %}
               </select>
             </div>
+            <div class="col-md-12">
+              <label class="form-label fw-semibold">Adresse email</label>
+              <input type="email" name="email" class="form-control"
+                     value="{{ user.email or '' }}"
+                     placeholder="ex: prenom.nom@mairie.bj">
+              <div class="form-text text-muted">
+                <i class="fas fa-info-circle me-1"></i>
+                Facultatif — sert à l'envoi des alertes trimestrielles.
+              </div>
+            </div>
             <div class="col-12">
               <div class="form-check form-switch">
                 <input class="form-check-input" type="checkbox" name="actif" id="actifCheck"

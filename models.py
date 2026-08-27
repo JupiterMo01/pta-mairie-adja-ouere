@@ -17,6 +17,7 @@ class User(UserMixin, db.Model):
     direction_id = db.Column(db.Integer, db.ForeignKey('directions.id'), nullable=True)
     service_id = db.Column(db.Integer, db.ForeignKey('services.id'), nullable=True)
     actif = db.Column(db.Boolean, default=True)
+    email = db.Column(db.String(200), nullable=True)
 
     direction = db.relationship('Direction', foreign_keys=[direction_id], backref='users')
     service = db.relationship('Service', foreign_keys=[service_id], backref='users')

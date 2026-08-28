@@ -4,7 +4,8 @@ from flask_login import login_required, current_user
 import json
 from models import db, User, Direction, Service, Annee, StructureExterne, PTABackup, Programme, Projet, Activite, Tache, SuiviTache
 from admin import admin_bp
-from utils import log_audit
+from extensions import limiter
+from utils import log_audit, valider_mdp
 
 
 def editeur_required(f):
@@ -29,6 +30,7 @@ admin_required = editeur_required
 # ─── Sauvegarde manuelle ────────────────────────────────────────────────────
 
 @admin_bp.route('/backup-now', methods=['POST'])
+@limiter.limit('10 per minute')
 @editeur_required
 def backup_now():
     """Déclenche une sauvegarde immédiate par email (admin_editeur uniquement)."""
@@ -89,6 +91,11 @@ def user_add():
         flash('Veuillez remplir tous les champs obligatoires.', 'danger')
         return redirect(url_for('admin.users'))
 
+    erreur_mdp = valider_mdp(password)
+    if erreur_mdp:
+        flash(erreur_mdp, 'danger')
+        return redirect(url_for('admin.users'))
+
     if User.query.filter_by(login=login_val).first():
         flash(f"L'identifiant « {login_val} » est déjà utilisé.", 'danger')
         return redirect(url_for('admin.users'))
@@ -142,6 +149,10 @@ def user_edit(user_id):
         user.email = request.form.get('email', '').strip() or None
         new_pw = request.form.get('password', '').strip()
         if new_pw:
+            erreur_mdp = valider_mdp(new_pw)
+            if erreur_mdp:
+                flash(erreur_mdp, 'danger')
+                return redirect(url_for('admin.user_edit', user_id=user_id))
             user.set_password(new_pw)
         db.session.commit()
         log_audit('user_modifie', f"Utilisateur modifié : {user.prenom} {user.nom} — rôle : {user.role}")
@@ -192,8 +203,9 @@ def user_delete(user_id):
 def user_reset_password(user_id):
     user = User.query.get_or_404(user_id)
     nouveau_mdp = request.form.get('nouveau_mdp', '').strip()
-    if len(nouveau_mdp) < 6:
-        flash('Le mot de passe temporaire doit contenir au moins 6 caractères.', 'danger')
+    erreur_mdp = valider_mdp(nouveau_mdp)
+    if erreur_mdp:
+        flash(erreur_mdp, 'danger')
         return redirect(url_for('admin.users'))
     user.set_password(nouveau_mdp)
     db.session.commit()
@@ -530,6 +542,7 @@ def annee_deactivate(ann_id):
 
 
 @admin_bp.route('/annees/<int:ann_id>/purge-suivi', methods=['POST'])
+@limiter.limit('5 per minute')
 @editeur_required
 def annee_purge_suivi(ann_id):
     """Vide uniquement les données de suivi (suivi_taches) pour une année."""
@@ -544,6 +557,7 @@ def annee_purge_suivi(ann_id):
 
 
 @admin_bp.route('/annees/<int:ann_id>/purge-pta', methods=['POST'])
+@limiter.limit('3 per minute')
 @editeur_required
 def annee_purge_pta(ann_id):
     """Vide TOUT le PTA d'une année (suivi + programmes/projets/activités/tâches)."""
@@ -683,6 +697,7 @@ def journal():
 
 
 @admin_bp.route('/journal/purge', methods=['POST'])
+@limiter.limit('5 per minute')
 @editeur_required
 def journal_purge():
     """Purge tout ou partie du journal d'audit."""
@@ -729,6 +744,7 @@ def backup_delete(backup_id):
 
 
 @admin_bp.route('/backups/<int:backup_id>/restore', methods=['POST'])
+@limiter.limit('3 per minute')
 @editeur_required
 def backup_restore(backup_id):
     b = PTABackup.query.get_or_404(backup_id)
@@ -1000,6 +1016,7 @@ def rappel_saisie():
 
 
 @admin_bp.route('/purge-suivi', methods=['POST'])
+@limiter.limit('5 per minute')
 @editeur_required
 def purge_suivi():
     """Supprime tous les suivis de l'année active (tests uniquement).

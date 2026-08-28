@@ -2,7 +2,7 @@ from flask import render_template, redirect, url_for, flash, request, session
 from flask_login import login_user, logout_user, login_required, current_user
 from models import User, Annee
 from auth import auth_bp
-from utils import log_audit
+from utils import log_audit, valider_mdp
 from extensions import limiter
 
 
@@ -70,10 +70,11 @@ def change_password():
         nouveau = request.form.get('nouveau_mdp', '').strip()
         confirm = request.form.get('confirm_mdp', '').strip()
 
+        erreur_mdp = valider_mdp(nouveau)
         if not current_user.check_password(ancien):
             flash('Mot de passe actuel incorrect.', 'danger')
-        elif len(nouveau) < 6:
-            flash('Le nouveau mot de passe doit contenir au moins 6 caractères.', 'danger')
+        elif erreur_mdp:
+            flash(erreur_mdp, 'danger')
         elif nouveau != confirm:
             flash('Le nouveau mot de passe et la confirmation ne correspondent pas.', 'danger')
         else:

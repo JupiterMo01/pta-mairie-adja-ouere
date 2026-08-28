@@ -101,17 +101,19 @@ def create_app(test_config=None):
     @app.route('/api/backup')
     def api_backup():
         import os
+        import hmac
         from flask import jsonify
-        # Vérification du token secret
-        token_recu  = request.args.get('token', '')
-        config_path = os.path.expanduser('~/.pta_backup_config')
+        # Vérification du token secret (comparaison en temps constant pour éviter
+        # les timing attacks — bonne pratique même si le réseau masque la latence)
+        token_recu    = request.args.get('token', '')
+        config_path   = os.path.expanduser('~/.pta_backup_config')
         token_attendu = ''
         if os.path.exists(config_path):
             with open(config_path, encoding='utf-8') as f:
                 for ligne in f:
                     if ligne.startswith('BACKUP_TOKEN='):
                         token_attendu = ligne.split('=', 1)[1].strip()
-        if not token_attendu or token_recu != token_attendu:
+        if not token_attendu or not hmac.compare_digest(token_recu, token_attendu):
             abort(403)
         # Lancer la sauvegarde
         try:

@@ -4,6 +4,7 @@ from config import Config
 from models import db
 from flask_login import LoginManager
 from extensions import limiter
+from flask_migrate import Migrate
 
 
 def create_app():
@@ -11,6 +12,7 @@ def create_app():
     app.config.from_object(Config)
 
     db.init_app(app)
+    Migrate(app, db)
     limiter.init_app(app)
 
     login_manager = LoginManager()

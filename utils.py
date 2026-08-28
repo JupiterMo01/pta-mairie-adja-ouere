@@ -19,6 +19,20 @@ MOIS_ORDRE = {
 TRIMESTRE_RANGE = {1: (1, 3), 2: (4, 6), 3: (7, 9), 4: (10, 12)}
 
 
+def valider_mdp(mdp):
+    """Valide la robustesse d'un mot de passe.
+    Retourne None si le mot de passe est valide, sinon un message d'erreur (str).
+    Règles : 8 caractères minimum, au moins 1 chiffre, au moins 1 majuscule.
+    """
+    if len(mdp) < 8:
+        return 'Le mot de passe doit contenir au moins 8 caractères.'
+    if not any(c.isdigit() for c in mdp):
+        return 'Le mot de passe doit contenir au moins un chiffre (0-9).'
+    if not any(c.isupper() for c in mdp):
+        return 'Le mot de passe doit contenir au moins une lettre majuscule.'
+    return None   # valide
+
+
 def get_annee():
     """Retourne l'année PTA sélectionnée en session, ou l'année active par défaut."""
     from flask import session

@@ -438,8 +438,11 @@ def save():
             service = current_user.service
             if not service:
                 continue
-            ok = any(s.id == service.id and s.direction_id == tache.direction_responsable_id
-                     for s in tache.services_concernes)
+            # Vérifie que le service est bien dans services_concernes de la tâche.
+            # On ne filtre PAS sur direction_id : un service listé dans services_concernes
+            # peut appartenir à une direction différente de direction_responsable_id,
+            # et il doit tout de même pouvoir enregistrer son suivi.
+            ok = any(s.id == service.id for s in tache.services_concernes)
             if not ok:
                 continue
             sid = service.id

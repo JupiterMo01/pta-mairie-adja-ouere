@@ -102,6 +102,13 @@
             <i class="fas fa-paper-plane me-2"></i>Envoyer le bilan PTA
           </button>
         </form>
+        <hr class="my-1">
+        <form method="POST" action="{{ url_for('admin.purge_suivi') }}"
+              onsubmit="return confirm('⚠️ PURGE DU SUIVI\n\nCette action va supprimer TOUS les suivis et observations de l\'année en cours.\nTout reviendra à « Non exécuté ».\n\nConfirmer ?')">
+          <button type="submit" class="btn btn-outline-danger w-100">
+            <i class="fas fa-trash-alt me-2"></i>Purger le suivi (tests)
+          </button>
+        </form>
         {% endif %}
       </div>
     </div>

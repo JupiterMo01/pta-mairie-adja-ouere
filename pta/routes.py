@@ -1422,7 +1422,7 @@ def _creer_backup_pta(annee):
             'projets': [ser_projet(pj) for pj in p.projets],
         }
 
-    from datetime import datetime
+    from datetime import datetime, timezone
     programmes = Programme.query.filter_by(annee_id=annee.id).order_by(Programme.numero).all()
     nb_acts = sum(len(pj.activites) for p in programmes for pj in p.projets)
     nb_taches = sum(len(a.taches) for p in programmes for pj in p.projets for a in pj.activites)
@@ -1431,7 +1431,7 @@ def _creer_backup_pta(annee):
         'annee': {'id': annee.id, 'annee': annee.annee,
                   'objectif_general': annee.objectif_general},
         'programmes': [ser_programme(p) for p in programmes],
-        'backup_at': datetime.utcnow().isoformat(),
+        'backup_at': datetime.now(timezone.utc).isoformat(),
     }
 
     backup = PTABackup(

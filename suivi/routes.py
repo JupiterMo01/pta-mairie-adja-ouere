@@ -12,15 +12,15 @@ Niveaux d'accès :
 Onglets : Global | T1 | T2 | T3 | T4  (filtrage par période d'exécution des tâches)
 """
 import io
-from datetime import datetime
+from datetime import datetime, timezone
 from flask import render_template, request, session, jsonify, redirect, url_for, flash, send_file
 from flask_login import login_required, current_user
 
 from models import db, Programme, Tache, SuiviTache, Annee, Direction, Service
-from svcpta.routes import _compute_pta_service, _renorm
+from svcpta.routes import _compute_pta_service
 from dirpta.routes import _compute_pta_direction
 from suivi import suivi_bp
-from utils import log_audit, get_annee, MOIS_COURT, MOIS_ORDRE, TRIMESTRE_RANGE
+from utils import log_audit, get_annee, MOIS_COURT, MOIS_ORDRE, TRIMESTRE_RANGE, _renorm
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -529,7 +529,7 @@ def save():
             sv.statut         = statut
             sv.taux_execution = taux
             sv.observation    = observation
-            sv.date_maj       = datetime.utcnow()
+            sv.date_maj       = datetime.now(timezone.utc)
             sv.modified_by_id = current_user.id
         else:
             sv = SuiviTache(tache_id=tache_id, service_id=sid,

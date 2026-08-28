@@ -19,6 +19,29 @@ MOIS_ORDRE = {
 TRIMESTRE_RANGE = {1: (1, 3), 2: (4, 6), 3: (7, 9), 4: (10, 12)}
 
 
+def _renorm(items, src='original_poids', dst='new_poids'):
+    """Recalcule les poids pour que leur somme soit exactement 100.
+    Le dernier élément absorbe les micro-erreurs d'arrondi.
+    Source unique partagée par dirpta, svcpta et suivi (évite la duplication).
+    """
+    if not items:
+        return
+    total = sum(i[src] for i in items)
+    if total == 0:
+        eq = round(100 / len(items), 4)
+        for i in items:
+            i[dst] = eq
+        return
+    running = 0.0
+    for idx, i in enumerate(items):
+        if idx == len(items) - 1:
+            i[dst] = round(100.0 - running, 4)
+        else:
+            p = round(i[src] / total * 100, 4)
+            i[dst] = p
+            running += p
+
+
 def valider_mdp(mdp):
     """Valide la robustesse d'un mot de passe.
     Retourne None si le mot de passe est valide, sinon un message d'erreur (str).

@@ -119,22 +119,41 @@
         <i class="fas fa-info-circle me-2 text-primary"></i>Profils utilisateurs
       </div>
       <div class="card-body">
-        <table class="table table-sm table-borderless">
-          <tr>
-            <td><span class="badge bg-danger">Admin Éditeur</span></td>
-            <td class="text-muted small">Création et modification du PTA global, gestion des utilisateurs</td>
+        <table class="table table-sm table-borderless align-middle">
+          <tr class="border-bottom">
+            <td class="pe-3 py-2" style="white-space:nowrap"><span class="badge bg-danger">Admin Éditeur</span></td>
+            <td class="text-muted small py-2">
+              Création et modification complète du PTA (programmes → tâches) ·
+              Suivi et correction de toutes les directions et services ·
+              Gestion des utilisateurs, directions, services, années ·
+              Export Excel / impression de tout · Bibliothèque des modèles ·
+              Sauvegardes, rappels email, bilan global, journal d'audit
+            </td>
+          </tr>
+          <tr class="border-bottom">
+            <td class="pe-3 py-2" style="white-space:nowrap"><span class="badge bg-secondary">Admin Lecteur</span></td>
+            <td class="text-muted small py-2">
+              Lecture complète du PTA global et de tous les PTAs direction / service ·
+              Suivi en lecture seule (toutes directions et services) ·
+              Export Excel / impression de tout · Bibliothèque en lecture seule ·
+              Pas d'accès à l'administration
+            </td>
+          </tr>
+          <tr class="border-bottom">
+            <td class="pe-3 py-2" style="white-space:nowrap"><span class="badge bg-primary">Direction</span></td>
+            <td class="text-muted small py-2">
+              Lecture du PTA global · PTA complet de sa direction et de tous ses services ·
+              <strong>Saisie du suivi</strong> des tâches de sa direction et de ses services ·
+              Export Excel de sa direction et ses services · Tableau de bord de sa direction
+            </td>
           </tr>
           <tr>
-            <td><span class="badge bg-secondary">Admin Lecteur</span></td>
-            <td class="text-muted small">Lecture de tous les PTA et rapports, sans modification</td>
-          </tr>
-          <tr>
-            <td><span class="badge bg-primary">Direction</span></td>
-            <td class="text-muted small">Lecture du PTA de sa direction et de tous ses services</td>
-          </tr>
-          <tr>
-            <td><span class="badge bg-success">Service</span></td>
-            <td class="text-muted small">Suivi de ses tâches, lecture des PTA de sa direction</td>
+            <td class="pe-3 py-2" style="white-space:nowrap"><span class="badge bg-success">Service</span></td>
+            <td class="text-muted small py-2">
+              <strong>Saisie du suivi</strong> de ses propres tâches ·
+              Lecture du PTA de son service et de sa direction ·
+              Export Excel de sa direction · Tableau de bord de son service
+            </td>
           </tr>
         </table>
       </div>

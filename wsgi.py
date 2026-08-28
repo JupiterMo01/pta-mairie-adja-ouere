@@ -5,9 +5,7 @@ PythonAnywhere cherche automatiquement une variable nommée 'application'.
 import sys
 import os
 
-# Remplacer 'VOTRE_USERNAME' par votre nom d'utilisateur PythonAnywhere
-# et 'pta_mairie' par le nom du dossier cloné
-path = '/home/VOTRE_USERNAME/pta_mairie'
+path = '/home/jupi01/pta_mairie'
 if path not in sys.path:
     sys.path.insert(0, path)
 

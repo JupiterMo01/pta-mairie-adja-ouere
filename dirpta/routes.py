@@ -1,5 +1,5 @@
 import io
-from flask import render_template, redirect, url_for, flash, request, session, send_file
+from flask import render_template, redirect, url_for, flash, request, session, send_file, abort
 from flask_login import login_required, current_user
 from models import db, Programme, Direction, Annee, Service
 from dirpta import dirpta_bp
@@ -513,6 +513,14 @@ def export_excel_all():
 def export_excel(direction_id):
     annee     = get_annee()
     direction = Direction.query.get_or_404(direction_id)
+    # Contrôle IDOR : une direction ne voit que sa propre direction ;
+    # un service ne voit que la direction qui le contient.
+    if current_user.role == 'direction' and current_user.direction_id != direction_id:
+        abort(403)
+    if current_user.role == 'service' and (
+            not current_user.service or
+            current_user.service.direction_id != direction_id):
+        abort(403)
     if not annee:
         flash('Aucune année active.', 'danger')
         return redirect(url_for('dirpta.index'))
@@ -534,6 +542,12 @@ def export_excel(direction_id):
 def print_view(direction_id):
     annee     = get_annee()
     direction = Direction.query.get_or_404(direction_id)
+    if current_user.role == 'direction' and current_user.direction_id != direction_id:
+        abort(403)
+    if current_user.role == 'service' and (
+            not current_user.service or
+            current_user.service.direction_id != direction_id):
+        abort(403)
     if not annee:
         flash('Aucune année active.', 'danger')
         return redirect(url_for('dirpta.index'))

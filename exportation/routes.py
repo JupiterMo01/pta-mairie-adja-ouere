@@ -1,5 +1,5 @@
 import io
-from flask import render_template, request, redirect, url_for, flash, session, send_file
+from flask import render_template, request, redirect, url_for, flash, session, send_file, abort
 from flask_login import login_required
 from models import db, Programme, Direction, Service, Annee
 from exportation import exportation_bp
@@ -504,6 +504,14 @@ def excel_selection():
 def excel_direction_et_services(direction_id):
     annee     = get_annee()
     direction = Direction.query.get_or_404(direction_id)
+    # Contrôle IDOR : une direction ne voit que sa propre direction ;
+    # un service ne voit que la direction qui le contient.
+    if current_user.role == 'direction' and current_user.direction_id != direction_id:
+        abort(403)
+    if current_user.role == 'service' and (
+            not current_user.service or
+            current_user.service.direction_id != direction_id):
+        abort(403)
     if not annee:
         flash('Aucune année active.', 'danger')
         return redirect(url_for('exportation.index'))

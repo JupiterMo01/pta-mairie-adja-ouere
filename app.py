@@ -7,9 +7,18 @@ from extensions import limiter
 from flask_migrate import Migrate
 
 
-def create_app():
+def create_app(test_config=None):
+    """
+    Fabrique de l'application Flask.
+    test_config : dict optionnel pour surcharger la configuration en tests
+                  (URI de DB, clé secrète, désactivation du rate-limiting…).
+    """
     app = Flask(__name__)
     app.config.from_object(Config)
+
+    # Surcharge éventuelle pour les tests (doit être appliquée AVANT db.init_app)
+    if test_config:
+        app.config.update(test_config)
 
     db.init_app(app)
     Migrate(app, db)

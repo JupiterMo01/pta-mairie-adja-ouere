@@ -1,4 +1,4 @@
-"""
+﻿"""
 suivi/routes.py
 
 Vues et exports du module Suivi & Évaluation.
@@ -319,7 +319,7 @@ def index():
 
         if sel_svc_id:
             # Vue d'un service de la direction — lecture seule pour la direction
-            service   = Service.query.get(sel_svc_id)
+            service   = db.session.get(Service, sel_svc_id)
             data_brut = _compute_pta_service(annee, service)
             titre     = f"{service.code} — {service.nom} (lecture)"
             entite    = service
@@ -346,14 +346,14 @@ def index():
         sel_dir_id    = request.args.get('direction_id', type=int)
 
         if sel_svc_id:
-            service   = Service.query.get(sel_svc_id)
+            service   = db.session.get(Service, sel_svc_id)
             if service:
                 data_brut = _compute_pta_service(annee, service)
                 titre     = f"{service.code} — {service.nom}"
                 entite    = service
                 niveau    = 'service'
         elif sel_dir_id:
-            direction = Direction.query.get(sel_dir_id)
+            direction = db.session.get(Direction, sel_dir_id)
             if direction:
                 data_brut = _compute_pta_direction(annee, direction)
                 titre     = f"{direction.code} — {direction.nom}"
@@ -430,7 +430,7 @@ def save():
         except (KeyError, TypeError, ValueError):
             continue
 
-        tache = Tache.query.get(tache_id)
+        tache = db.session.get(Tache, tache_id)
         if not tache:
             continue
 
@@ -602,7 +602,7 @@ def export_excel():
     elif role == 'direction':
         direction = current_user.direction
         if sel_svc_id and Service.query.filter_by(id=sel_svc_id, direction_id=direction.id).first():
-            svc       = Service.query.get(sel_svc_id)
+            svc       = db.session.get(Service, sel_svc_id)
             data_brut = _compute_pta_service(annee, svc)
             titre     = f"{svc.code} — {svc.nom}"
         else:
@@ -611,11 +611,11 @@ def export_excel():
             show_service_badge = True
     else:
         if sel_svc_id:
-            svc       = Service.query.get(sel_svc_id)
+            svc       = db.session.get(Service, sel_svc_id)
             data_brut = _compute_pta_service(annee, svc) if svc else []
             titre     = f"{svc.code} — {svc.nom}" if svc else 'Service'
         elif sel_dir_id:
-            direction          = Direction.query.get(sel_dir_id)
+            direction          = db.session.get(Direction, sel_dir_id)
             data_brut          = _compute_pta_direction(annee, direction) if direction else []
             titre              = f"{direction.code} — {direction.nom}" if direction else 'Direction'
             show_service_badge = bool(direction)
@@ -856,7 +856,7 @@ def print_view():
     elif role == 'direction':
         direction = current_user.direction
         if sel_svc_id and Service.query.filter_by(id=sel_svc_id, direction_id=direction.id).first():
-            svc       = Service.query.get(sel_svc_id)
+            svc       = db.session.get(Service, sel_svc_id)
             data_brut = _compute_pta_service(annee, svc)
             titre     = f"{svc.code} — {svc.nom}"
         else:
@@ -865,11 +865,11 @@ def print_view():
             show_service_badge = True   # vue direction globale : montrer code service
     else:
         if sel_svc_id:
-            svc       = Service.query.get(sel_svc_id)
+            svc       = db.session.get(Service, sel_svc_id)
             data_brut = _compute_pta_service(annee, svc) if svc else []
             titre     = f"{svc.code} — {svc.nom}" if svc else ''
         elif sel_dir_id:
-            direction          = Direction.query.get(sel_dir_id)
+            direction          = db.session.get(Direction, sel_dir_id)
             data_brut          = _compute_pta_direction(annee, direction) if direction else []
             titre              = f"{direction.code} — {direction.nom}" if direction else ''
             show_service_badge = bool(direction)

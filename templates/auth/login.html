@@ -116,6 +116,12 @@
           {% endif %}
         {% endwith %}
 
+        {% if erreur_limite is defined and erreur_limite %}
+        <div class="alert alert-danger py-2 small">
+          <i class="fas fa-lock me-1"></i>{{ erreur_limite }}
+        </div>
+        {% endif %}
+
         <!-- Formulaire -->
         <form method="POST" action="{{ url_for('auth.login') }}">
           <div class="mb-3">

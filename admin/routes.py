@@ -1,4 +1,7 @@
+﻿import secrets
+import string
 from functools import wraps
+from markupsafe import Markup
 from flask import render_template, redirect, url_for, flash, request, session
 from flask_login import login_required, current_user
 import json
@@ -6,6 +9,17 @@ from models import db, User, Direction, Service, Annee, StructureExterne, PTABac
 from admin import admin_bp
 from extensions import limiter
 from utils import log_audit, valider_mdp
+
+
+def _generer_mdp_temp():
+    """Génère un mot de passe temporaire sécurisé (10 car. : maj + min + chiffre)."""
+    alphabet = string.ascii_letters + string.digits
+    while True:
+        mdp = ''.join(secrets.choice(alphabet) for _ in range(10))
+        if (any(c.isupper() for c in mdp) and
+                any(c.islower() for c in mdp) and
+                any(c.isdigit() for c in mdp)):
+            return mdp
 
 
 def editeur_required(f):
@@ -119,7 +133,7 @@ def user_add():
 @admin_bp.route('/users/<int:user_id>/edit', methods=['GET', 'POST'])
 @editeur_required
 def user_edit(user_id):
-    user = User.query.get_or_404(user_id)
+    user = db.get_or_404(User, user_id)
     directions = Direction.query.order_by(Direction.nom).all()
     services = Service.query.order_by(Service.nom).all()
 
@@ -166,7 +180,7 @@ def user_edit(user_id):
 @admin_bp.route('/users/<int:user_id>/toggle', methods=['POST'])
 @editeur_required
 def user_toggle(user_id):
-    user = User.query.get_or_404(user_id)
+    user = db.get_or_404(User, user_id)
     if user.login == 'admin' and user.actif:
         flash('Impossible de désactiver le compte administrateur principal.', 'danger')
         return redirect(url_for('admin.users'))
@@ -182,7 +196,7 @@ def user_toggle(user_id):
 @admin_bp.route('/users/<int:user_id>/delete', methods=['POST'])
 @editeur_required
 def user_delete(user_id):
-    user = User.query.get_or_404(user_id)
+    user = db.get_or_404(User, user_id)
     if user.login == 'admin':
         flash('Impossible de supprimer le compte administrateur principal.', 'danger')
         return redirect(url_for('admin.users'))
@@ -201,16 +215,20 @@ def user_delete(user_id):
 @admin_bp.route('/users/<int:user_id>/reset-password', methods=['POST'])
 @editeur_required
 def user_reset_password(user_id):
-    user = User.query.get_or_404(user_id)
-    nouveau_mdp = request.form.get('nouveau_mdp', '').strip()
-    erreur_mdp = valider_mdp(nouveau_mdp)
-    if erreur_mdp:
-        flash(erreur_mdp, 'danger')
-        return redirect(url_for('admin.users'))
-    user.set_password(nouveau_mdp)
+    user = db.get_or_404(User, user_id)
+    # Génère un mot de passe temporaire aléatoire — l'admin le note et le communique
+    mdp_temp = _generer_mdp_temp()
+    user.set_password(mdp_temp)
     db.session.commit()
     log_audit('mdp_reinit', f"Mot de passe réinitialisé pour : {user.prenom} {user.nom}")
-    flash(f'Mot de passe de {user.prenom} {user.nom} réinitialisé. Communiquez-lui le nouveau mot de passe.', 'success')
+    # Markup pour afficher le mot de passe en gras sans échappement HTML
+    flash(Markup(
+        f'Mot de passe de <strong>{user.prenom} {user.nom}</strong> réinitialisé.<br>'
+        f'Mot de passe temporaire : '
+        f'<code class="fs-6 fw-bold px-2 py-1 bg-light border rounded">{mdp_temp}</code><br>'
+        f'<span class="text-muted small">Notez-le et communiquez-le à l\'utilisateur. '
+        f'Il pourra le modifier via son menu en haut à droite.</span>'
+    ), 'success')
     return redirect(url_for('admin.users'))
 
 
@@ -243,7 +261,7 @@ def direction_add():
 @admin_bp.route('/directions/<int:dir_id>/edit', methods=['POST'])
 @editeur_required
 def direction_edit(dir_id):
-    d = Direction.query.get_or_404(dir_id)
+    d = db.get_or_404(Direction, dir_id)
     code = request.form.get('code', '').strip().upper()
     nom = request.form.get('nom', '').strip()
     if not code or not nom:
@@ -259,7 +277,7 @@ def direction_edit(dir_id):
 @admin_bp.route('/directions/<int:dir_id>/delete', methods=['POST'])
 @editeur_required
 def direction_delete(dir_id):
-    d = Direction.query.get_or_404(dir_id)
+    d = db.get_or_404(Direction, dir_id)
     if d.services:
         flash('Impossible : des services sont rattachés à cette direction.', 'danger')
         return redirect(url_for('admin.directions'))
@@ -303,7 +321,7 @@ def service_add():
 @admin_bp.route('/services/<int:svc_id>/edit', methods=['POST'])
 @editeur_required
 def service_edit(svc_id):
-    s = Service.query.get_or_404(svc_id)
+    s = db.get_or_404(Service, svc_id)
     code = request.form.get('code', '').strip().upper()
     nom = request.form.get('nom', '').strip()
     if not code or not nom:
@@ -325,7 +343,7 @@ def service_edit(svc_id):
 @admin_bp.route('/services/<int:svc_id>/delete', methods=['POST'])
 @editeur_required
 def service_delete(svc_id):
-    s = Service.query.get_or_404(svc_id)
+    s = db.get_or_404(Service, svc_id)
     if User.query.filter_by(service_id=svc_id).first():
         flash('Impossible : des utilisateurs sont rattachés à ce service.', 'danger')
         return redirect(url_for('admin.services'))
@@ -374,7 +392,7 @@ def annee_add():
 @editeur_required
 def annee_confirm_copie(ann_id):
     """Page de confirmation : copier ou non le PTA de l'année source vers la nouvelle année."""
-    nouvelle = Annee.query.get_or_404(ann_id)
+    nouvelle = db.get_or_404(Annee, ann_id)
     # Source = année active, sinon la plus récente différente de la nouvelle
     source = Annee.query.filter_by(actif=True).first()
     if not source or source.id == ann_id:
@@ -393,13 +411,13 @@ def annee_confirm_copie(ann_id):
 @editeur_required
 def annee_copier_pta(ann_id):
     """Copie la structure complète du PTA (sans suivi) depuis l'année source."""
-    nouvelle = Annee.query.get_or_404(ann_id)
+    nouvelle = db.get_or_404(Annee, ann_id)
     source_id = request.form.get('source_id', type=int)
     if not source_id:
         flash('Année source introuvable.', 'danger')
         return redirect(url_for('admin.annees'))
 
-    source = Annee.query.get_or_404(source_id)
+    source = db.get_or_404(Annee, source_id)
     from models import Programme, Projet, Activite, Tache
 
     # Vérifier que la nouvelle année est bien vide
@@ -517,7 +535,7 @@ def annee_copier_pta(ann_id):
 @editeur_required
 def annee_activate(ann_id):
     Annee.query.update({'actif': False})
-    a = Annee.query.get_or_404(ann_id)
+    a = db.get_or_404(Annee, ann_id)
     a.actif = True
     db.session.commit()
     # Mettre à jour la session pour que le badge en haut change immédiatement
@@ -531,7 +549,7 @@ def annee_activate(ann_id):
 @admin_bp.route('/annees/<int:ann_id>/deactivate', methods=['POST'])
 @editeur_required
 def annee_deactivate(ann_id):
-    a = Annee.query.get_or_404(ann_id)
+    a = db.get_or_404(Annee, ann_id)
     a.actif = False
     db.session.commit()
     session.pop('annee_id', None)
@@ -546,7 +564,7 @@ def annee_deactivate(ann_id):
 @editeur_required
 def annee_purge_suivi(ann_id):
     """Vide uniquement les données de suivi (suivi_taches) pour une année."""
-    a = Annee.query.get_or_404(ann_id)
+    a = db.get_or_404(Annee, ann_id)
     from models import SuiviTache
     nb = SuiviTache.query.filter_by(annee_id=ann_id).delete()
     db.session.commit()
@@ -561,7 +579,7 @@ def annee_purge_suivi(ann_id):
 @editeur_required
 def annee_purge_pta(ann_id):
     """Vide TOUT le PTA d'une année (suivi + programmes/projets/activités/tâches)."""
-    a = Annee.query.get_or_404(ann_id)
+    a = db.get_or_404(Annee, ann_id)
     from models import SuiviTache, Programme
     # 1. Suivi d'abord (FK vers taches)
     nb_suivi = SuiviTache.query.filter_by(annee_id=ann_id).delete()
@@ -582,7 +600,7 @@ def annee_purge_pta(ann_id):
 @admin_bp.route('/annees/<int:ann_id>/delete', methods=['POST'])
 @editeur_required
 def annee_delete(ann_id):
-    a = Annee.query.get_or_404(ann_id)
+    a = db.get_or_404(Annee, ann_id)
     if a.actif:
         flash('Impossible de supprimer une année active. Activez une autre année d\'abord.', 'danger')
         return redirect(url_for('admin.annees'))
@@ -625,7 +643,7 @@ def struct_ext_add():
 @admin_bp.route('/structures-externes/<int:se_id>/edit', methods=['POST'])
 @editeur_required
 def struct_ext_edit(se_id):
-    se = StructureExterne.query.get_or_404(se_id)
+    se = db.get_or_404(StructureExterne, se_id)
     nom = request.form.get('nom', '').strip()
     if not nom:
         flash('Le nom est obligatoire.', 'danger')
@@ -641,7 +659,7 @@ def struct_ext_edit(se_id):
 @admin_bp.route('/structures-externes/<int:se_id>/delete', methods=['POST'])
 @editeur_required
 def struct_ext_delete(se_id):
-    se = StructureExterne.query.get_or_404(se_id)
+    se = db.get_or_404(StructureExterne, se_id)
     nom = se.nom
     db.session.delete(se)
     db.session.commit()
@@ -736,7 +754,7 @@ def backups():
 @admin_bp.route('/backups/<int:backup_id>/delete', methods=['POST'])
 @editeur_required
 def backup_delete(backup_id):
-    b = PTABackup.query.get_or_404(backup_id)
+    b = db.get_or_404(PTABackup, backup_id)
     db.session.delete(b)
     db.session.commit()
     flash('Sauvegarde supprimée définitivement.', 'success')
@@ -747,8 +765,8 @@ def backup_delete(backup_id):
 @limiter.limit('3 per minute')
 @editeur_required
 def backup_restore(backup_id):
-    b = PTABackup.query.get_or_404(backup_id)
-    annee = Annee.query.get(b.annee_id) if b.annee_id else None
+    b = db.get_or_404(PTABackup, backup_id)
+    annee = db.session.get(Annee, b.annee_id) if b.annee_id else None
     if not annee:
         flash("L'année PTA de cette sauvegarde n'existe plus. Créez-la d'abord dans Années.", 'danger')
         return redirect(url_for('admin.backups'))
@@ -769,9 +787,9 @@ def backup_restore(backup_id):
 
     data = json.loads(b.contenu)
 
-    def get_svcs(ids): return [s for s in (Service.query.get(i) for i in ids) if s]
-    def get_dirs(ids): return [d for d in (Direction.query.get(i) for i in ids) if d]
-    def get_ses(ids):  return [se for se in (StructureExterne.query.get(i) for i in ids) if se]
+    def get_svcs(ids): return [s for s in (db.session.get(Service, i) for i in ids) if s]
+    def get_dirs(ids): return [d for d in (db.session.get(Direction, i) for i in ids) if d]
+    def get_ses(ids):  return [se for se in (db.session.get(StructureExterne, i) for i in ids) if se]
 
     nb_acts = 0
     nb_taches = 0

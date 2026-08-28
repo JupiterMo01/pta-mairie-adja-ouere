@@ -438,11 +438,13 @@ def save():
             service = current_user.service
             if not service:
                 continue
-            # Vérifie que le service est bien dans services_concernes de la tâche.
-            # On ne filtre PAS sur direction_id : un service listé dans services_concernes
-            # peut appartenir à une direction différente de direction_responsable_id,
-            # et il doit tout de même pouvoir enregistrer son suivi.
-            ok = any(s.id == service.id for s in tache.services_concernes)
+            # Le service peut sauvegarder son suivi si :
+            # 1. Il est explicitement associé à la tâche (services_concernes)
+            # 2. ET il appartient à la direction responsable de la tâche
+            # (une tâche DAF ne peut pas être suivie par un service DTC,
+            #  même si ce service apparaît par erreur dans services_concernes)
+            ok = any(s.id == service.id and s.direction_id == tache.direction_responsable_id
+                     for s in tache.services_concernes)
             if not ok:
                 continue
             sid = service.id

@@ -2,7 +2,7 @@ from functools import wraps
 from flask import render_template, redirect, url_for, flash, request, session
 from flask_login import login_required, current_user
 import json
-from models import db, User, Direction, Service, Annee, StructureExterne, PTABackup, Programme, Projet, Activite, Tache
+from models import db, User, Direction, Service, Annee, StructureExterne, PTABackup, Programme, Projet, Activite, Tache, SuiviTache
 from admin import admin_bp
 from utils import log_audit
 
@@ -992,6 +992,31 @@ def rappel_saisie():
     log_audit('rappel_saisie',
               f"Rappel de saisie PTA {annee_label} envoyé à {len(destinataires)} destinataire(s)")
     flash(f"Rappel envoyé à {len(destinataires)} destinataire(s) + {len(_COPIES_FIXES)} copie(s).", 'success')
+    return redirect(url_for('admin.index'))
+
+
+@admin_bp.route('/purge-suivi', methods=['POST'])
+@editeur_required
+def purge_suivi():
+    """Supprime tous les suivis de l'année active (tests uniquement).
+    Ramène tout à non_execute et efface toutes les observations."""
+    from utils import get_annee
+    annee = get_annee()
+    if not annee:
+        flash("Aucune année PTA active.", 'warning')
+        return redirect(url_for('admin.index'))
+
+    nb = SuiviTache.query.filter_by(annee_id=annee.id).count()
+    SuiviTache.query.filter_by(annee_id=annee.id).delete()
+    db.session.commit()
+
+    log_audit('purge_suivi',
+              f"Purge du suivi PTA {annee.annee} : {nb} enregistrement(s) supprimé(s)")
+    flash(
+        f"Purge effectuée : {nb} suivi(s) supprimé(s) pour l'année {annee.annee}. "
+        "Tout est revenu à « Non exécuté ».",
+        'success'
+    )
     return redirect(url_for('admin.index'))
 
 

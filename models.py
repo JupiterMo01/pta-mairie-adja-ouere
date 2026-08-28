@@ -1,7 +1,7 @@
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime
+from datetime import datetime, timezone
 
 db = SQLAlchemy()
 
@@ -282,7 +282,7 @@ class SuiviTache(db.Model):
     statut = db.Column(db.String(20), default='non_execute')
     taux_execution = db.Column(db.Float, nullable=True)   # saisi manuellement si en_cours
     observation = db.Column(db.Text, nullable=True)
-    date_maj = db.Column(db.DateTime, default=datetime.utcnow)
+    date_maj = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     modified_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
 
     service = db.relationship('Service', foreign_keys=[service_id])
@@ -439,7 +439,7 @@ class PTABackup(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     annee_id = db.Column(db.Integer, db.ForeignKey('annees.id'), nullable=True)
     annee_label = db.Column(db.Integer, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     created_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     nb_programmes = db.Column(db.Integer, default=0)
     nb_activites = db.Column(db.Integer, default=0)
@@ -455,7 +455,7 @@ class PTABackup(db.Model):
 class AuditLog(db.Model):
     __tablename__ = 'audit_log'
     id          = db.Column(db.Integer, primary_key=True)
-    horodatage  = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    horodatage  = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     user_id     = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     user_nom    = db.Column(db.String(150))   # snapshot — survit à la suppression du compte
     user_role   = db.Column(db.String(30))

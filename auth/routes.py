@@ -33,10 +33,11 @@ def login():
                 session['annee'] = annee_active.annee
             log_audit('connexion', f"Connexion réussie — {user.role_label}")
             flash(f'Bienvenue, {user.prenom} {user.nom} !', 'success')
-            # Validation du paramètre next : doit être une URL interne (pas de redirect externe)
+            # Validation du paramètre next : accepter uniquement les URLs internes
+            # (commençant par '/' mais pas '//' qui est un protocol-relative redirect)
             next_page = request.args.get('next')
-            if next_page and (next_page.startswith('http') or next_page.startswith('//')):
-                next_page = None   # URL externe détectée → on ignore
+            if not next_page or not next_page.startswith('/') or next_page.startswith('//'):
+                next_page = None   # URL externe, vide ou suspecte → ignorée
             return redirect(next_page or url_for('auth.index'))
         else:
             log_audit('echec_connexion', f"Échec connexion pour l'identifiant : {login_val}")

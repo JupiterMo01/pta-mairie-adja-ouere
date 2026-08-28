@@ -3,30 +3,7 @@ from flask import render_template, redirect, url_for, flash, request, session, s
 from flask_login import login_required, current_user
 from models import db, Programme, Direction, Annee, Service
 from dirpta import dirpta_bp
-from utils import get_annee
-
-
-# ── Renormalisation des poids ─────────────────────────────────────────────────
-
-def _renorm(items, src='original_poids', dst='new_poids'):
-    """Recalcule les poids pour que leur somme soit exactement 100.
-    Le dernier élément absorbe les micro-erreurs d'arrondi."""
-    total = sum(i[src] for i in items)
-    if not items:
-        return
-    if total == 0:
-        eq = round(100 / len(items), 4)
-        for i in items:
-            i[dst] = eq
-        return
-    running = 0.0
-    for idx, i in enumerate(items):
-        if idx == len(items) - 1:
-            i[dst] = round(100.0 - running, 4)
-        else:
-            p = round(i[src] / total * 100, 4)
-            i[dst] = p
-            running += p
+from utils import get_annee, _renorm
 
 
 # ── Calcul du PTA filtré pour une direction ───────────────────────────────────

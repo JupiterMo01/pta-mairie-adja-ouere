@@ -101,14 +101,20 @@ def user_add():
     direction_id = request.form.get('direction_id') or None
     service_id = request.form.get('service_id') or None
 
-    if not all([nom, prenom, login_val, password, role]):
-        flash('Veuillez remplir tous les champs obligatoires.', 'danger')
+    if not all([nom, prenom, login_val, role]):
+        flash('Veuillez remplir tous les champs obligatoires (prénom, nom, identifiant, rôle).', 'danger')
         return redirect(url_for('admin.users'))
 
-    erreur_mdp = valider_mdp(password)
-    if erreur_mdp:
-        flash(erreur_mdp, 'danger')
-        return redirect(url_for('admin.users'))
+    # Mot de passe : si vide → auto-génération ; sinon validation
+    mdp_auto = False
+    if not password:
+        password = _generer_mdp_temp()
+        mdp_auto = True
+    else:
+        erreur_mdp = valider_mdp(password)
+        if erreur_mdp:
+            flash(erreur_mdp, 'danger')
+            return redirect(url_for('admin.users'))
 
     if User.query.filter_by(login=login_val).first():
         flash(f"L'identifiant « {login_val} » est déjà utilisé.", 'danger')
@@ -126,7 +132,14 @@ def user_add():
     db.session.add(user)
     db.session.commit()
     log_audit('user_cree', f"Compte créé : {prenom} {nom} ({role})")
-    flash(f'Utilisateur {prenom} {nom} créé.', 'success')
+    lbl_mdp = 'Mot de passe généré automatiquement' if mdp_auto else 'Mot de passe défini'
+    flash(Markup(
+        f'Utilisateur <strong>{prenom} {nom}</strong> créé.<br>'
+        f'{lbl_mdp} : '
+        f'<code class="fs-6 fw-bold px-2 py-1 bg-light border rounded">{password}</code><br>'
+        f'<span class="text-muted small">Communiquez-le à l\'utilisateur — '
+        f'il pourra le modifier via son menu en haut à droite.</span>'
+    ), 'success')
     return redirect(url_for('admin.users'))
 
 
@@ -872,15 +885,16 @@ def backup_restore(backup_id):
 
 # ─── Emails PTA (rappel saisie + bilan) ──────────────────────────────────────
 
-# Adresses toujours mises en copie (CC)
-# Décommenter les deux lignes suivantes après validation en test :
-# 'honzounnonluc@gmail.com'
-# 'luc.honzounnon@mairie.bj'
-_COPIES_FIXES = ['jupiter.gboyou@mairie.bj']
+# Adresse de copie fixe par défaut (fallback si ADMIN_CC absent de ~/.pta_backup_config)
+# Pour changer sans toucher au code : ajouter ADMIN_CC=email@domaine.bj dans le fichier config.
+_COPIES_FIXES_DEFAUT = ['jupiter.gboyou@mairie.bj']
 
 
 def _lire_cfg_smtp():
-    """Lit GMAIL_USER / GMAIL_APP_PASSWORD depuis ~/.pta_backup_config."""
+    """Lit GMAIL_USER / GMAIL_APP_PASSWORD (et optionnellement ADMIN_CC)
+    depuis ~/.pta_backup_config.
+    Lève FileNotFoundError si le fichier n'existe pas, ValueError si clé manquante,
+    OSError si le fichier est illisible (permissions)."""
     import os
     cfg = {}
     with open(os.path.expanduser('~/.pta_backup_config'), encoding='utf-8') as f:
@@ -895,19 +909,31 @@ def _lire_cfg_smtp():
     return cfg
 
 
+def _get_copies_fixes(cfg):
+    """Retourne la liste des adresses de copie fixe.
+    Lit ADMIN_CC depuis le fichier config si disponible, sinon utilise la valeur par défaut."""
+    admin_cc = cfg.get('ADMIN_CC', '').strip()
+    if admin_cc:
+        # Plusieurs adresses séparées par des virgules ou espaces sont acceptées
+        return [a.strip() for a in admin_cc.replace(',', ' ').split() if a.strip()]
+    return list(_COPIES_FIXES_DEFAUT)
+
+
 def _get_destinataires():
     """Emails des utilisateurs actifs ayant une adresse renseignée."""
     return [
         u.email.strip()
-        for u in User.query.filter(User.actif == True).all()
+        for u in User.query.filter(User.actif.is_(True)).all()
         if u.email and u.email.strip()
     ]
 
 
-def _envoyer_smtp(cfg, msg, destinataires):
-    """Envoie via Gmail SMTP — BCC : destinataires, CC : copies fixes."""
+def _envoyer_smtp(cfg, msg, destinataires, copies_fixes=None):
+    """Envoie via Gmail SMTP. copies_fixes : liste d'adresses toujours en copie."""
     import smtplib
-    tous = [cfg['GMAIL_USER']] + destinataires + _COPIES_FIXES
+    if copies_fixes is None:
+        copies_fixes = _get_copies_fixes(cfg)
+    tous = [cfg['GMAIL_USER']] + destinataires + copies_fixes
     with smtplib.SMTP('smtp.gmail.com', 587) as srv:
         srv.ehlo()
         srv.starttls()
@@ -916,6 +942,7 @@ def _envoyer_smtp(cfg, msg, destinataires):
 
 
 @admin_bp.route('/rappel-saisie', methods=['POST'])
+@limiter.limit('5 per hour')
 @editeur_required
 def rappel_saisie():
     """Envoie un rappel aux utilisateurs pour qu'ils renseignent leurs données PTA."""
@@ -942,7 +969,11 @@ def rappel_saisie():
     except ValueError as e:
         flash(f"Configuration email incomplète : {e}", 'danger')
         return redirect(url_for('admin.index'))
+    except OSError as e:
+        flash(f"Impossible de lire la configuration email : {e}", 'danger')
+        return redirect(url_for('admin.index'))
 
+    copies_fixes = _get_copies_fixes(cfg)
     sujet = f"[PTA Mairie {annee_label}] Rappel — Renseigner les données d'exécution"
 
     html_body = f"""<!DOCTYPE html>
@@ -1015,21 +1046,21 @@ def rappel_saisie():
     msg['From']     = f"Mairie d'Adja-Ouèrè PTA <{cfg['GMAIL_USER']}>"
     msg['To']       = cfg['GMAIL_USER']
     msg['Cc']       = ', '.join(destinataires)    # users visibles (voient qui a reçu)
-    msg['Bcc']      = ', '.join(_COPIES_FIXES)    # copie silencieuse (voit la liste CC)
+    msg['Bcc']      = ', '.join(copies_fixes)     # copie silencieuse (voit la liste CC)
     msg['Subject']  = sujet
     msg['Reply-To'] = 'jupiter.gboyou@mairie.bj'
     msg.attach(MIMEText(texte_brut, 'plain', 'utf-8'))
     msg.attach(MIMEText(html_body,  'html',  'utf-8'))
 
     try:
-        _envoyer_smtp(cfg, msg, destinataires)
+        _envoyer_smtp(cfg, msg, destinataires, copies_fixes)
     except Exception as e:
         flash(f"Erreur lors de l'envoi : {e}", 'danger')
         return redirect(url_for('admin.index'))
 
     log_audit('rappel_saisie',
               f"Rappel de saisie PTA {annee_label} envoyé à {len(destinataires)} destinataire(s)")
-    flash(f"Rappel envoyé à {len(destinataires)} destinataire(s) + {len(_COPIES_FIXES)} copie(s).", 'success')
+    flash(f"Rappel envoyé à {len(destinataires)} destinataire(s) + {len(copies_fixes)} copie(s).", 'success')
     return redirect(url_for('admin.index'))
 
 
@@ -1060,6 +1091,7 @@ def purge_suivi():
 
 
 @admin_bp.route('/bilan-pta', methods=['POST'])
+@limiter.limit('5 per hour')
 @editeur_required
 def bilan_pta():
     """Envoie le bilan global PTA — taux et statuts identiques à l'interface Suivi."""
@@ -1085,10 +1117,15 @@ def bilan_pta():
     except ValueError as e:
         flash(f"Configuration email incomplète : {e}", 'danger')
         return redirect(url_for('admin.index'))
+    except OSError as e:
+        flash(f"Impossible de lire la configuration email : {e}", 'danger')
+        return redirect(url_for('admin.index'))
 
     if not annee:
         flash("Aucune année PTA active.", 'warning')
         return redirect(url_for('admin.index'))
+
+    copies_fixes = _get_copies_fixes(cfg)
 
     # ── Données — mêmes fonctions que le tableau de bord admin ──────────────────
     from suivi.routes import _compute_pta_global
@@ -1299,14 +1336,14 @@ def bilan_pta():
     msg['From']     = f"Mairie d'Adja-Ouèrè PTA <{cfg['GMAIL_USER']}>"
     msg['To']       = cfg['GMAIL_USER']
     msg['Cc']       = ', '.join(destinataires)    # users visibles (voient qui a reçu)
-    msg['Bcc']      = ', '.join(_COPIES_FIXES)    # copie silencieuse (voit la liste CC)
+    msg['Bcc']      = ', '.join(copies_fixes)      # copie silencieuse (voit la liste CC)
     msg['Subject']  = sujet
     msg['Reply-To'] = 'jupiter.gboyou@mairie.bj'
     msg.attach(MIMEText(texte_brut, 'plain', 'utf-8'))
     msg.attach(MIMEText(html_body,  'html',  'utf-8'))
 
     try:
-        _envoyer_smtp(cfg, msg, destinataires)
+        _envoyer_smtp(cfg, msg, destinataires, copies_fixes)
     except Exception as e:
         flash(f"Erreur lors de l'envoi : {e}", 'danger')
         return redirect(url_for('admin.index'))
@@ -1314,5 +1351,5 @@ def bilan_pta():
     log_audit('bilan_pta',
               f"Bilan PTA {annee_label} envoyé à {len(destinataires)} destinataire(s) "
               f"— {total_glob} activité(s), taux global {taux_global}%")
-    flash(f"Bilan envoyé à {len(destinataires)} destinataire(s) + {len(_COPIES_FIXES)} copie(s).", 'success')
+    flash(f"Bilan envoyé à {len(destinataires)} destinataire(s) + {len(copies_fixes)} copie(s).", 'success')
     return redirect(url_for('admin.index'))

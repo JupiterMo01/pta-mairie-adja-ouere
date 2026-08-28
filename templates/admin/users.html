@@ -103,6 +103,7 @@
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <form method="POST" action="{{ url_for('admin.user_add') }}">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
         <div class="modal-body">
           <div class="row g-3">
             <div class="col-md-6">
@@ -118,8 +119,13 @@
               <input type="text" name="login" class="form-control" required placeholder="ex: jdupont">
             </div>
             <div class="col-md-6">
-              <label class="form-label fw-semibold">Mot de passe *</label>
-              <input type="password" name="password" class="form-control" required>
+              <label class="form-label fw-semibold">Mot de passe</label>
+              <input type="password" name="password" class="form-control"
+                     placeholder="Laisser vide = généré automatiquement">
+              <div class="form-text text-muted">
+                <i class="fas fa-magic me-1"></i>
+                Si vide, un mot de passe sécurisé sera généré et affiché.
+              </div>
             </div>
             <div class="col-md-12">
               <label class="form-label fw-semibold">Profil *</label>

@@ -1,5 +1,5 @@
 import io
-from flask import render_template, redirect, url_for, flash, request, session, send_file
+from flask import render_template, redirect, url_for, flash, request, session, send_file, abort
 from flask_login import login_required, current_user
 from models import db, Programme, Direction, Service, Annee
 from svcpta import svcpta_bp
@@ -502,6 +502,12 @@ def export_excel_all():
 def export_excel(service_id):
     annee   = get_annee()
     service = Service.query.get_or_404(service_id)
+    # Contrôle IDOR : un agent service ne voit que son propre service ;
+    # un agent direction ne voit que les services de sa direction.
+    if current_user.role == 'service' and current_user.service_id != service_id:
+        abort(403)
+    if current_user.role == 'direction' and service.direction_id != current_user.direction_id:
+        abort(403)
     if not annee:
         flash('Aucune année active.', 'danger')
         return redirect(url_for('svcpta.index'))
@@ -523,6 +529,10 @@ def export_excel(service_id):
 def print_view(service_id):
     annee   = get_annee()
     service = Service.query.get_or_404(service_id)
+    if current_user.role == 'service' and current_user.service_id != service_id:
+        abort(403)
+    if current_user.role == 'direction' and service.direction_id != current_user.direction_id:
+        abort(403)
     if not annee:
         flash('Aucune année active.', 'danger')
         return redirect(url_for('svcpta.index'))

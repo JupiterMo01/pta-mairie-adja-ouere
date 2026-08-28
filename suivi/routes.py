@@ -502,12 +502,23 @@ def save():
 
         observation = str(td.get('observation','') or '').strip()[:3000]
 
-        sv = SuiviTache.query.filter(
-            SuiviTache.tache_id   == tache_id,
-            SuiviTache.service_id == sid,
-            SuiviTache.trimestre  == t_tache,
-            SuiviTache.annee_id   == annee.id,
-        ).first()
+        # Note SQLite : la contrainte UNIQUE ne protège pas les NULL (NULL != NULL en SQL).
+        # SQLAlchemy génère correctement 'IS NULL' quand sid is None,
+        # ce qui trouve les enregistrements existants avec service_id=NULL.
+        if sid is None:
+            sv = SuiviTache.query.filter(
+                SuiviTache.tache_id   == tache_id,
+                SuiviTache.service_id.is_(None),
+                SuiviTache.trimestre  == t_tache,
+                SuiviTache.annee_id   == annee.id,
+            ).first()
+        else:
+            sv = SuiviTache.query.filter(
+                SuiviTache.tache_id   == tache_id,
+                SuiviTache.service_id == sid,
+                SuiviTache.trimestre  == t_tache,
+                SuiviTache.annee_id   == annee.id,
+            ).first()
 
         if sv:
             sv.statut         = statut

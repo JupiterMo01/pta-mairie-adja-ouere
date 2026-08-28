@@ -7,7 +7,11 @@ from admin import admin_bp
 from utils import log_audit
 
 
-def admin_required(f):
+def editeur_required(f):
+    """Décorateur unique pour tout accès au panneau admin.
+    Réservé au rôle 'admin_editeur' (lecture ET écriture).
+    admin_lecteur n'a pas accès à /admin/ — il peut consulter /dashboard/ et les PTA.
+    """
     @wraps(f)
     @login_required
     def decorated(*args, **kwargs):
@@ -18,15 +22,8 @@ def admin_required(f):
     return decorated
 
 
-def editeur_required(f):
-    @wraps(f)
-    @login_required
-    def decorated(*args, **kwargs):
-        if current_user.role != 'admin_editeur':
-            flash('Accès refusé. Réservé aux éditeurs.', 'danger')
-            return redirect(url_for('pta.global_pta'))
-        return f(*args, **kwargs)
-    return decorated
+# Alias conservé pour compatibilité interne — même comportement qu'editeur_required
+admin_required = editeur_required
 
 
 # ─── Sauvegarde manuelle ────────────────────────────────────────────────────
@@ -342,7 +339,14 @@ def annee_add():
     if not val:
         flash('Année obligatoire.', 'danger')
         return redirect(url_for('admin.annees'))
-    val = int(val)
+    try:
+        val = int(val)
+    except (ValueError, TypeError):
+        flash("L'année doit être un nombre entier valide (ex : 2026).", 'danger')
+        return redirect(url_for('admin.annees'))
+    if val < 2000 or val > 2100:
+        flash("L'année doit être comprise entre 2000 et 2100.", 'danger')
+        return redirect(url_for('admin.annees'))
     if Annee.query.filter_by(annee=val).first():
         flash(f"L'année {val} existe déjà.", 'danger')
         return redirect(url_for('admin.annees'))

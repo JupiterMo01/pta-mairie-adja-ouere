@@ -1,4 +1,4 @@
-import io
+﻿import io
 import json
 from functools import wraps
 from flask import render_template, redirect, url_for, flash, request, session, send_file, jsonify
@@ -35,12 +35,12 @@ def _update_associations(obj, services_ids, directions_ids, services_rel, direct
     """Met à jour les relations services et directions associés."""
     setattr(obj, services_rel, [])
     for sid in services_ids:
-        s = Service.query.get(int(sid))
+        s = db.session.get(Service, int(sid))
         if s:
             getattr(obj, services_rel).append(s)
     setattr(obj, directions_rel, [])
     for did in directions_ids:
-        d = Direction.query.get(int(did))
+        d = db.session.get(Direction, int(did))
         if d:
             getattr(obj, directions_rel).append(d)
 
@@ -93,7 +93,7 @@ def global_pta():
 @pta_bp.route('/annee/<int:annee_id>')
 @login_required
 def switch_annee(annee_id):
-    annee = Annee.query.get_or_404(annee_id)
+    annee = db.get_or_404(Annee, annee_id)
     session['annee_id'] = annee.id
     session['annee'] = annee.annee
     return redirect(url_for('pta.global_pta'))
@@ -104,7 +104,7 @@ def switch_annee(annee_id):
 @pta_bp.route('/annee/<int:annee_id>/objectif', methods=['POST'])
 @editeur_only
 def annee_objectif(annee_id):
-    annee = Annee.query.get_or_404(annee_id)
+    annee = db.get_or_404(Annee, annee_id)
     annee.objectif_general = request.form.get('objectif_general', '').strip()
     db.session.commit()
     flash('Objectif général mis à jour.', 'success')
@@ -147,7 +147,7 @@ def programme_add():
 @pta_bp.route('/programme/<int:prog_id>/edit', methods=['POST'])
 @editeur_only
 def programme_edit(prog_id):
-    p = Programme.query.get_or_404(prog_id)
+    p = db.get_or_404(Programme, prog_id)
     p.nom = request.form.get('nom', '').strip()
     p.poids = _parse_float(request.form.get('poids'))
     p.objectif_specifique = request.form.get('objectif_specifique', '').strip()
@@ -160,7 +160,7 @@ def programme_edit(prog_id):
 @pta_bp.route('/programme/<int:prog_id>/delete', methods=['POST'])
 @editeur_only
 def programme_delete(prog_id):
-    p = Programme.query.get_or_404(prog_id)
+    p = db.get_or_404(Programme, prog_id)
     annee_id = p.annee_id
     db.session.delete(p)
     db.session.flush()
@@ -176,7 +176,7 @@ def programme_delete(prog_id):
 @editeur_only
 def projet_add():
     prog_id = int(request.form.get('programme_id'))
-    programme = Programme.query.get_or_404(prog_id)
+    programme = db.get_or_404(Programme, prog_id)
     nom = request.form.get('nom', '').strip()
     poids = _parse_float(request.form.get('poids'))
     last = Projet.query.filter_by(programme_id=prog_id).order_by(Projet.numero.desc()).first()
@@ -191,7 +191,7 @@ def projet_add():
 @pta_bp.route('/projet/<int:proj_id>/edit', methods=['POST'])
 @editeur_only
 def projet_edit(proj_id):
-    p = Projet.query.get_or_404(proj_id)
+    p = db.get_or_404(Projet, proj_id)
     p.nom = request.form.get('nom', '').strip()
     p.poids = _parse_float(request.form.get('poids'))
     p.description = request.form.get('description', '').strip()
@@ -203,7 +203,7 @@ def projet_edit(proj_id):
 @pta_bp.route('/projet/<int:proj_id>/delete', methods=['POST'])
 @editeur_only
 def projet_delete(proj_id):
-    p = Projet.query.get_or_404(proj_id)
+    p = db.get_or_404(Projet, proj_id)
     prog_id = p.programme_id
     db.session.delete(p)
     db.session.flush()
@@ -216,7 +216,7 @@ def projet_delete(proj_id):
 @pta_bp.route('/projet/<int:proj_id>/clear_activites', methods=['POST'])
 @editeur_only
 def projet_clear_activites(proj_id):
-    p = Projet.query.get_or_404(proj_id)
+    p = db.get_or_404(Projet, proj_id)
     code = p.code
     for a in list(p.activites):
         db.session.delete(a)
@@ -283,7 +283,7 @@ def _activite_form_overrides(a):
                              'services_intervenants', 'directions_associees')
     se_ids = request.form.getlist('structures_externes')
     if se_ids:
-        a.structures_externes = [StructureExterne.query.get(int(i)) for i in se_ids if i]
+        a.structures_externes = [db.session.get(StructureExterne, int(i)) for i in se_ids if i]
 
 
 def _activite_from_form(a):
@@ -324,7 +324,7 @@ def _activite_from_form(a):
     else:  # aucun
         a.services_intervenants = []
         a.directions_associees = []
-    a.structures_externes = [StructureExterne.query.get(int(i))
+    a.structures_externes = [db.session.get(StructureExterne, int(i))
                              for i in request.form.getlist('structures_externes') if i]
 
 
@@ -336,7 +336,7 @@ def activite_add():
     except (ValueError, TypeError):
         flash('Paramètre projet invalide.', 'danger')
         return redirect(url_for('pta.global_pta'))
-    Projet.query.get_or_404(proj_id)
+    db.get_or_404(Projet, proj_id)
     insert_after = request.form.get('insert_after', type=int)
     if insert_after is not None:
         acts_apres = Activite.query.filter_by(projet_id=proj_id)\
@@ -354,7 +354,7 @@ def activite_add():
     a = Activite(projet_id=proj_id, numero=numero)
 
     if import_source == 'biblio' and import_id_val:
-        ba = BiblioActivite.query.get(import_id_val)
+        ba = db.session.get(BiblioActivite, import_id_val)
         if ba:
             # 1. Charger toutes les données depuis la bibliothèque
             a.nom = ba.nom or ''
@@ -386,7 +386,7 @@ def activite_add():
             db.session.add(a)
             db.session.flush()
     elif import_source == 'pta' and import_id_val:
-        src = Activite.query.get(import_id_val)
+        src = db.session.get(Activite, import_id_val)
         if src:
             a.nom = src.nom or ''
             a.description = src.description or ''
@@ -428,7 +428,7 @@ def activite_add():
 @pta_bp.route('/activite/<int:act_id>/edit', methods=['POST'])
 @editeur_only
 def activite_edit(act_id):
-    a = Activite.query.get_or_404(act_id)
+    a = db.get_or_404(Activite, act_id)
     old_imputation = a.imputation_budgetaire
     _activite_from_form(a)
     # Si imputation passe à NÉANT, forcer toutes les tâches à NÉANT
@@ -443,7 +443,7 @@ def activite_edit(act_id):
 @pta_bp.route('/activite/<int:act_id>/delete', methods=['POST'])
 @editeur_only
 def activite_delete(act_id):
-    a = Activite.query.get_or_404(act_id)
+    a = db.get_or_404(Activite, act_id)
     proj_id = a.projet_id
     db.session.delete(a)
     db.session.flush()
@@ -456,7 +456,7 @@ def activite_delete(act_id):
 @pta_bp.route('/activite/<int:act_id>/clear_taches', methods=['POST'])
 @editeur_only
 def activite_clear_taches(act_id):
-    a = Activite.query.get_or_404(act_id)
+    a = db.get_or_404(Activite, act_id)
     code = a.code
     for t in list(a.taches):
         db.session.delete(t)
@@ -540,7 +540,7 @@ def _copier_taches(source_act, dest_act):
 @pta_bp.route('/activite/<int:act_id>/move/<direction>', methods=['POST'])
 @editeur_only
 def activite_move(act_id, direction):
-    a = Activite.query.get_or_404(act_id)
+    a = db.get_or_404(Activite, act_id)
     proj_id = a.projet_id
     acts = Activite.query.filter_by(projet_id=proj_id).order_by(Activite.numero).all()
     idx = next((i for i, x in enumerate(acts) if x.id == act_id), None)
@@ -557,7 +557,7 @@ def activite_move(act_id, direction):
 @pta_bp.route('/activite/<int:act_id>/duplicate', methods=['POST'])
 @editeur_only
 def activite_duplicate(act_id):
-    a = Activite.query.get_or_404(act_id)
+    a = db.get_or_404(Activite, act_id)
     proj_id = a.projet_id
     placement = request.form.get('placement', 'end')
     if placement == 'after':
@@ -601,7 +601,7 @@ def activite_duplicate(act_id):
 @pta_bp.route('/activite/<int:act_id>/export_biblio', methods=['POST'])
 @editeur_only
 def activite_export_biblio(act_id):
-    a = Activite.query.get_or_404(act_id)
+    a = db.get_or_404(Activite, act_id)
     nom = request.form.get('nom', '').strip() or a.nom
     ba = BiblioActivite(
         nom=nom,
@@ -657,9 +657,9 @@ def activite_export_biblio(act_id):
 @pta_bp.route('/activite/<int:act_id>/copy_to', methods=['POST'])
 @editeur_only
 def activite_copy_to(act_id):
-    a = Activite.query.get_or_404(act_id)
+    a = db.get_or_404(Activite, act_id)
     target_proj_id = int(request.form.get('projet_id'))
-    Projet.query.get_or_404(target_proj_id)
+    db.get_or_404(Projet, target_proj_id)
     last = Activite.query.filter_by(projet_id=target_proj_id).order_by(Activite.numero.desc()).first()
     new_num = (last.numero + 1) if last else 1
     na = Activite(
@@ -742,7 +742,7 @@ def _tache_from_form(t, activite):
     else:  # aucun
         t.services_concernes = []
         t.directions_associees = []
-    t.structures_externes = [StructureExterne.query.get(int(i))
+    t.structures_externes = [db.session.get(StructureExterne, int(i))
                              for i in request.form.getlist('structures_externes') if i]
 
 
@@ -754,7 +754,7 @@ def tache_add():
     except (ValueError, TypeError):
         flash('Paramètre activité invalide.', 'danger')
         return redirect(url_for('pta.global_pta'))
-    activite = Activite.query.get_or_404(act_id)
+    activite = db.get_or_404(Activite, act_id)
     # Insertion à une position donnée ou en fin
     insert_after = request.form.get('insert_after', type=int)
 
@@ -783,7 +783,7 @@ def tache_add():
 @pta_bp.route('/tache/<int:tache_id>/duplicate', methods=['POST'])
 @editeur_only
 def tache_duplicate(tache_id):
-    t = Tache.query.get_or_404(tache_id)
+    t = db.get_or_404(Tache, tache_id)
     act_id = t.activite_id
     placement = request.form.get('placement', 'end')
     if placement == 'after':
@@ -828,7 +828,7 @@ def tache_duplicate(tache_id):
 @pta_bp.route('/tache/<int:tache_id>/edit', methods=['POST'])
 @editeur_only
 def tache_edit(tache_id):
-    t = Tache.query.get_or_404(tache_id)
+    t = db.get_or_404(Tache, tache_id)
     activite = t.activite
     _tache_from_form(t, activite)
     db.session.commit()
@@ -839,7 +839,7 @@ def tache_edit(tache_id):
 @pta_bp.route('/tache/<int:tache_id>/delete', methods=['POST'])
 @editeur_only
 def tache_delete(tache_id):
-    t = Tache.query.get_or_404(tache_id)
+    t = db.get_or_404(Tache, tache_id)
     act_id = t.activite_id
     db.session.delete(t)
     db.session.flush()
@@ -853,7 +853,7 @@ def tache_delete(tache_id):
 @editeur_only
 def tache_move(tache_id, direction):
     """Déplace une tâche vers le haut ou vers le bas."""
-    t = Tache.query.get_or_404(tache_id)
+    t = db.get_or_404(Tache, tache_id)
     act_id = t.activite_id
     taches = Tache.query.filter_by(activite_id=act_id).order_by(Tache.ordre).all()
     idx = next((i for i, x in enumerate(taches) if x.id == tache_id), None)
@@ -875,7 +875,7 @@ def tache_move(tache_id, direction):
 @editeur_only
 def tache_modal_edit(tache_id):
     """Retourne le contenu HTML du modal d'édition d'une tâche (AJAX)."""
-    tache = Tache.query.get_or_404(tache_id)
+    tache = db.get_or_404(Tache, tache_id)
     return render_template('pta/_modal_edit_tache.html',
         tache=tache,
         services=Service.query.order_by(Service.nom).all(),
@@ -888,7 +888,7 @@ def tache_modal_edit(tache_id):
 @editeur_only
 def activite_modal_add_tache(act_id):
     """Retourne le contenu HTML du modal d'ajout d'une tâche (AJAX)."""
-    activite = Activite.query.get_or_404(act_id)
+    activite = db.get_or_404(Activite, act_id)
     insert_after = request.args.get('insert_after', '')
     return render_template('pta/_modal_add_tache.html',
         activite=activite,
@@ -904,7 +904,7 @@ def activite_modal_add_tache(act_id):
 @editeur_only
 def activite_modal_edit(act_id):
     """Retourne le contenu HTML du modal d'édition d'une activité (AJAX)."""
-    act = Activite.query.get_or_404(act_id)
+    act = db.get_or_404(Activite, act_id)
     annee = get_annee()
     programmes = []
     if annee:
@@ -926,7 +926,7 @@ def activite_modal_edit(act_id):
 @editeur_only
 def projet_modal_add_activite(proj_id):
     """Retourne le contenu HTML du modal d'ajout d'une activité (AJAX)."""
-    projet = Projet.query.get_or_404(proj_id)
+    projet = db.get_or_404(Projet, proj_id)
     insert_after = request.args.get('insert_after', '')
     annee = get_annee()
     programmes = []
@@ -950,7 +950,7 @@ def projet_modal_add_activite(proj_id):
 @editeur_only
 def activite_modal_copy(act_id):
     """Retourne le contenu HTML du modal de copie d'activité (AJAX)."""
-    act = Activite.query.get_or_404(act_id)
+    act = db.get_or_404(Activite, act_id)
     annee = get_annee()
     programmes = []
     if annee:
@@ -965,7 +965,7 @@ def activite_modal_copy(act_id):
 @editeur_only
 def activite_modal_biblio(act_id):
     """Retourne le contenu HTML du modal d'export bibliothèque (AJAX)."""
-    act = Activite.query.get_or_404(act_id)
+    act = db.get_or_404(Activite, act_id)
     return render_template('pta/_modal_biblio_activite.html', act=act)
 
 

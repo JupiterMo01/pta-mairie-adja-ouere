@@ -1,4 +1,4 @@
-from flask import render_template, redirect, url_for, flash, request
+﻿from flask import render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
 from functools import wraps
 from models import (db, BiblioActivite, BiblioTache, Direction, Service,
@@ -80,12 +80,12 @@ def _activite_from_form(a):
         a.services_associes = Service.query.order_by(Service.nom).all()
         a.directions_associees = Direction.query.order_by(Direction.nom).all()
     elif structures_mode == 'manuel':
-        a.services_associes = [Service.query.get(int(i)) for i in request.form.getlist('services_associes') if i]
-        a.directions_associees = [Direction.query.get(int(i)) for i in request.form.getlist('directions_associees') if i]
+        a.services_associes = [db.session.get(Service, int(i)) for i in request.form.getlist('services_associes') if i]
+        a.directions_associees = [db.session.get(Direction, int(i)) for i in request.form.getlist('directions_associees') if i]
     else:  # aucun
         a.services_associes = []
         a.directions_associees = []
-    a.structures_externes = [StructureExterne.query.get(int(i))
+    a.structures_externes = [db.session.get(StructureExterne, int(i))
                              for i in request.form.getlist('structures_externes') if i]
 
 
@@ -130,12 +130,12 @@ def _tache_from_form(t):
         t.services_concernes = Service.query.order_by(Service.nom).all()
         t.directions_associees = Direction.query.order_by(Direction.nom).all()
     elif structures_mode == 'manuel':
-        t.services_concernes = [Service.query.get(int(i)) for i in request.form.getlist('services_concernes') if i]
-        t.directions_associees = [Direction.query.get(int(i)) for i in request.form.getlist('directions_associees') if i]
+        t.services_concernes = [db.session.get(Service, int(i)) for i in request.form.getlist('services_concernes') if i]
+        t.directions_associees = [db.session.get(Direction, int(i)) for i in request.form.getlist('directions_associees') if i]
     else:  # aucun
         t.services_concernes = []
         t.directions_associees = []
-    t.structures_externes = [StructureExterne.query.get(int(i))
+    t.structures_externes = [db.session.get(StructureExterne, int(i))
                              for i in request.form.getlist('structures_externes') if i]
 
 
@@ -186,7 +186,7 @@ def activite_add():
 @biblio_bp.route('/activite/<int:act_id>/edit', methods=['POST'])
 @admin_editeur_only
 def activite_edit(act_id):
-    a = BiblioActivite.query.get_or_404(act_id)
+    a = db.get_or_404(BiblioActivite, act_id)
     _activite_from_form(a)
     db.session.commit()
     flash('Activité mise à jour.', 'success')
@@ -196,7 +196,7 @@ def activite_edit(act_id):
 @biblio_bp.route('/activite/<int:act_id>/delete', methods=['POST'])
 @admin_editeur_only
 def activite_delete(act_id):
-    a = BiblioActivite.query.get_or_404(act_id)
+    a = db.get_or_404(BiblioActivite, act_id)
     # Trouver l'activité voisine (précédente ou suivante) pour le scroll de retour
     toutes = [x.id for x in BiblioActivite.query.order_by(BiblioActivite.nom).all()]
     idx = toutes.index(act_id) if act_id in toutes else -1
@@ -219,7 +219,7 @@ def activite_delete(act_id):
 @biblio_bp.route('/activite/<int:act_id>/tache/add', methods=['POST'])
 @admin_editeur_only
 def tache_add(act_id):
-    BiblioActivite.query.get_or_404(act_id)
+    db.get_or_404(BiblioActivite, act_id)
     nom = request.form.get('nom', '').strip()
     if not nom:
         flash('Le nom est obligatoire.', 'danger')
@@ -252,7 +252,7 @@ def tache_add(act_id):
 @biblio_bp.route('/tache/<int:tache_id>/edit', methods=['POST'])
 @admin_editeur_only
 def tache_edit(tache_id):
-    t = BiblioTache.query.get_or_404(tache_id)
+    t = db.get_or_404(BiblioTache, tache_id)
     _tache_from_form(t)
     db.session.commit()
     flash('Tâche mise à jour.', 'success')
@@ -262,7 +262,7 @@ def tache_edit(tache_id):
 @biblio_bp.route('/tache/<int:tache_id>/move/<direction>', methods=['POST'])
 @admin_editeur_only
 def tache_move(tache_id, direction):
-    t = BiblioTache.query.get_or_404(tache_id)
+    t = db.get_or_404(BiblioTache, tache_id)
     act_id = t.biblio_activite_id
     taches = BiblioTache.query.filter_by(biblio_activite_id=act_id).order_by(BiblioTache.numero).all()
     idx = next((i for i, x in enumerate(taches) if x.id == tache_id), None)
@@ -279,7 +279,7 @@ def tache_move(tache_id, direction):
 @biblio_bp.route('/tache/<int:tache_id>/duplicate', methods=['POST'])
 @admin_editeur_only
 def tache_duplicate(tache_id):
-    t = BiblioTache.query.get_or_404(tache_id)
+    t = db.get_or_404(BiblioTache, tache_id)
     act_id = t.biblio_activite_id
     placement = request.form.get('placement', 'end')
     if placement == 'after':
@@ -324,7 +324,7 @@ def tache_duplicate(tache_id):
 @biblio_bp.route('/tache/<int:tache_id>/delete', methods=['POST'])
 @admin_editeur_only
 def tache_delete(tache_id):
-    t = BiblioTache.query.get_or_404(tache_id)
+    t = db.get_or_404(BiblioTache, tache_id)
     act_id = t.biblio_activite_id
     db.session.delete(t)
     db.session.flush()
@@ -339,7 +339,7 @@ def tache_delete(tache_id):
 @biblio_bp.route('/activite/<int:act_id>/duplicate', methods=['POST'])
 @admin_editeur_only
 def activite_duplicate(act_id):
-    src = BiblioActivite.query.get_or_404(act_id)
+    src = db.get_or_404(BiblioActivite, act_id)
     new_nom = (src.nom + ' (copie)')[:300]
     a = BiblioActivite(
         nom=new_nom,
@@ -428,7 +428,7 @@ def import_activite_from_pta():
     if not act_id:
         flash('Aucune activité sélectionnée.', 'danger')
         return redirect(url_for('biblio.index'))
-    src = Activite.query.get_or_404(act_id)
+    src = db.get_or_404(Activite, act_id)
     a = BiblioActivite(
         nom=src.nom,
         description=src.description,
@@ -463,12 +463,12 @@ def import_activite_from_pta():
 @admin_editeur_only
 def import_taches_from_pta(act_id):
     """Importe des tâches d'une activité PTA dans une activité bibliothèque existante."""
-    biblio_act = BiblioActivite.query.get_or_404(act_id)
+    biblio_act = db.get_or_404(BiblioActivite, act_id)
     pta_act_id = request.form.get('pta_activite_id', type=int)
     if not pta_act_id:
         flash('Aucune activité PTA sélectionnée.', 'danger')
         return redirect(url_for('biblio.index', go=f'bact-{act_id}'))
-    src = Activite.query.get_or_404(pta_act_id)
+    src = db.get_or_404(Activite, pta_act_id)
     last = BiblioTache.query.filter_by(biblio_activite_id=act_id)\
                              .order_by(BiblioTache.numero.desc()).first()
     next_num = (last.numero + 1) if last else 1
@@ -486,12 +486,12 @@ def import_taches_from_pta(act_id):
 @admin_editeur_only
 def import_taches_from_biblio(act_id):
     """Importe les tâches d'une autre activité bibliothèque dans celle-ci."""
-    biblio_act = BiblioActivite.query.get_or_404(act_id)
+    biblio_act = db.get_or_404(BiblioActivite, act_id)
     src_id = request.form.get('biblio_src_id', type=int)
     if not src_id or src_id == act_id:
         flash('Sélectionnez une activité bibliothèque source différente.', 'danger')
         return redirect(url_for('biblio.index', go=f'bact-{act_id}'))
-    src = BiblioActivite.query.get_or_404(src_id)
+    src = db.get_or_404(BiblioActivite, src_id)
     last = BiblioTache.query.filter_by(biblio_activite_id=act_id)\
                              .order_by(BiblioTache.numero.desc()).first()
     next_num = (last.numero + 1) if last else 1

@@ -1,4 +1,4 @@
-"""
+﻿"""
 dashboard/routes.py
 
 Tableau de bord personnalisé : service, direction et admin (éditeur + lecteur).
@@ -10,7 +10,7 @@ import os
 import datetime
 from flask import render_template, request, session, redirect, url_for, flash, send_file, current_app
 from flask_login import login_required, current_user
-from models import Annee, Service, Direction, Programme
+from models import db, Annee, Service, Direction, Programme
 from dashboard import dashboard_bp
 
 INVEST = "Activité d'investissement"
@@ -31,7 +31,7 @@ def _fr(v, d=1):
 def _get_annee():
     annee_id = session.get('annee_id')
     if annee_id:
-        return Annee.query.get(annee_id)
+        return db.session.get(Annee, annee_id)
     return Annee.query.filter_by(actif=True).first()
 
 
@@ -283,7 +283,7 @@ def index():
             sel_svc_id = None
 
         if sel_svc_id:
-            svc = Service.query.get(sel_svc_id)
+            svc = db.session.get(Service, sel_svc_id)
             from svcpta.routes import _compute_pta_service
             data   = _compute_pta_service(annee, svc)
             titre  = f"{svc.code} — {svc.nom}"
@@ -306,7 +306,7 @@ def index():
 
         # Priorité : filtre service > filtre direction > global
         if sel_svc_id:
-            svc = Service.query.get(sel_svc_id)
+            svc = db.session.get(Service, sel_svc_id)
             if not svc:
                 sel_svc_id = None
             else:
@@ -318,7 +318,7 @@ def index():
                 cibles = _cibles_service(annee, svc)
 
         if not sel_svc_id and sel_dir_id:
-            direction = Direction.query.get(sel_dir_id)
+            direction = db.session.get(Direction, sel_dir_id)
             if not direction:
                 sel_dir_id = None
             else:
@@ -811,7 +811,7 @@ def rapport_word():
         data   = []
 
         if sel_svc_id:
-            svc = Service.query.get(sel_svc_id)
+            svc = db.session.get(Service, sel_svc_id)
             if svc:
                 sel_dir_id = None
                 from svcpta.routes import _compute_pta_service
@@ -820,7 +820,7 @@ def rapport_word():
                 cibles = _cibles_service(annee, svc)
 
         if not sel_svc_id and sel_dir_id:
-            direction = Direction.query.get(sel_dir_id)
+            direction = db.session.get(Direction, sel_dir_id)
             if direction:
                 from dirpta.routes import _compute_pta_direction
                 data   = _compute_pta_direction(annee, direction)

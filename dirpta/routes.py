@@ -1,4 +1,4 @@
-import io
+﻿import io
 from flask import render_template, redirect, url_for, flash, request, session, send_file, abort
 from flask_login import login_required, current_user
 from models import db, Programme, Direction, Annee, Service
@@ -442,7 +442,7 @@ def index():
     else:
         directions = Direction.query.order_by(Direction.nom).all()
         dir_id     = request.args.get('direction_id', type=int)
-        direction  = Direction.query.get(dir_id) if dir_id else None
+        direction  = db.session.get(Direction, dir_id) if dir_id else None
 
     # Services rattachés à la direction (pour filtre direction user)
     dir_services = sorted(direction.services, key=lambda s: s.nom) if direction else []
@@ -451,7 +451,7 @@ def index():
     sel_svc_id  = request.args.get('service_id', type=int) if is_direction_user else None
     sel_service = None
     if sel_svc_id:
-        _svc = Service.query.get(sel_svc_id)
+        _svc = db.session.get(Service, sel_svc_id)
         if _svc and direction and _svc.direction_id == direction.id:
             sel_service = _svc
 
@@ -512,7 +512,7 @@ def export_excel_all():
 @login_required
 def export_excel(direction_id):
     annee     = get_annee()
-    direction = Direction.query.get_or_404(direction_id)
+    direction = db.get_or_404(Direction, direction_id)
     # Contrôle IDOR : une direction ne voit que sa propre direction ;
     # un service ne voit que la direction qui le contient.
     if current_user.role == 'direction' and current_user.direction_id != direction_id:
@@ -541,7 +541,7 @@ def export_excel(direction_id):
 @login_required
 def print_view(direction_id):
     annee     = get_annee()
-    direction = Direction.query.get_or_404(direction_id)
+    direction = db.get_or_404(Direction, direction_id)
     if current_user.role == 'direction' and current_user.direction_id != direction_id:
         abort(403)
     if current_user.role == 'service' and (

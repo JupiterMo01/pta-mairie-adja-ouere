@@ -1,4 +1,4 @@
-import io
+﻿import io
 from flask import render_template, redirect, url_for, flash, request, session, send_file, abort
 from flask_login import login_required, current_user
 from models import db, Programme, Direction, Service, Annee
@@ -448,7 +448,7 @@ def index():
     else:
         directions = Direction.query.order_by(Direction.nom).all()
         svc_id  = request.args.get('service_id', type=int)
-        service = Service.query.get(svc_id) if svc_id else None
+        service = db.session.get(Service, svc_id) if svc_id else None
 
     data = []
     if annee and service:
@@ -501,7 +501,7 @@ def export_excel_all():
 @login_required
 def export_excel(service_id):
     annee   = get_annee()
-    service = Service.query.get_or_404(service_id)
+    service = db.get_or_404(Service, service_id)
     # Contrôle IDOR : un agent service ne voit que son propre service ;
     # un agent direction ne voit que les services de sa direction.
     if current_user.role == 'service' and current_user.service_id != service_id:
@@ -528,7 +528,7 @@ def export_excel(service_id):
 @login_required
 def print_view(service_id):
     annee   = get_annee()
-    service = Service.query.get_or_404(service_id)
+    service = db.get_or_404(Service, service_id)
     if current_user.role == 'service' and current_user.service_id != service_id:
         abort(403)
     if current_user.role == 'direction' and service.direction_id != current_user.direction_id:

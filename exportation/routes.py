@@ -1,4 +1,4 @@
-import io
+﻿import io
 from flask import render_template, request, redirect, url_for, flash, session, send_file, abort
 from flask_login import login_required
 from models import db, Programme, Direction, Service, Annee
@@ -503,7 +503,7 @@ def excel_selection():
 @login_required
 def excel_direction_et_services(direction_id):
     annee     = get_annee()
-    direction = Direction.query.get_or_404(direction_id)
+    direction = db.get_or_404(Direction, direction_id)
     # Contrôle IDOR : une direction ne voit que sa propre direction ;
     # un service ne voit que la direction qui le contient.
     if current_user.role == 'direction' and current_user.direction_id != direction_id:

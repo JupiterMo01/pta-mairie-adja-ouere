@@ -1,4 +1,4 @@
-import secrets
+﻿import secrets
 from flask import Flask, redirect, url_for, session, request, abort
 from config import Config
 from models import db
@@ -32,7 +32,7 @@ def create_app(test_config=None):
 
     @login_manager.user_loader
     def load_user(user_id):
-        return User.query.get(int(user_id))
+        return db.session.get(User, int(user_id))
 
     @app.template_filter('milliers')
     def milliers_filter(v):

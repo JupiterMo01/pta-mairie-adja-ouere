@@ -1,4 +1,4 @@
-"""
+﻿"""
 tests/test_suivi.py — Tests sur le module de suivi d'exécution.
 
 Couvre :
@@ -120,7 +120,7 @@ class TestCalculTaux:
             sid = s.id
 
         with app.app_context():
-            s2 = SuiviTache.query.get(sid)
+            s2 = db.session.get(SuiviTache, sid)
             assert s2 is not None
             assert s2.statut == 'en_cours'
             assert s2.taux_execution == 45.0

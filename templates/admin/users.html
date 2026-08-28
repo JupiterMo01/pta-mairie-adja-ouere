@@ -178,26 +178,22 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <form method="POST" action="{{ url_for('admin.user_reset_password', user_id=u.id) }}">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
         <div class="modal-body">
-          <p class="mb-3">
+          <p class="mb-2">
             Vous allez réinitialiser le mot de passe de
             <strong>{{ u.prenom }} {{ u.nom }}</strong> (<code>{{ u.login }}</code>).
           </p>
-          <div class="mb-3">
-            <label class="form-label fw-semibold">Nouveau mot de passe temporaire</label>
-            <input type="text" name="nouveau_mdp" class="form-control font-monospace"
-                   required minlength="6" placeholder="Saisissez un mot de passe temporaire">
-            <div class="form-text text-muted">
-              <i class="fas fa-info-circle me-1"></i>
-              Notez ce mot de passe — vous devrez le communiquer à l'utilisateur.
-              Il pourra le modifier ensuite via son menu en haut à droite.
-            </div>
+          <div class="alert alert-info py-2 mb-0 small">
+            <i class="fas fa-magic me-1"></i>
+            Un mot de passe temporaire sécurisé sera <strong>généré automatiquement</strong>
+            et affiché à l'écran. Notez-le pour le communiquer à l'utilisateur.
           </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
           <button type="submit" class="btn btn-warning fw-bold">
-            <i class="fas fa-key me-1"></i>Réinitialiser
+            <i class="fas fa-key me-1"></i>Générer &amp; réinitialiser
           </button>
         </div>
       </form>

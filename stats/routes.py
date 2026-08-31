@@ -1,12 +1,28 @@
 import io
 import os
 import datetime
+from functools import wraps
 from flask import render_template, session, redirect, url_for, flash, send_file, current_app
-from flask_login import login_required
+from flask_login import login_required, current_user
 from sqlalchemy import func
 from models import db, Programme, Projet, Activite, Tache, Direction, Service, Annee
 from stats import stats_bp
 from utils import get_annee, MOIS_ORDRE as MOIS_NUM
+
+
+def admin_only(f):
+    """Restreint l'accès aux administrateurs (éditeur et lecteur).
+    Direction et Service ont leur propre tableau de bord — les stats incluent
+    les montants budgétaires de toutes les directions et ne doivent pas être
+    accessibles à tous les profils."""
+    @wraps(f)
+    @login_required
+    def decorated(*args, **kwargs):
+        if current_user.role not in ('admin_editeur', 'admin_lecteur'):
+            flash('Accès réservé aux administrateurs.', 'danger')
+            return redirect(url_for('pta.global_pta'))
+        return f(*args, **kwargs)
+    return decorated
 
 INVEST = "Activité d'investissement"
 FONCT  = "Activité de fonctionnement"
@@ -1643,7 +1659,7 @@ def _build_excel(annee, s):
 # ── Routes ────────────────────────────────────────────────────────────────────
 
 @stats_bp.route('/')
-@login_required
+@admin_only
 def index():
     annee = get_annee()
     if not annee:
@@ -1659,7 +1675,7 @@ def index():
 
 
 @stats_bp.route('/rapport/word')
-@login_required
+@admin_only
 def rapport_word():
     annee = get_annee()
     if not annee:
@@ -1692,7 +1708,7 @@ def rapport_word():
 
 
 @stats_bp.route('/rapport/excel')
-@login_required
+@admin_only
 def rapport_excel():
     annee = get_annee()
     if not annee:

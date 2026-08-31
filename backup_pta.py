@@ -16,6 +16,7 @@ Planification : PythonAnywhere > Tasks > Daily 00:30 UTC
 """
 
 import os
+import tempfile
 import datetime
 import gzip
 import shutil
@@ -66,20 +67,23 @@ def compresser_db(db_path, gz_path):
 
 
 def envoyer_backup(cfg, db_path, nom_fichier):
-    """Compresse la DB en gzip puis l'envoie en pièce jointe par email."""
+    """Compresse la DB en gzip dans un dossier temporaire système puis l'envoie
+    par email. Retourne True si l'email a bien été envoyé, False sinon."""
     date_lisible = datetime.datetime.now().strftime('%d/%m/%Y à %Hh%M')
     taille_brute_ko = os.path.getsize(db_path) / 1024
+    nom_gz = nom_fichier + '.gz'
 
-    # Compression temporaire
-    gz_path = db_path + '.gz'
+    # Fichier temporaire dans /tmp (permissions garanties sur tous les OS)
+    fd, gz_path = tempfile.mkstemp(suffix='.db.gz', prefix='pta_backup_')
+    os.close(fd)
     try:
         taille_gz_ko = compresser_db(db_path, gz_path)
-        nom_gz = nom_fichier + '.gz'
 
         # Alerte si fichier compressé > seuil Gmail
         if taille_gz_ko > LIMITE_GMAIL_MO * 1024:
-            log(f"AVERTISSEMENT : fichier compressé trop volumineux ({taille_gz_ko/1024:.1f} Mo > {LIMITE_GMAIL_MO} Mo). Envoi annulé.")
-            return
+            log(f"AVERTISSEMENT : fichier compressé trop volumineux "
+                f"({taille_gz_ko/1024:.1f} Mo > {LIMITE_GMAIL_MO} Mo). Envoi annulé.")
+            return False
 
         msg = MIMEMultipart()
         msg['From']    = cfg['GMAIL_USER']
@@ -113,10 +117,14 @@ def envoyer_backup(cfg, db_path, nom_fichier):
             srv.login(cfg['GMAIL_USER'], cfg['GMAIL_APP_PASSWORD'])
             srv.sendmail(cfg['GMAIL_USER'], cfg['DEST_EMAIL'], msg.as_string())
 
+        return True
+
     finally:
         # Toujours supprimer le fichier temporaire
-        if os.path.exists(gz_path):
+        try:
             os.remove(gz_path)
+        except OSError:
+            pass
 
 # ── Sauvegarde principale ──────────────────────────────────────────────────────
 def run():
@@ -134,8 +142,11 @@ def run():
         taille_ko    = os.path.getsize(DB_SOURCE) / 1024
 
         log(f"Envoi en cours : {nom_fichier} ({taille_ko:.1f} Ko) → {cfg['DEST_EMAIL']}")
-        envoyer_backup(cfg, DB_SOURCE, nom_fichier)
-        log("Email envoyé avec succès ✓")
+        envoye = envoyer_backup(cfg, DB_SOURCE, nom_fichier)
+        if envoye:
+            log("Email envoyé avec succès ✓")
+        else:
+            log("AVERTISSEMENT : email non envoyé (voir message ci-dessus)")
         log("Sauvegarde terminée")
 
     except FileNotFoundError as e:

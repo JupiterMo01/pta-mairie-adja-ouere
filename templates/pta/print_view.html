@@ -195,7 +195,7 @@
       <td class="c">{{ "{:,.0f}".format(p_rp+p_fa+p_fn+p_ap+p_af).replace(',', ' ') }}</td>
       <td></td>
       <td class="c">{{ prog.poids|pct_nat }}</td>
-      <td></td><td></td><td></td><td></td>
+      <td></td><td></td><td></td><td>{{ prog.observations or '' }}</td>
     </tr>
 
     {% for projet in prog.projets %}
@@ -216,7 +216,7 @@
         <td class="c">{{ "{:,.0f}".format(j_rp+j_fa+j_fn+j_ap+j_af).replace(',', ' ') }}</td>
         <td></td>
         <td class="c">{{ projet.poids|pct_nat }}</td>
-        <td></td><td></td><td></td><td></td>
+        <td></td><td></td><td></td><td>{{ projet.observations or '' }}</td>
       </tr>
 
       {% for act in projet.activites %}

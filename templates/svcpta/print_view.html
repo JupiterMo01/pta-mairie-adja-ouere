@@ -209,7 +209,7 @@
     <td class="c">{{ "{:,.0f}".format(p.rp+p.fa+p.fn+p.ap+p.af).replace(',', ' ') }}</td>
     <td></td>
     <td class="c">{{ pd['new_poids']|pct_nat }}</td>
-    <td></td><td></td><td></td><td></td>
+    <td></td><td></td><td></td><td>{{ pd['programme'].observations or '' }}</td>
   </tr>
 
   {% for pjd in pd['projets'] %}
@@ -237,7 +237,7 @@
     <td class="c">{{ "{:,.0f}".format(j.rp+j.fa+j.fn+j.ap+j.af).replace(',', ' ') }}</td>
     <td></td>
     <td class="c">{{ pjd['new_poids']|pct_nat }}</td>
-    <td></td><td></td><td></td><td></td>
+    <td></td><td></td><td></td><td>{{ pjd['projet'].observations or '' }}</td>
   </tr>
 
   {% for ad in pjd['activites'] %}

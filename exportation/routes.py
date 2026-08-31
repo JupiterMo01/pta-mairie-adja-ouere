@@ -171,7 +171,7 @@ def _fill_global_sheet(ws, annee):
         p_af = sum(t.autres_fonds       or 0 for pj in prog.projets for a in pj.activites for t in a.taches)
         wr([prog.code, prog.libelle, '',
             fmt(p_rp), fmt(p_fa), fmt(p_fn), fmt(p_ap), fmt(p_af), fmt(p_rp+p_fa+p_fn+p_ap+p_af),
-            '', prog.poids, '', '', '', ''], f_prog, True, row); row += 1
+            '', prog.poids, '', '', '', prog.observations or ''], f_prog, True, row); row += 1
 
         for projet in prog.projets:
             j_rp = sum(t.ressources_propres or 0 for a in projet.activites for t in a.taches)
@@ -181,7 +181,7 @@ def _fill_global_sheet(ws, annee):
             j_af = sum(t.autres_fonds       or 0 for a in projet.activites for t in a.taches)
             wr([projet.code, projet.libelle, '',
                 fmt(j_rp), fmt(j_fa), fmt(j_fn), fmt(j_ap), fmt(j_af), fmt(j_rp+j_fa+j_fn+j_ap+j_af),
-                '', projet.poids, '', '', '', ''], f_proj, True, row); row += 1
+                '', projet.poids, '', '', '', projet.observations or ''], f_proj, True, row); row += 1
 
             for act in projet.activites:
                 resp_a = act.direction_responsable.code if act.direction_responsable else ''
@@ -678,7 +678,7 @@ def excel_par_programme():
         p_ap=sum(t.autres_partenaires or 0 for pj in prog.projets for a in pj.activites for t in a.taches)
         p_af=sum(t.autres_fonds or 0 for pj in prog.projets for a in pj.activites for t in a.taches)
         wr([prog.code,prog.libelle,'',fmt(p_rp),fmt(p_fa),fmt(p_fn),fmt(p_ap),fmt(p_af),
-            fmt(p_rp+p_fa+p_fn+p_ap+p_af),'',prog.poids,'','','',''],f_prog,True,row); row+=1
+            fmt(p_rp+p_fa+p_fn+p_ap+p_af),'',prog.poids,'','','',prog.observations or ''],f_prog,True,row); row+=1
         for projet in prog.projets:
             j_rp=sum(t.ressources_propres or 0 for a in projet.activites for t in a.taches)
             j_fa=sum(t.fadec_affecte or 0 for a in projet.activites for t in a.taches)
@@ -686,7 +686,7 @@ def excel_par_programme():
             j_ap=sum(t.autres_partenaires or 0 for a in projet.activites for t in a.taches)
             j_af=sum(t.autres_fonds or 0 for a in projet.activites for t in a.taches)
             wr([projet.code,projet.libelle,'',fmt(j_rp),fmt(j_fa),fmt(j_fn),fmt(j_ap),fmt(j_af),
-                fmt(j_rp+j_fa+j_fn+j_ap+j_af),'',projet.poids,'','','',''],f_proj,True,row); row+=1
+                fmt(j_rp+j_fa+j_fn+j_ap+j_af),'',projet.poids,'','','',projet.observations or ''],f_proj,True,row); row+=1
             for act in projet.activites:
                 resp_a=act.direction_responsable.code if act.direction_responsable else ''
                 a_rp=sum(t.ressources_propres or 0 for t in act.taches)

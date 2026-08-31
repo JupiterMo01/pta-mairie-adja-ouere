@@ -1,7 +1,7 @@
 ﻿import secrets
 import string
 from functools import wraps
-from markupsafe import Markup
+from markupsafe import Markup, escape
 from flask import render_template, redirect, url_for, flash, request, session
 from flask_login import login_required, current_user
 import json
@@ -134,9 +134,9 @@ def user_add():
     log_audit('user_cree', f"Compte créé : {prenom} {nom} ({role})")
     lbl_mdp = 'Mot de passe généré automatiquement' if mdp_auto else 'Mot de passe défini'
     flash(Markup(
-        f'Utilisateur <strong>{prenom} {nom}</strong> créé.<br>'
+        f'Utilisateur <strong>{escape(prenom)} {escape(nom)}</strong> créé.<br>'
         f'{lbl_mdp} : '
-        f'<code class="fs-6 fw-bold px-2 py-1 bg-light border rounded">{password}</code><br>'
+        f'<code class="fs-6 fw-bold px-2 py-1 bg-light border rounded">{escape(password)}</code><br>'
         f'<span class="text-muted small">Communiquez-le à l\'utilisateur — '
         f'il pourra le modifier via son menu en haut à droite.</span>'
     ), 'success')
@@ -236,9 +236,9 @@ def user_reset_password(user_id):
     log_audit('mdp_reinit', f"Mot de passe réinitialisé pour : {user.prenom} {user.nom}")
     # Markup pour afficher le mot de passe en gras sans échappement HTML
     flash(Markup(
-        f'Mot de passe de <strong>{user.prenom} {user.nom}</strong> réinitialisé.<br>'
+        f'Mot de passe de <strong>{escape(user.prenom)} {escape(user.nom)}</strong> réinitialisé.<br>'
         f'Mot de passe temporaire : '
-        f'<code class="fs-6 fw-bold px-2 py-1 bg-light border rounded">{mdp_temp}</code><br>'
+        f'<code class="fs-6 fw-bold px-2 py-1 bg-light border rounded">{escape(mdp_temp)}</code><br>'
         f'<span class="text-muted small">Notez-le et communiquez-le à l\'utilisateur. '
         f'Il pourra le modifier via son menu en haut à droite.</span>'
     ), 'success')

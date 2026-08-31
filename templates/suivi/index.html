@@ -131,7 +131,7 @@
        class="badge text-decoration-none px-2 py-1
               {% if nature == 'fct' %}bg-primary{% else %}bg-secondary bg-opacity-50{% endif %}"
        title="Taux d'exécution — Fonctionnement uniquement (cliquer pour filtrer)">
-      <i class="fas fa-cogs me-1"></i>Fct&thinsp;:&thinsp;<strong>{{ '%.1f'|format(taux_fct) }}%</strong>
+      <i class="fas fa-cogs me-1"></i>Fct&thinsp;:&thinsp;<strong>{{ '%.1f'|format(taux_fct|default(0)) }}%</strong>
     </a>
     {%- set _q_inv = {'trimestre': trimestre, 'nature': '' if nature == 'inv' else 'inv'} -%}
     {%- if sel_dir_id %}{% set _q_inv = dict(_q_inv, direction_id=sel_dir_id) %}{% endif -%}
@@ -140,7 +140,7 @@
        class="badge text-decoration-none px-2 py-1
               {% if nature == 'inv' %}bg-warning text-dark{% else %}bg-secondary bg-opacity-50{% endif %}"
        title="Taux d'exécution — Investissement uniquement (cliquer pour filtrer)">
-      <i class="fas fa-hard-hat me-1"></i>Inv&thinsp;:&thinsp;<strong>{{ '%.1f'|format(taux_inv) }}%</strong>
+      <i class="fas fa-hard-hat me-1"></i>Inv&thinsp;:&thinsp;<strong>{{ '%.1f'|format(taux_inv|default(0)) }}%</strong>
     </a>
     {% if nature %}
     {%- set _q_all = {'trimestre': trimestre} -%}

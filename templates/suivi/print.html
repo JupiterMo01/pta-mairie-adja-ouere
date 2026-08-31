@@ -140,9 +140,9 @@
   <div class="titre-pta-h2">Exercice {{ annee.annee if annee }}</div>
   <div class="titre-pta-h3">{{ titre }}</div>
   {% if trimestre > 0 %}
-  <div class="titre-pta-h3">Trimestre {{ trimestre }}</div>
+  <div class="titre-pta-h3">Trimestre {{ trimestre }}{% if nature_lbl %} — {{ nature_lbl }}{% endif %}</div>
   {% else %}
-  <div class="titre-pta-h3">Vue globale — état consolidé</div>
+  <div class="titre-pta-h3">Vue globale — état consolidé{% if nature_lbl %} — {{ nature_lbl }}{% endif %}</div>
   {% endif %}
   <div>
     <span class="titre-pta-taux">Taux d'exécution : {{ '%.2f'|format(taux_global) }}&thinsp;%</span>

@@ -93,6 +93,35 @@ def _task_in_trimestre(tache, trimestre):
     return debut <= t1 and fin >= t0
 
 
+def _filter_by_nature(data, nature):
+    """Filtre les activités par nature. nature='fct'|'inv'|'' (tout → retourne data tel quel).
+    Crée des copies des dicts à chaque niveau pour que _enrich puisse annoter en parallèle.
+    """
+    if not nature:
+        return data
+    inv_str = "Activité d'investissement"
+    want_inv = (nature == 'inv')
+    result_progs = []
+    for pd in data:
+        result_projs = []
+        for pjd in pd['projets']:
+            kept_acts = []
+            for ad in pjd['activites']:
+                if bool(ad['activite'].type_activite == inv_str) == want_inv:
+                    kept_acts.append(dict(ad, taches=[dict(t) for t in ad['taches']]))
+            if not kept_acts:
+                continue
+            _renorm(kept_acts, src='new_poids', dst='new_poids')
+            result_projs.append(dict(pjd, activites=kept_acts))
+        if not result_projs:
+            continue
+        _renorm(result_projs, src='new_poids', dst='new_poids')
+        result_progs.append(dict(pd, projets=result_projs))
+    if result_progs:
+        _renorm(result_progs, src='new_poids', dst='new_poids')
+    return result_progs
+
+
 def _filter_and_renorm(data, trimestre):
     """Filtre par période et renormalise. trimestre=0 → tout (pas de filtre)."""
     if trimestre == 0:
@@ -266,6 +295,10 @@ def index():
     if trimestre not in (0,1,2,3,4):
         trimestre = 0
 
+    nature = request.args.get('nature', '')
+    if nature not in ('', 'fct', 'inv'):
+        nature = ''
+
     # Mode édition : activé si ?edit=1 (fonctionne sur tous les onglets, y compris Global)
     edit_mode = (request.args.get('edit', '0') == '1')
 
@@ -372,9 +405,22 @@ def index():
                 peut_modifier_fn = True   # active les champs en mode édition
             # sinon peut_modifier_fn reste None (lecture)
 
-    # ── Filtrage par période + enrichissement ─────────────────────────────────
-    data               = _filter_and_renorm(data_brut, trimestre)
+    # ── Filtrage par période ───────────────────────────────────────────────────
+    data_renorm = _filter_and_renorm(data_brut, trimestre)
+
+    # Calcul des taux par nature (copies indépendantes pour éviter conflit avec _enrich)
+    data_fct_copy = _filter_by_nature(data_renorm, 'fct')
+    data_inv_copy = _filter_by_nature(data_renorm, 'inv')
+    taux_fct, _ = _enrich(data_fct_copy, suivi_map, None)
+    taux_inv, _ = _enrich(data_inv_copy, suivi_map, None)
+
+    # Données affichées (filtrées par nature si demandé)
+    if nature:
+        data = _filter_by_nature(data_renorm, nature)
+    else:
+        data = data_renorm
     taux_gl, has_edit  = _enrich(data, suivi_map, peut_modifier_fn)
+
     # peut_modifier_page : vrai dès que edit_mode ET qu'il y a des tâches éditables
     # (valable aussi sur l'onglet Global : l'utilisateur choisit le trimestre via le sélecteur JS)
     peut_modifier_page = has_edit and edit_mode
@@ -382,9 +428,12 @@ def index():
     return render_template('suivi/index.html',
         annee=annee,
         trimestre=trimestre,
+        nature=nature,
         edit_mode=edit_mode,
         data=data,
         taux_global=taux_gl,
+        taux_fct=taux_fct,
+        taux_inv=taux_inv,
         peut_modifier_page=peut_modifier_page,
         peut_editer_pta=peut_editer_pta,
         titre=titre,
@@ -589,6 +638,9 @@ def export_excel():
     trimestre  = request.args.get('trimestre', 0, type=int)
     sel_svc_id = request.args.get('service_id', type=int)
     sel_dir_id = request.args.get('direction_id', type=int)
+    nature     = request.args.get('nature', '')
+    if nature not in ('', 'fct', 'inv'):
+        nature = ''
     role       = current_user.role
 
     suivi_map = _load_suivis_global(annee.id)
@@ -624,9 +676,14 @@ def export_excel():
             titre              = 'Vue globale'
             show_service_badge = True
 
-    data       = _filter_and_renorm(data_brut, trimestre)
+    data_renorm = _filter_and_renorm(data_brut, trimestre)
+    if nature:
+        data = _filter_by_nature(data_renorm, nature)
+    else:
+        data = data_renorm
     taux_gl, _ = _enrich(data, suivi_map, None)
 
+    nature_lbl = {'fct': ' — Fonctionnement', 'inv': ' — Investissement'}.get(nature, '')
     lbl_tri = f"T{trimestre}" if trimestre else "Global"
 
     # ── Styles ────────────────────────────────────────────────────────────────
@@ -714,7 +771,7 @@ def export_excel():
     ws.merge_cells('A4:G4')
     _tri_lbl = f"Trimestre {trimestre}" if trimestre else "Tous trimestres"
     ws['A4'].value = (f"SUIVI D'EXÉCUTION DU PTA — Exercice {annee.annee}"
-                      f"   |   {titre}   |   {_tri_lbl}"
+                      f"   |   {titre}   |   {_tri_lbl}{nature_lbl}"
                       f"   |   Taux : {taux_gl:.2f}%")
     ws['A4'].font = Font(bold=True, size=12)
     ws['A4'].alignment = Alignment(horizontal='center', vertical='center')
@@ -843,6 +900,9 @@ def print_view():
     trimestre  = request.args.get('trimestre', 0, type=int)
     sel_svc_id = request.args.get('service_id', type=int)
     sel_dir_id = request.args.get('direction_id', type=int)
+    nature     = request.args.get('nature', '')
+    if nature not in ('', 'fct', 'inv'):
+        nature = ''
     role       = current_user.role
 
     suivi_map = _load_suivis_global(annee.id)
@@ -878,12 +938,18 @@ def print_view():
             titre              = 'Vue globale — tout le PTA'
             show_service_badge = True   # vue globale : montrer code service dans les tâches
 
-    data    = _filter_and_renorm(data_brut, trimestre)
+    data_renorm = _filter_and_renorm(data_brut, trimestre)
+    if nature:
+        data = _filter_by_nature(data_renorm, nature)
+    else:
+        data = data_renorm
     taux_gl, _ = _enrich(data, suivi_map, None)
 
+    nature_lbl = {'fct': 'Fonctionnement', 'inv': 'Investissement'}.get(nature, '')
+
     return render_template('suivi/print.html',
-        annee=annee, trimestre=trimestre, data=data,
-        taux_global=taux_gl, titre=titre,
+        annee=annee, trimestre=trimestre, nature=nature, nature_lbl=nature_lbl,
+        data=data, taux_global=taux_gl, titre=titre,
         show_service_badge=show_service_badge,
         fmt_periode=_fmt_periode,
         now_str=datetime.now().strftime('%d/%m/%Y %H:%M'),

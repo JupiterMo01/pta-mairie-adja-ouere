@@ -2,6 +2,7 @@
 Script d'initialisation de la base de données.
 A exécuter une seule fois après l'installation.
 """
+import secrets
 from app import create_app
 from models import db, User, Annee
 
@@ -12,7 +13,9 @@ with app.app_context():
     print("✅ Tables créées.")
 
     # Compte administrateur par défaut
+    # Le mot de passe est généré aléatoirement à chaque installation — jamais codé en dur
     if not User.query.filter_by(login='admin').first():
+        mdp_initial = secrets.token_urlsafe(14)
         admin = User(
             nom='Administrateur',
             prenom='Super',
@@ -20,9 +23,14 @@ with app.app_context():
             role='admin_editeur',
             actif=True,
         )
-        admin.set_password('admin2026')
+        admin.set_password(mdp_initial)
         db.session.add(admin)
-        print("👤 Compte admin créé : login='admin' / mot de passe='admin2026'")
+        print("👤 Compte admin créé.")
+        print("═" * 50)
+        print(f"  login         : admin")
+        print(f"  mot de passe  : {mdp_initial}")
+        print("  ⚠️  Notez ce mot de passe — il ne sera plus affiché.")
+        print("═" * 50)
     else:
         print("ℹ️  Compte admin existant, ignoré.")
 

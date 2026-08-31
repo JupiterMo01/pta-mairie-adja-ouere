@@ -206,7 +206,7 @@
       <td class="text-center fw-bold">{{ p_tot|milliers }}</td>
       <td class="text-center"></td>
       <td class="text-center">{{ prog.poids|pct }}%</td>
-      <td class="text-center"></td><td class="text-center"></td><td class="text-center"></td><td class="text-center"></td>
+      <td class="text-center"></td><td class="text-center"></td><td class="text-center"></td><td class="text-center small">{{ prog.observations or '' }}</td>
       {% if can_edit %}
       <td>
         <button class="btn btn-xs btn-warning me-1" data-bs-toggle="modal"
@@ -254,7 +254,7 @@
       <td class="text-center fw-bold">{{ pj_tot|milliers }}</td>
       <td class="text-center"></td>
       <td class="text-center">{{ projet.poids|pct }}%</td>
-      <td class="text-center"></td><td class="text-center"></td><td class="text-center"></td><td class="text-center"></td>
+      <td class="text-center"></td><td class="text-center"></td><td class="text-center"></td><td class="text-center small">{{ projet.observations or '' }}</td>
       {% if can_edit %}
       <td>
         <button class="btn btn-xs btn-warning me-1" data-bs-toggle="modal"
@@ -582,6 +582,11 @@
                 <label class="form-label fw-semibold">Description</label>
                 <textarea name="description" class="form-control" rows="2">{{ projet.description or '' }}</textarea>
               </div>
+              <div class="col-12">
+                <label class="form-label fw-semibold">Observations <small class="text-muted">(Contribution ODD et cibles prioritaires…)</small></label>
+                <textarea name="observations" class="form-control" rows="2"
+                          placeholder="Ex : ODD 8 – Travail décent, cible 8.3…">{{ projet.observations or '' }}</textarea>
+              </div>
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
@@ -641,6 +646,11 @@
                 <label class="form-label fw-semibold">Poids (%)</label>
                 <input type="number" name="poids" class="form-control" value="{{ prog.poids }}" step="0.01">
               </div>
+              <div class="col-12">
+                <label class="form-label fw-semibold">Observations <small class="text-muted">(Contribution ODD et cibles prioritaires…)</small></label>
+                <textarea name="observations" class="form-control" rows="2"
+                          placeholder="Ex : ODD 8 – Travail décent, cible 8.3…">{{ prog.observations or '' }}</textarea>
+              </div>
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
@@ -672,6 +682,11 @@
               <div class="col-12">
                 <label class="form-label fw-semibold">Description</label>
                 <textarea name="description" class="form-control" rows="2"></textarea>
+              </div>
+              <div class="col-12">
+                <label class="form-label fw-semibold">Observations <small class="text-muted">(Contribution ODD et cibles prioritaires…)</small></label>
+                <textarea name="observations" class="form-control" rows="2"
+                          placeholder="Ex : ODD 8 – Travail décent, cible 8.3…"></textarea>
               </div>
             </div>
             <div class="modal-footer">
@@ -767,6 +782,11 @@
             <label class="form-label fw-semibold">Poids (%)</label>
             <input type="number" name="poids" class="form-control" value="0" step="0.01">
             <small class="text-muted">Somme des programmes = 100%</small>
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold">Observations <small class="text-muted">(Contribution ODD et cibles prioritaires…)</small></label>
+            <textarea name="observations" class="form-control" rows="2"
+                      placeholder="Ex : ODD 8 – Travail décent, cible 8.3…"></textarea>
           </div>
         </div>
         <div class="modal-footer">

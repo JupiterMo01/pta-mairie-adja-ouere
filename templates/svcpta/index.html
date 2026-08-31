@@ -221,7 +221,7 @@
     <td class="text-center fw-bold">{{ (p.rp+p.fa+p.fn+p.ap+p.af)|milliers }}</td>
     <td class="text-center"></td>
     <td class="text-center">{{ pd['new_poids']|pct }}%</td>
-    <td class="text-center"></td><td class="text-center"></td><td class="text-center"></td><td class="text-center"></td>
+    <td class="text-center"></td><td class="text-center"></td><td class="text-center"></td><td class="text-center small">{{ pd['programme'].observations or '' }}</td>
   </tr>
 
   {% for pjd in pd['projets'] %}
@@ -250,7 +250,7 @@
     <td class="text-center fw-bold">{{ (j.rp+j.fa+j.fn+j.ap+j.af)|milliers }}</td>
     <td class="text-center"></td>
     <td class="text-center">{{ pjd['new_poids']|pct }}%</td>
-    <td class="text-center"></td><td class="text-center"></td><td class="text-center"></td><td class="text-center"></td>
+    <td class="text-center"></td><td class="text-center"></td><td class="text-center"></td><td class="text-center small">{{ pjd['projet'].observations or '' }}</td>
   </tr>
 
   {% for ad in pjd['activites'] %}

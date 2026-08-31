@@ -137,7 +137,8 @@ def programme_add():
         last = Programme.query.filter_by(annee_id=annee.id).order_by(Programme.numero.desc()).first()
         numero = (last.numero + 1) if last else 1
     p = Programme(annee_id=annee.id, numero=numero, nom=nom,
-                  poids=poids, objectif_specifique=objectif_specifique)
+                  poids=poids, objectif_specifique=objectif_specifique,
+                  observations=request.form.get('observations', '').strip() or None)
     db.session.add(p)
     db.session.commit()
     flash(f'Programme {numero} ajouté.', 'success')
@@ -152,6 +153,7 @@ def programme_edit(prog_id):
     p.poids = _parse_float(request.form.get('poids'))
     p.objectif_specifique = request.form.get('objectif_specifique', '').strip()
     p.description = request.form.get('description', '').strip()
+    p.observations = request.form.get('observations', '').strip() or None
     db.session.commit()
     flash('Programme mis à jour.', 'success')
     return redirect(url_for('pta.global_pta'))
@@ -182,7 +184,8 @@ def projet_add():
     last = Projet.query.filter_by(programme_id=prog_id).order_by(Projet.numero.desc()).first()
     numero = (last.numero + 1) if last else 1
     db.session.add(Projet(programme_id=prog_id, numero=numero, nom=nom, poids=poids,
-                          description=request.form.get('description', '').strip()))
+                          description=request.form.get('description', '').strip(),
+                          observations=request.form.get('observations', '').strip() or None))
     db.session.commit()
     flash(f'Projet {programme.numero}.{numero} ajouté.', 'success')
     return redirect(url_for('pta.global_pta'))
@@ -195,6 +198,7 @@ def projet_edit(proj_id):
     p.nom = request.form.get('nom', '').strip()
     p.poids = _parse_float(request.form.get('poids'))
     p.description = request.form.get('description', '').strip()
+    p.observations = request.form.get('observations', '').strip() or None
     db.session.commit()
     flash('Projet mis à jour.', 'success')
     return redirect(url_for('pta.global_pta'))
@@ -1219,7 +1223,7 @@ def export_excel():
                    fmt(prog.ressources_propres), fmt(prog.fadec_affecte),
                    fmt(prog.fadec_non_affecte), fmt(prog.autres_partenaires),
                    fmt(prog.autres_fonds), fmt(prog.budget_total),
-                   '', prog.poids, '', '', '', ''],
+                   '', prog.poids, '', '', '', prog.observations or ''],
                   f_prog, True, row)
         row += 1
 
@@ -1228,7 +1232,7 @@ def export_excel():
                        fmt(projet.ressources_propres), fmt(projet.fadec_affecte),
                        fmt(projet.fadec_non_affecte), fmt(projet.autres_partenaires),
                        fmt(projet.autres_fonds), fmt(projet.budget_total),
-                       '', projet.poids, '', '', '', ''],
+                       '', projet.poids, '', '', '', projet.observations or ''],
                       f_proj, True, row)
             row += 1
 

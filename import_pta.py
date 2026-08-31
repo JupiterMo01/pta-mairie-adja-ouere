@@ -331,6 +331,7 @@ def run_import(excel_path, annee_val):
                     numero=numero,
                     nom=nom_prog,
                     poids=poids,
+                    observations=str(cell_o.value).strip() if cell_o.value else None,
                 )
                 db.session.add(cur_prog)
                 db.session.flush()   # obtenir l'id
@@ -367,6 +368,7 @@ def run_import(excel_path, annee_val):
                     numero=numero,
                     nom=nom_proj,
                     poids=poids,
+                    observations=str(cell_o.value).strip() if cell_o.value else None,
                 )
                 db.session.add(cur_proj)
                 db.session.flush()

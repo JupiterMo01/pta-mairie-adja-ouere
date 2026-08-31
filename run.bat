@@ -14,6 +14,11 @@ for /f "tokens=2 delims=:" %%a in ('ipconfig ^| findstr /C:"IPv4"') do (
 :found
 set IP=%IP: =%
 
+:: Generer une cle secrete temporaire pour la session locale
+:: (change a chaque demarrage, normal en developpement)
+for /f %%i in ('py -c "import secrets; print(secrets.token_hex(32))"') do set SECRET_KEY=%%i
+set FLASK_ENV=development
+
 echo   Serveur en cours de demarrage...
 echo.
 echo   Acces local    : http://localhost:5000

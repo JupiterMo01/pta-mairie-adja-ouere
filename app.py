@@ -88,6 +88,14 @@ def create_app(test_config=None):
         except Exception:
             return dict(toutes_annees=[], annee_active_id=None)
 
+    @app.after_request
+    def secure_headers(response):
+        # En-têtes de sécurité HTTP — protection contre clickjacking, sniffing MIME, etc.
+        response.headers['X-Frame-Options'] = 'DENY'
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+        response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+        return response
+
     @app.before_request
     def check_csrf():
         if request.method == 'POST' and request.blueprint != 'auth':

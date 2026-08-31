@@ -14,6 +14,7 @@
     {% set q_e = [('trimestre', trimestre)] %}
     {% if sel_dir_id %}{% set q_e = q_e + [('direction_id', sel_dir_id)] %}{% endif %}
     {% if sel_svc_id %}{% set q_e = q_e + [('service_id',   sel_svc_id)] %}{% endif %}
+    {% if nature     %}{% set q_e = q_e + [('nature',       nature)]     %}{% endif %}
     <a href="{{ url_for('suivi.export_excel', **dict(q_e)) }}"
        class="btn btn-sm btn-outline-success" title="Exporter en Excel">
       <i class="fas fa-file-excel me-1"></i>Excel
@@ -92,11 +93,12 @@
 </div>
 {% endif %}
 
-{# ═══ Macro URL tab (préserve sel_dir_id, sel_svc_id, et edit en mode édition) ═ #}
+{# ═══ Macro URL tab (préserve sel_dir_id, sel_svc_id, nature et edit) ═════ #}
 {% macro url_tab(t) %}
   {%- set q = {'trimestre': t} -%}
   {%- if sel_dir_id %}{% set q = dict(q, direction_id=sel_dir_id) %}{% endif -%}
   {%- if sel_svc_id %}{% set q = dict(q, service_id=sel_svc_id) %}{% endif -%}
+  {%- if nature %}{% set q = dict(q, nature=nature) %}{% endif -%}
   {%- if edit_mode %}{% set q = dict(q, edit='1') %}{% endif -%}
   {{- url_for('suivi.index', **q) -}}
 {% endmacro %}
@@ -111,20 +113,52 @@
     </li>
     {% endfor %}
   </ul>
-  <div class="d-flex align-items-center gap-2">
+  <div class="d-flex align-items-center gap-2 flex-wrap">
+    {# ── Taux global ── #}
     {% if data %}
     <span class="text-muted small">
       {% if trimestre == 0 %}Taux global :{% else %}Taux T{{ trimestre }} :{% endif %}
     </span>
-    <span class="badge bg-success fs-6 px-3 py-2">
+    <span class="badge bg-success fs-6 px-3 py-2" title="Taux d'exécution — vue actuelle">
       <span id="taux-global">{{ '%.2f'|format(taux_global) }}</span>&thinsp;%
     </span>
+    {# ── Taux fonctionnement / investissement (toujours affichés) ── #}
+    <span class="vr mx-1 d-none d-md-block"></span>
+    {%- set _q_fct = {'trimestre': trimestre, 'nature': '' if nature == 'fct' else 'fct'} -%}
+    {%- if sel_dir_id %}{% set _q_fct = dict(_q_fct, direction_id=sel_dir_id) %}{% endif -%}
+    {%- if sel_svc_id %}{% set _q_fct = dict(_q_fct, service_id=sel_svc_id) %}{% endif -%}
+    <a href="{{ url_for('suivi.index', **_q_fct) }}"
+       class="badge text-decoration-none px-2 py-1
+              {% if nature == 'fct' %}bg-primary{% else %}bg-secondary bg-opacity-50{% endif %}"
+       title="Taux d'exécution — Fonctionnement uniquement (cliquer pour filtrer)">
+      <i class="fas fa-cogs me-1"></i>Fct&thinsp;:&thinsp;<strong>{{ '%.1f'|format(taux_fct) }}%</strong>
+    </a>
+    {%- set _q_inv = {'trimestre': trimestre, 'nature': '' if nature == 'inv' else 'inv'} -%}
+    {%- if sel_dir_id %}{% set _q_inv = dict(_q_inv, direction_id=sel_dir_id) %}{% endif -%}
+    {%- if sel_svc_id %}{% set _q_inv = dict(_q_inv, service_id=sel_svc_id) %}{% endif -%}
+    <a href="{{ url_for('suivi.index', **_q_inv) }}"
+       class="badge text-decoration-none px-2 py-1
+              {% if nature == 'inv' %}bg-warning text-dark{% else %}bg-secondary bg-opacity-50{% endif %}"
+       title="Taux d'exécution — Investissement uniquement (cliquer pour filtrer)">
+      <i class="fas fa-hard-hat me-1"></i>Inv&thinsp;:&thinsp;<strong>{{ '%.1f'|format(taux_inv) }}%</strong>
+    </a>
+    {% if nature %}
+    {%- set _q_all = {'trimestre': trimestre} -%}
+    {%- if sel_dir_id %}{% set _q_all = dict(_q_all, direction_id=sel_dir_id) %}{% endif -%}
+    {%- if sel_svc_id %}{% set _q_all = dict(_q_all, service_id=sel_svc_id) %}{% endif -%}
+    <a href="{{ url_for('suivi.index', **_q_all) }}"
+       class="badge bg-danger text-white text-decoration-none px-2 py-1"
+       title="Afficher tout (fonctionnement + investissement)">
+      <i class="fas fa-times me-1"></i>Tout
+    </a>
+    {% endif %}
     {% endif %}
     {# ── Bouton "Faire le suivi de mon PTA" — visible sur tous les onglets ── #}
     {% if peut_editer_pta and not edit_mode %}
     {%- set q_edit = {'trimestre': trimestre, 'edit': '1'} -%}
     {%- if sel_svc_id %}{% set q_edit = dict(q_edit, service_id=sel_svc_id) %}{% endif -%}
     {%- if sel_dir_id %}{% set q_edit = dict(q_edit, direction_id=sel_dir_id) %}{% endif -%}
+    {%- if nature %}{% set q_edit = dict(q_edit, nature=nature) %}{% endif -%}
     <a href="{{ url_for('suivi.index', **q_edit) }}"
        class="btn btn-warning btn-sm fw-bold">
       <i class="fas fa-edit me-1"></i>Faire le suivi de mon PTA
@@ -135,6 +169,7 @@
     {%- set q_cancel = {'trimestre': trimestre} -%}
     {%- if sel_svc_id %}{% set q_cancel = dict(q_cancel, service_id=sel_svc_id) %}{% endif -%}
     {%- if sel_dir_id %}{% set q_cancel = dict(q_cancel, direction_id=sel_dir_id) %}{% endif -%}
+    {%- if nature %}{% set q_cancel = dict(q_cancel, nature=nature) %}{% endif -%}
     <a href="{{ url_for('suivi.index', **q_cancel) }}"
        class="btn btn-outline-secondary btn-sm" data-nav-exempt>
       <i class="fas fa-times me-1"></i>Annuler l'édition

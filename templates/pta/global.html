@@ -185,7 +185,7 @@
     {% set p_ap = prog.autres_partenaires %}
     {% set p_af = prog.autres_fonds %}
     {% set p_tot = prog.budget_total %}
-    {% set poids_projets = prog.projets|sum(attribute='poids') %}
+    {% set poids_projets = prog.projets|loopsum(attribute='poids') %}
     <tr id="row-prog-{{ prog.id }}" style="background:#FFFF99;font-weight:700;border-top:2px solid #aaa;">
       <td class="text-center">{{ prog.code }}</td>
       <td>Programme {{ prog.code }} : {{ prog.nom }}
@@ -233,7 +233,7 @@
     {% set pj_ap = projet.autres_partenaires %}
     {% set pj_af = projet.autres_fonds %}
     {% set pj_tot = projet.budget_total %}
-    {% set poids_acts = projet.activites|sum(attribute='poids') %}
+    {% set poids_acts = projet.activites|loopsum(attribute='poids') %}
     <tr id="row-projet-{{ projet.id }}" style="background:#FFB6C1;font-weight:700;">
       <td class="text-center">{{ projet.code }}</td>
       <td>Projet {{ projet.code }} : {{ projet.nom }}
@@ -286,7 +286,7 @@
     {% set a_ap = act.taches|sum(attribute='autres_partenaires') if act.taches else (act.autres_partenaires or 0) %}
     {% set a_af = act.taches|sum(attribute='autres_fonds') if act.taches else (act.autres_fonds or 0) %}
     {% set a_tot = a_rp + a_fa + a_fn + a_ap + a_af %}
-    {% set poids_taches = act.taches|sum(attribute='poids') if act.taches else 0 %}
+    {% set poids_taches = act.taches|loopsum(attribute='poids') if act.taches else 0 %}
     <tr id="row-act-{{ act.id }}" style="background:#D3D3D3;font-weight:700;"
         data-nature="{{ 'inv' if 'investissement' in (act.type_activite or '') else 'fct' }}"
         data-proj="{{ projet.id }}" data-prog="{{ prog.id }}">
@@ -708,7 +708,7 @@
   {% set tg_ap = programmes|sum(attribute='autres_partenaires') %}
   {% set tg_af = programmes|sum(attribute='autres_fonds') %}
   {% set tg_tot = programmes|sum(attribute='budget_total') %}
-  {% set poids_progs = programmes|sum(attribute='poids') %}
+  {% set poids_progs = programmes|loopsum(attribute='poids') %}
   <tr style="background:#1F4E79;color:#fff;font-weight:800;">
     <td></td>
     <td>TOTAL GÉNÉRAL</td>

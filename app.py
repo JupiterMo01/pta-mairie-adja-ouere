@@ -57,6 +57,18 @@ def create_app(test_config=None):
         except (TypeError, ValueError):
             return '0'
 
+    @app.template_filter('loopsum')
+    def loopsum_filter(iterable, attribute=None):
+        """Sommation gauche-droite simple (boucle for depuis 0).
+        Remplace |sum(attribute=...) pour les poids afin d'éviter les
+        artefacts de la sommation par paires de Python 3.12+, qui donne
+        des résultats légèrement différents d'une boucle for classique."""
+        total = 0
+        for obj in iterable:
+            val = getattr(obj, attribute) if attribute else obj
+            total += (val or 0)
+        return total
+
     _MOIS_COURT = {
         'Janvier': 'Janv', 'Février': 'Fév', 'Mars': 'Mars', 'Avril': 'Avr',
         'Mai': 'Mai', 'Juin': 'Juin', 'Juillet': 'Juil', 'Août': 'Août',

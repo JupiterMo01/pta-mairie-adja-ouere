@@ -28,16 +28,16 @@ def _renorm(items, src='original_poids', dst='new_poids'):
         return
     total = sum(i[src] for i in items)
     if total == 0:
-        eq = round(100 / len(items), 4)
+        eq = round(100 / len(items), 2)
         for i in items:
             i[dst] = eq
         return
     running = 0.0
     for idx, i in enumerate(items):
         if idx == len(items) - 1:
-            i[dst] = round(100.0 - running, 4)
+            i[dst] = round(100.0 - running, 2)
         else:
-            p = round(i[src] / total * 100, 4)
+            p = round(i[src] / total * 100, 2)
             i[dst] = p
             running += p
 

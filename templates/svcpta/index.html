@@ -155,28 +155,28 @@
     <col style="width:7.5%">
   </colgroup>
   <thead style="position:sticky;top:0;z-index:5;">
-    <tr style="background:#FF69B4;color:#000;text-align:center;font-weight:700;font-size:.68rem;">
-      <th rowspan="3" style="position:sticky;top:0;background:#FF69B4;">Code</th>
-      <th rowspan="3" style="position:sticky;top:0;background:#FF69B4;">Objectifs/Résultats/<br>Actions/Activités/Tâches</th>
-      <th rowspan="3" style="position:sticky;top:0;background:#FF69B4;">Imputation<br>budg.</th>
-      <th colspan="6" style="position:sticky;top:0;background:#FF69B4;">SOURCES DE FINANCEMENT</th>
-      <th rowspan="3" style="position:sticky;top:0;background:#FF69B4;">Période<br>d'exécution</th>
-      <th rowspan="3" style="position:sticky;top:0;background:#FF69B4;">Poids<br>(%)</th>
-      <th rowspan="3" style="position:sticky;top:0;background:#FF69B4;" title="Service ou Unité Administrative Responsable">Service/<br>Unité Resp.</th>
-      <th rowspan="3" style="position:sticky;top:0;background:#FF69B4;" title="Structures associées / Unité Administrative Associée">Structures<br>associées</th>
-      <th rowspan="3" style="position:sticky;top:0;background:#FF69B4;">Mode<br>d'exécution</th>
-      <th rowspan="3" style="position:sticky;top:0;background:#FF69B4;">Observations<br>(ODD…)</th>
+    <tr style="background:#BDD7EE;color:#000;text-align:center;font-weight:700;font-size:.68rem;">
+      <th rowspan="3" style="position:sticky;top:0;background:#BDD7EE;">Code</th>
+      <th rowspan="3" style="position:sticky;top:0;background:#BDD7EE;">Objectifs/Résultats/<br>Actions/Activités/Tâches</th>
+      <th rowspan="3" style="position:sticky;top:0;background:#BDD7EE;">Imputation<br>budg.</th>
+      <th colspan="6" style="position:sticky;top:0;background:#BDD7EE;">SOURCES DE FINANCEMENT</th>
+      <th rowspan="3" style="position:sticky;top:0;background:#BDD7EE;">Période<br>d'exécution</th>
+      <th rowspan="3" style="position:sticky;top:0;background:#BDD7EE;">Poids<br>(%)</th>
+      <th rowspan="3" style="position:sticky;top:0;background:#BDD7EE;" title="Service ou Unité Administrative Responsable">Service/<br>Unité Resp.</th>
+      <th rowspan="3" style="position:sticky;top:0;background:#BDD7EE;" title="Structures associées / Unité Administrative Associée">Structures<br>associées</th>
+      <th rowspan="3" style="position:sticky;top:0;background:#BDD7EE;">Mode<br>d'exécution</th>
+      <th rowspan="3" style="position:sticky;top:0;background:#BDD7EE;">Observations<br>(ODD…)</th>
     </tr>
-    <tr style="background:#FF69B4;color:#000;text-align:center;font-weight:700;font-size:.68rem;">
-      <th colspan="5" style="position:sticky;top:0;background:#FF69B4;">Source de financement</th>
-      <th rowspan="2" style="position:sticky;top:0;background:#FF69B4;">Total</th>
+    <tr style="background:#BDD7EE;color:#000;text-align:center;font-weight:700;font-size:.68rem;">
+      <th colspan="5" style="position:sticky;top:0;background:#BDD7EE;">Source de financement</th>
+      <th rowspan="2" style="position:sticky;top:0;background:#BDD7EE;">Total</th>
     </tr>
-    <tr style="background:#FF69B4;color:#000;text-align:center;font-weight:700;font-size:.68rem;">
-      <th style="position:sticky;top:0;background:#FF69B4;">Fds<br>Propres</th>
-      <th style="position:sticky;top:0;background:#FF69B4;">FA</th>
-      <th style="position:sticky;top:0;background:#FF69B4;">FNA</th>
-      <th style="position:sticky;top:0;background:#FF69B4;">PTFs</th>
-      <th style="position:sticky;top:0;background:#FF69B4;">Autres<br>Fonds</th>
+    <tr style="background:#BDD7EE;color:#000;text-align:center;font-weight:700;font-size:.68rem;">
+      <th style="position:sticky;top:0;background:#BDD7EE;">Fds<br>Propres</th>
+      <th style="position:sticky;top:0;background:#BDD7EE;">FA</th>
+      <th style="position:sticky;top:0;background:#BDD7EE;">FNA</th>
+      <th style="position:sticky;top:0;background:#BDD7EE;">PTFs</th>
+      <th style="position:sticky;top:0;background:#BDD7EE;">Autres<br>Fonds</th>
     </tr>
   </thead>
   <tbody>
@@ -209,7 +209,7 @@
   {% endfor %}{% endfor %}{% endfor %}
 
   {# ── Ligne Programme ── #}
-  <tr style="background:#FFFF99;font-weight:700;border-top:2px solid #aaa;">
+  <tr style="background:#F4B183;font-weight:700;border-top:2px solid #aaa;">
     <td class="text-center">{{ pd['code'] }}</td>
     <td>Programme {{ pd['code'] }} : {{ pd['programme'].nom }}</td>
     <td class="text-center"></td>
@@ -238,7 +238,7 @@
   {% endfor %}{% endfor %}
 
   {# ── Ligne Projet ── #}
-  <tr style="background:#FFB6C1;font-weight:700;">
+  <tr style="background:#FFFF00;font-weight:700;">
     <td class="text-center">{{ pjd['code'] }}</td>
     <td>Projet {{ pjd['code'] }} : {{ pjd['projet'].nom }}</td>
     <td class="text-center"></td>
@@ -286,7 +286,7 @@
   {% endif %}
 
   {# ── Ligne Activité ── #}
-  <tr style="background:#D3D3D3;font-weight:700;">
+  <tr style="background:#C5DEB5;font-weight:700;">
     <td class="text-center">{{ ad['code'] }}</td>
     <td>{{ act.nom }}</td>
     <td class="text-center small">{{ act.imputation_budgetaire or 'NÉANT' }}</td>

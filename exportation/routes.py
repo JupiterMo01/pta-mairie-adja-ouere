@@ -33,11 +33,11 @@ def _fill_global_sheet(ws, annee):
     ctr  = Alignment(horizontal='center', vertical='center', wrap_text=True)
     lft  = Alignment(horizontal='left',   vertical='center', wrap_text=True)
 
-    f_prog   = PatternFill("solid", fgColor="FFFF99")
-    f_proj   = PatternFill("solid", fgColor="FFB6C1")
-    f_act    = PatternFill("solid", fgColor="D3D3D3")
+    f_prog   = PatternFill("solid", fgColor="F4B183")
+    f_proj   = PatternFill("solid", fgColor="FFFF00")
+    f_act    = PatternFill("solid", fgColor="C5DEB5")
     f_tch    = PatternFill("solid", fgColor="FFFFFF")
-    hdr_fill = PatternFill("solid", fgColor="FF69B4")
+    hdr_fill = PatternFill("solid", fgColor="BDD7EE")
     os_fill  = PatternFill("solid", fgColor="FFFACD")
     tot_fill = PatternFill("solid", fgColor="AED6F1")
     NUM_COLS = {4, 5, 6, 7, 8, 9}
@@ -250,7 +250,7 @@ def _fill_recap_sheet(ws, annee, directions):
     hdr  = PatternFill("solid", fgColor="1F4E79")
     alt1 = PatternFill("solid", fgColor="D6EAF8")
     alt2 = PatternFill("solid", fgColor="EBF5FB")
-    tot  = PatternFill("solid", fgColor="FFFF99")
+    tot  = PatternFill("solid", fgColor="F4B183")
 
     def wr(vals, fill, bold, rn, aligns=None):
         for col, v in enumerate(vals, 1):
@@ -604,11 +604,11 @@ def excel_par_programme():
     brd  = Border(left=thin, right=thin, top=thin, bottom=thin)
     ctr  = Alignment(horizontal='center', vertical='center', wrap_text=True)
     lft  = Alignment(horizontal='left',   vertical='center', wrap_text=True)
-    f_prog   = PatternFill("solid", fgColor="FFFF99")
-    f_proj   = PatternFill("solid", fgColor="FFB6C1")
-    f_act    = PatternFill("solid", fgColor="D3D3D3")
+    f_prog   = PatternFill("solid", fgColor="F4B183")
+    f_proj   = PatternFill("solid", fgColor="FFFF00")
+    f_act    = PatternFill("solid", fgColor="C5DEB5")
     f_tch    = PatternFill("solid", fgColor="FFFFFF")
-    hdr_fill = PatternFill("solid", fgColor="FF69B4")
+    hdr_fill = PatternFill("solid", fgColor="BDD7EE")
     os_fill  = PatternFill("solid", fgColor="FFFACD")
     tot_fill = PatternFill("solid", fgColor="AED6F1")
     NUM_COLS = {4, 5, 6, 7, 8, 9}

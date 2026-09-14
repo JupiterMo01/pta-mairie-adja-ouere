@@ -108,7 +108,7 @@
 </div>
 
 {# ── Macro : tableau programmes/projets ───────────────────────────────────── #}
-{% macro table_prog(data, nb_act, nb_tch, tot_rp, tot_fa, tot_fn, tot_ap, tot_af, tot_b, row_bg='#FFB6C1') %}
+{% macro table_prog(data, nb_act, nb_tch, tot_rp, tot_fa, tot_fn, tot_ap, tot_af, tot_b, row_bg='#FFFF00') %}
 <div class="table-responsive">
   <table class="table table-sm table-bordered align-middle mb-0" style="font-size:.82rem;">
     <thead>
@@ -128,7 +128,7 @@
     </thead>
     <tbody>
       {% for prog in data %}
-      <tr style="background:#FFFF99; font-weight:bold;">
+      <tr style="background:#F4B183; font-weight:bold;">
         <td class="text-center">{{ prog.code }}</td>
         <td>Programme {{ prog.code }} : {{ prog.nom }}</td>
         <td class="text-center">{{ prog.poids|pct_nat }}</td>
@@ -476,7 +476,7 @@
             <tbody>
 
               {# PTA Global #}
-              <tr style="background:#FFFF99;font-weight:bold;">
+              <tr style="background:#F4B183;font-weight:bold;">
                 <td><i class="fas fa-globe me-2 text-primary"></i>PTA Global</td>
                 {{ cible_cell(cibles['global'][1]) }}
                 {{ cible_cell(cibles['global'][2]) }}

@@ -1022,9 +1022,9 @@ def export_excel():
     lft = Alignment(horizontal='left', vertical='center', wrap_text=True)
 
     # Couleurs : programme=jaune clair, projet=rose clair, activité=gris clair, tâche=blanc
-    f_prog = PatternFill("solid", fgColor="FFFF99")   # jaune clair
-    f_proj = PatternFill("solid", fgColor="FFB6C1")   # rose clair
-    f_act  = PatternFill("solid", fgColor="D3D3D3")   # gris clair
+    f_prog = PatternFill("solid", fgColor="F4B183")   # orange clair (canevas DDD)
+    f_proj = PatternFill("solid", fgColor="FFFF00")   # jaune vif (canevas DDD)
+    f_act  = PatternFill("solid", fgColor="C5DEB5")   # vert clair (canevas DDD)
     f_tch  = PatternFill("solid", fgColor="FFFFFF")   # blanc
 
     service_filtre = current_user.service_id if current_user.role == 'service' else None
@@ -1151,7 +1151,7 @@ def export_excel():
                   'PTFs', 'Autres Fonds', '',
                   '', '', '', '', '', '']
 
-    hdr_fill = PatternFill("solid", fgColor="FF69B4")
+    hdr_fill = PatternFill("solid", fgColor="BDD7EE")
     hdr_font = Font(bold=True, color="000000", size=8)
 
     for r_offset, row_data in enumerate([headers_r1, headers_r2, headers_r3]):

@@ -141,29 +141,29 @@
     {% if can_edit %}<col style="width:7%">{% endif %}
   </colgroup>
   <thead style="position:sticky;top:0;z-index:5;">
-    <tr style="background:#FF69B4;color:#000;text-align:center;font-weight:700;font-size:.68rem;">
-      <th rowspan="3" style="position:sticky;top:0;background:#FF69B4;">Code</th>
-      <th rowspan="3" style="position:sticky;top:0;background:#FF69B4;">Objectifs/Résultats/<br>Actions/Activités/Tâches</th>
-      <th rowspan="3" style="position:sticky;top:0;background:#FF69B4;">Imputation<br>budg.</th>
-      <th colspan="6" style="position:sticky;top:0;background:#FF69B4;">SOURCES DE FINANCEMENT</th>
-      <th rowspan="3" style="position:sticky;top:0;background:#FF69B4;">Période<br>d'exécution</th>
-      <th rowspan="3" style="position:sticky;top:0;background:#FF69B4;">Poids<br>(%)</th>
-      <th rowspan="3" style="position:sticky;top:0;background:#FF69B4;" title="Directions ou Unité Administrative Responsables">Direction/<br>Unité Resp.</th>
-      <th rowspan="3" style="position:sticky;top:0;background:#FF69B4;" title="Structures associées / Unité Administrative Associée">Structures<br>associées</th>
-      <th rowspan="3" style="position:sticky;top:0;background:#FF69B4;">Mode<br>d'exécution</th>
-      <th rowspan="3" style="position:sticky;top:0;background:#FF69B4;">Observations<br>(ODD…)</th>
-      {% if can_edit %}<th rowspan="3" style="position:sticky;top:0;background:#FF69B4;">Actions</th>{% endif %}
+    <tr style="background:#BDD7EE;color:#000;text-align:center;font-weight:700;font-size:.68rem;">
+      <th rowspan="3" style="position:sticky;top:0;background:#BDD7EE;">Code</th>
+      <th rowspan="3" style="position:sticky;top:0;background:#BDD7EE;">Objectifs/Résultats/<br>Actions/Activités/Tâches</th>
+      <th rowspan="3" style="position:sticky;top:0;background:#BDD7EE;">Imputation<br>budg.</th>
+      <th colspan="6" style="position:sticky;top:0;background:#BDD7EE;">SOURCES DE FINANCEMENT</th>
+      <th rowspan="3" style="position:sticky;top:0;background:#BDD7EE;">Période<br>d'exécution</th>
+      <th rowspan="3" style="position:sticky;top:0;background:#BDD7EE;">Poids<br>(%)</th>
+      <th rowspan="3" style="position:sticky;top:0;background:#BDD7EE;" title="Directions ou Unité Administrative Responsables">Direction/<br>Unité Resp.</th>
+      <th rowspan="3" style="position:sticky;top:0;background:#BDD7EE;" title="Structures associées / Unité Administrative Associée">Structures<br>associées</th>
+      <th rowspan="3" style="position:sticky;top:0;background:#BDD7EE;">Mode<br>d'exécution</th>
+      <th rowspan="3" style="position:sticky;top:0;background:#BDD7EE;">Observations<br>(ODD…)</th>
+      {% if can_edit %}<th rowspan="3" style="position:sticky;top:0;background:#BDD7EE;">Actions</th>{% endif %}
     </tr>
-    <tr style="background:#FF69B4;color:#000;text-align:center;font-weight:700;font-size:.68rem;">
-      <th colspan="5" style="position:sticky;top:0;background:#FF69B4;">Source de financement</th>
-      <th rowspan="2" style="position:sticky;top:0;background:#FF69B4;">Total</th>
+    <tr style="background:#BDD7EE;color:#000;text-align:center;font-weight:700;font-size:.68rem;">
+      <th colspan="5" style="position:sticky;top:0;background:#BDD7EE;">Source de financement</th>
+      <th rowspan="2" style="position:sticky;top:0;background:#BDD7EE;">Total</th>
     </tr>
-    <tr style="background:#FF69B4;color:#000;text-align:center;font-weight:700;font-size:.68rem;">
-      <th style="position:sticky;top:0;background:#FF69B4;">Fds<br>Propres</th>
-      <th style="position:sticky;top:0;background:#FF69B4;">FA</th>
-      <th style="position:sticky;top:0;background:#FF69B4;">FNA</th>
-      <th style="position:sticky;top:0;background:#FF69B4;">PTFs</th>
-      <th style="position:sticky;top:0;background:#FF69B4;">Autres<br>Fonds</th>
+    <tr style="background:#BDD7EE;color:#000;text-align:center;font-weight:700;font-size:.68rem;">
+      <th style="position:sticky;top:0;background:#BDD7EE;">Fds<br>Propres</th>
+      <th style="position:sticky;top:0;background:#BDD7EE;">FA</th>
+      <th style="position:sticky;top:0;background:#BDD7EE;">FNA</th>
+      <th style="position:sticky;top:0;background:#BDD7EE;">PTFs</th>
+      <th style="position:sticky;top:0;background:#BDD7EE;">Autres<br>Fonds</th>
     </tr>
   </thead>
   <tbody>
@@ -186,7 +186,7 @@
     {% set p_af = prog.autres_fonds %}
     {% set p_tot = prog.budget_total %}
     {% set poids_projets = prog.projets|loopsum(attribute='poids') %}
-    <tr id="row-prog-{{ prog.id }}" style="background:#FFFF99;font-weight:700;border-top:2px solid #aaa;">
+    <tr id="row-prog-{{ prog.id }}" style="background:#F4B183;font-weight:700;border-top:2px solid #aaa;">
       <td class="text-center">{{ prog.code }}</td>
       <td>Programme {{ prog.code }} : {{ prog.nom }}
         {% if can_edit and poids_projets is defined %}
@@ -234,7 +234,7 @@
     {% set pj_af = projet.autres_fonds %}
     {% set pj_tot = projet.budget_total %}
     {% set poids_acts = projet.activites|loopsum(attribute='poids') %}
-    <tr id="row-projet-{{ projet.id }}" style="background:#FFB6C1;font-weight:700;">
+    <tr id="row-projet-{{ projet.id }}" style="background:#FFFF00;font-weight:700;">
       <td class="text-center">{{ projet.code }}</td>
       <td>Projet {{ projet.code }} : {{ projet.nom }}
         {% if can_edit %}
@@ -287,7 +287,7 @@
     {% set a_af = act.taches|sum(attribute='autres_fonds') if act.taches else (act.autres_fonds or 0) %}
     {% set a_tot = a_rp + a_fa + a_fn + a_ap + a_af %}
     {% set poids_taches = act.taches|loopsum(attribute='poids') if act.taches else 0 %}
-    <tr id="row-act-{{ act.id }}" style="background:#D3D3D3;font-weight:700;"
+    <tr id="row-act-{{ act.id }}" style="background:#C5DEB5;font-weight:700;"
         data-nature="{{ 'inv' if 'investissement' in (act.type_activite or '') else 'fct' }}"
         data-proj="{{ projet.id }}" data-prog="{{ prog.id }}">
       <td class="text-center">{{ act.code }}</td>

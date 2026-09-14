@@ -697,7 +697,7 @@ def _build_word(annee, s, static_img_path, cibles=None, cibles_directions=None, 
 
     # ── Fonctions de construction de tableaux ─────────────────────────────────
 
-    def table_prog(doc, data, nb_act, nb_tch, tot_b, row_col='FFB6C1'):
+    def table_prog(doc, data, nb_act, nb_tch, tot_b, row_col='FFFF00'):
         """Tableau synthétique programme → projet (6 colonnes)."""
         n_rows = 1 + sum(1 + len(p['projets']) for p in data) + 1
         tbl = doc.add_table(rows=max(n_rows, 2), cols=6)
@@ -717,7 +717,7 @@ def _build_word(annee, s, static_img_path, cibles=None, cibles_directions=None, 
                 (_fmt(prog['budget']),                        'right',  True),
             ]):
                 data_cell(r.cells[ci], val, align=al, bold=bd, size=9)
-                shade(r.cells[ci], 'FFFF99')
+                shade(r.cells[ci], 'F4B183')
             ri += 1
             for proj in prog['projets']:
                 r = tbl.rows[ri]
@@ -862,7 +862,7 @@ def _build_word(annee, s, static_img_path, cibles=None, cibles_directions=None, 
         data_cell(r.cells[0], 'PTA Global', bold=True, size=9)
         for ti, trim in enumerate((1, 2, 3, 4), 1):
             cible_cell(r.cells[ti], global_c.get(trim, 0))
-        shade(r.cells[0], 'FFFF99')
+        shade(r.cells[0], 'F4B183')
         ri += 1
         # Programmes et leurs projets
         for prog in programmes_c:

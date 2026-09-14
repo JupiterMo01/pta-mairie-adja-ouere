@@ -698,11 +698,11 @@ def export_excel():
     lft   = Alignment(horizontal='left',   vertical='center', wrap_text=True)
     rgt   = Alignment(horizontal='right',  vertical='center', wrap_text=True)
 
-    f_prog = PatternFill("solid", fgColor="FFFF99")
-    f_proj = PatternFill("solid", fgColor="FFB6C1")
-    f_act  = PatternFill("solid", fgColor="D3D3D3")
+    f_prog = PatternFill("solid", fgColor="F4B183")
+    f_proj = PatternFill("solid", fgColor="FFFF00")
+    f_act  = PatternFill("solid", fgColor="C5DEB5")
     f_tch  = PatternFill("solid", fgColor="FFFFFF")
-    f_hdr  = PatternFill("solid", fgColor="FF69B4")
+    f_hdr  = PatternFill("solid", fgColor="BDD7EE")
     f_tot  = PatternFill("solid", fgColor="1F6B35")   # vert foncé
     f_obj  = PatternFill("solid", fgColor="FFFACD")
     f_tit  = PatternFill("solid", fgColor="D1F0DA")   # vert clair

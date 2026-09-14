@@ -97,11 +97,11 @@ def _fill_sheet(ws, annee, service, data):
     ctr  = Alignment(horizontal='center', vertical='center', wrap_text=True)
     lft  = Alignment(horizontal='left',   vertical='center', wrap_text=True)
 
-    f_prog   = PatternFill("solid", fgColor="FFFF99")
-    f_proj   = PatternFill("solid", fgColor="FFB6C1")
-    f_act    = PatternFill("solid", fgColor="D3D3D3")
+    f_prog   = PatternFill("solid", fgColor="F4B183")
+    f_proj   = PatternFill("solid", fgColor="FFFF00")
+    f_act    = PatternFill("solid", fgColor="C5DEB5")
     f_tch    = PatternFill("solid", fgColor="FFFFFF")
-    hdr_fill = PatternFill("solid", fgColor="FF69B4")
+    hdr_fill = PatternFill("solid", fgColor="BDD7EE")
     os_fill  = PatternFill("solid", fgColor="FFFACD")
     tot_fill = PatternFill("solid", fgColor="AED6F1")
 

@@ -215,12 +215,12 @@ def _fill_sheet(ws, annee, direction, data):
 
     # ── En-têtes du tableau (3 lignes, 15 colonnes A–O) ────────────────────────
     headers_r1 = ['Code', 'Objectifs/Résultats/Actions/Activités/Tâches', 'Imputation budgétaire',
-                  'Sources de financement (F CFA)', '', '', '', '', '',
+                  'Sources de financement (en F CFA)', '', '', '', '', '',
                   "Période d'exécution", 'Poids (%)',
                   'Direction/Unité Resp.', 'Structures associées / Unité Admi. Associée',
                   "Mode d'exécution", 'Observations (Contribution ODD…)']
-    headers_r2 = ['', '', '', 'Source de financement', '', '', '', '', 'Total', '', '', '', '', '', '']
-    headers_r3 = ['', '', '', 'Fonds Propres', 'FA', 'FNA', 'PTFs', 'Autres Fonds', '', '', '', '', '', '', '']
+    headers_r2 = ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '']
+    headers_r3 = ['', '', '', 'Fonds Propres', 'FA', 'FNA', 'PTFs', 'Autres Fonds', 'Total', '', '', '', '', '', '']
 
     for r_offset, row_data in enumerate([headers_r1, headers_r2, headers_r3]):
         rn = start_row + r_offset
@@ -234,9 +234,7 @@ def _fill_sheet(ws, annee, direction, data):
     ws.merge_cells(f'A{start_row}:A{start_row+2}')
     ws.merge_cells(f'B{start_row}:B{start_row+2}')
     ws.merge_cells(f'C{start_row}:C{start_row+2}')
-    ws.merge_cells(f'D{start_row}:I{start_row}')
-    ws.merge_cells(f'D{start_row+1}:H{start_row+1}')
-    ws.merge_cells(f'I{start_row+1}:I{start_row+2}')
+    ws.merge_cells(f'D{start_row}:I{start_row+1}')    # Sources de financement (2 lignes)
     ws.merge_cells(f'J{start_row}:J{start_row+2}')
     ws.merge_cells(f'K{start_row}:K{start_row+2}')
     ws.merge_cells(f'L{start_row}:L{start_row+2}')

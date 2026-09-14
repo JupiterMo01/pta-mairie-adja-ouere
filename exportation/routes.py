@@ -122,12 +122,12 @@ def _fill_global_sheet(ws, annee):
 
     # ── En-têtes tableau ───────────────────────────────────────────────────────
     hr1 = ['Code', 'Objectifs/Résultats/Actions/Activités/Tâches', 'Imputation budgétaire',
-            'Sources de financement (F CFA)', '', '', '', '', '',
+            'Sources de financement (en F CFA)', '', '', '', '', '',
             "Période d'exécution", 'Poids (%)',
             'Direction/Unité Resp.', 'Structures associées / Unité Admi. Associée',
             "Mode d'exécution", 'Observations (Contribution ODD…)']
-    hr2 = ['', '', '', 'Source de financement', '', '', '', '', 'Total', '', '', '', '', '', '']
-    hr3 = ['', '', '', 'Fonds Propres', 'FA', 'FNA', 'PTFs', 'Autres Fonds', '', '', '', '', '', '', '']
+    hr2 = ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '']
+    hr3 = ['', '', '', 'Fonds Propres', 'FA', 'FNA', 'PTFs', 'Autres Fonds', 'Total', '', '', '', '', '', '']
     for off, rd in enumerate([hr1, hr2, hr3]):
         rn = start_row + off
         for col, val in enumerate(rd, 1):
@@ -135,8 +135,8 @@ def _fill_global_sheet(ws, annee):
             c.fill = hdr_fill; c.font = Font(bold=True, color="000000", size=8)
             c.alignment = ctr; c.border = brd
     ws.merge_cells(f'A{start_row}:A{start_row+2}'); ws.merge_cells(f'B{start_row}:B{start_row+2}')
-    ws.merge_cells(f'C{start_row}:C{start_row+2}'); ws.merge_cells(f'D{start_row}:I{start_row}')
-    ws.merge_cells(f'D{start_row+1}:H{start_row+1}'); ws.merge_cells(f'I{start_row+1}:I{start_row+2}')
+    ws.merge_cells(f'C{start_row}:C{start_row+2}')
+    ws.merge_cells(f'D{start_row}:I{start_row+1}')    # Sources de financement (2 lignes)
     ws.merge_cells(f'J{start_row}:J{start_row+2}'); ws.merge_cells(f'K{start_row}:K{start_row+2}')
     ws.merge_cells(f'L{start_row}:L{start_row+2}'); ws.merge_cells(f'M{start_row}:M{start_row+2}')
     ws.merge_cells(f'N{start_row}:N{start_row+2}'); ws.merge_cells(f'O{start_row}:O{start_row+2}')
@@ -637,11 +637,11 @@ def excel_par_programme():
 
     start_row = 2
     hr1 = ['Code','Objectifs/Résultats/Actions/Activités/Tâches','Imputation budgétaire',
-           'Sources de financement (F CFA)','','','','','',
+           'Sources de financement (en F CFA)','','','','','',
            "Période d'exécution",'Poids (%)','Direction/Unité Resp.',
            'Structures associées',"Mode d'exécution",'Observations']
-    hr2 = ['','','','Source de financement','','','','','Total','','','','','','']
-    hr3 = ['','','','Fonds Propres','FA','FNA','PTFs','Autres Fonds','','','','','','','']
+    hr2 = ['','','','','','','','','','','','','','','']
+    hr3 = ['','','','Fonds Propres','FA','FNA','PTFs','Autres Fonds','Total','','','','','','']
     for off, rd in enumerate([hr1, hr2, hr3]):
         rn = start_row + off
         for col, val in enumerate(rd, 1):
@@ -649,8 +649,8 @@ def excel_par_programme():
             c.fill=hdr_fill; c.font=Font(bold=True, color="000000", size=8)
             c.alignment=ctr; c.border=brd
     ws.merge_cells(f'A{start_row}:A{start_row+2}'); ws.merge_cells(f'B{start_row}:B{start_row+2}')
-    ws.merge_cells(f'C{start_row}:C{start_row+2}'); ws.merge_cells(f'D{start_row}:I{start_row}')
-    ws.merge_cells(f'D{start_row+1}:H{start_row+1}'); ws.merge_cells(f'I{start_row+1}:I{start_row+2}')
+    ws.merge_cells(f'C{start_row}:C{start_row+2}')
+    ws.merge_cells(f'D{start_row}:I{start_row+1}')    # Sources de financement (2 lignes)
     for col_l in 'JKLMNO':
         ws.merge_cells(f'{col_l}{start_row}:{col_l}{start_row+2}')
 

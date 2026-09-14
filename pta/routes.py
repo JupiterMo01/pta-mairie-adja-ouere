@@ -1139,16 +1139,14 @@ def export_excel():
 
     # En-têtes (3 niveaux) — 15 colonnes
     headers_r1 = ['Code', 'Objectifs/Résultats/Actions/Activités/Tâches', 'Imputation budgétaire',
-                  'Sources de financement (F CFA)', '', '', '', '', '',
+                  'Sources de financement (en F CFA)', '', '', '', '', '',
                   "Période d'exécution", 'Poids (%)',
                   'Direction/Unité Resp.', 'Structures associées / Unité Admi. Associée',
                   "Mode d'exécution", 'Observations (Contribution ODD…)']
-    headers_r2 = ['', '', '',
-                  'Source de financement', '', '', '', '', 'Total',
-                  '', '', '', '', '', '']
+    headers_r2 = ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '']
     headers_r3 = ['', '', '',
                   'Fonds Propres', 'FA', 'FNA',
-                  'PTFs', 'Autres Fonds', '',
+                  'PTFs', 'Autres Fonds', 'Total',
                   '', '', '', '', '', '']
 
     hdr_fill = PatternFill("solid", fgColor="BDD7EE")
@@ -1167,9 +1165,7 @@ def export_excel():
     ws.merge_cells(f'A{start_row}:A{start_row+2}')    # Code
     ws.merge_cells(f'B{start_row}:B{start_row+2}')    # Objectifs
     ws.merge_cells(f'C{start_row}:C{start_row+2}')    # Imputation
-    ws.merge_cells(f'D{start_row}:I{start_row}')      # Sources de financement (ligne 1)
-    ws.merge_cells(f'D{start_row+1}:H{start_row+1}')  # Source de financement (ligne 2)
-    ws.merge_cells(f'I{start_row+1}:I{start_row+2}')  # Total (lignes 2-3)
+    ws.merge_cells(f'D{start_row}:I{start_row+1}')    # Sources de financement (2 lignes)
     ws.merge_cells(f'J{start_row}:J{start_row+2}')    # Période d'exécution
     ws.merge_cells(f'K{start_row}:K{start_row+2}')    # Poids
     ws.merge_cells(f'L{start_row}:L{start_row+2}')    # Resp

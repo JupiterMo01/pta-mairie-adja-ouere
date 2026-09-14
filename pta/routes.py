@@ -1130,7 +1130,7 @@ def export_excel():
     if annee.objectif_general:
         ws.merge_cells('A5:O5')
         c = ws['A5']
-        c.value = f"Objectif général : {annee.objectif_general}"
+        c.value = f"Objectif général / Résultat général : {annee.objectif_general}"
         c.font = Font(bold=True, italic=True)
         c.alignment = lft
         start_row = 6

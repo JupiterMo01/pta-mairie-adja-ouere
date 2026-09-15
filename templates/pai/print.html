@@ -205,8 +205,8 @@
         {% elif a_fn > 0 %}
           {% set fadec_lbl = 'FNA (' ~ (a_fn | fcfa) ~ ')' %}
         {% else %}{% set fadec_lbl = '' %}{% endif %}
-        {# Poids auto #}
-        {% set a_poids = pj_d.act_poids[loop.index0] %}
+        {# Poids depuis DB #}
+        {% set a_poids = (extra.poids_pai | int) if extra and extra.poids_pai else 0 %}
         {% if act.periode_debut and act.periode_fin and act.periode_debut != act.periode_fin %}
           {% set periode_str = act.periode_debut ~ ' – ' ~ act.periode_fin %}
         {% elif act.periode_debut %}

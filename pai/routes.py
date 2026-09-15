@@ -6,26 +6,7 @@ from pai import pai_bp
 from utils import get_annee
 
 
-# ─── Helpers poids automatiques ───────────────────────────────────────────────
-
-def _compute_poids_list(totals):
-    """
-    Poids entiers : floor pour tous.
-    Si une activité a un montant > 0 mais que floor donne 0, on met 1 (minimum visible).
-    Les activités à montant nul restent à 0.
-    """
-    if not totals:
-        return []
-    s = sum(totals)
-    if s == 0:
-        return [0] * len(totals)
-    result = []
-    for t in totals:
-        p = int(t / s * 100)   # floor
-        if p == 0 and t > 0:
-            p = 1               # minimum 1 si budget non nul
-        result.append(p)
-    return result
+# ─── Helpers format ───────────────────────────────────────────────────────────
 
 
 def _fmt_mil(v):
@@ -64,10 +45,7 @@ def _fadec_label(src_fa, src_fn):
 # ─── Helper commun ────────────────────────────────────────────────────────────
 
 def _build_pai_data(annee):
-    """
-    Construit la structure PAI depuis les activités d'investissement marquées inclure_dans_pai.
-    Calcule automatiquement les poids depuis les montants (arrondi demi-supérieur, dernier = 100 - autres).
-    """
+    """Construit la structure PAI. Poids lus depuis la DB (PaiProgramme, PaiProjet, PaiActivite)."""
     programmes = (
         Programme.query
         .filter_by(annee_id=annee.id)
@@ -94,33 +72,22 @@ def _build_pai_data(annee):
                     total_ptfs   += a.src_ap + a.src_af
                     total_global += a.budget_total
                     total_nb     += 1
-                pg_projets.append({'projet': pj, 'activites': inv_acts, 'proj_num': proj_num})
+                pj_extra = PaiProjet.query.filter_by(projet_id=pj.id).first()
+                pg_projets.append({
+                    'projet':    pj,
+                    'activites': inv_acts,
+                    'proj_num':  proj_num,
+                    'poids':     int(pj_extra.poids_pai or 0) if pj_extra else 0,
+                })
         if pg_projets:
             prog_num += 1
-            pai_data.append({'programme': pg, 'projets': pg_projets, 'prog_num': prog_num})
-
-    # ── Calcul automatique des poids depuis les montants ─────────────────────
-    # Niveau programme
-    pg_totals = []
-    for pg_d in pai_data:
-        pt = sum(a.budget_total for pj_d in pg_d['projets'] for a in pj_d['activites'])
-        pg_d['budget_total'] = pt
-        pg_totals.append(pt)
-
-    pg_poids = _compute_poids_list(pg_totals)
-    for pg_d, pw in zip(pai_data, pg_poids):
-        pg_d['poids'] = pw
-
-        # Niveau projet
-        pj_totals = [sum(a.budget_total for a in pj_d['activites']) for pj_d in pg_d['projets']]
-        pj_poids  = _compute_poids_list(pj_totals)
-        for pj_d, pjt, pjw in zip(pg_d['projets'], pj_totals, pj_poids):
-            pj_d['budget_total'] = pjt
-            pj_d['poids']        = pjw
-
-            # Niveau activité
-            act_totals = [a.budget_total for a in pj_d['activites']]
-            pj_d['act_poids'] = _compute_poids_list(act_totals)
+            pg_extra = PaiProgramme.query.filter_by(programme_id=pg.id).first()
+            pai_data.append({
+                'programme': pg,
+                'projets':   pg_projets,
+                'prog_num':  prog_num,
+                'poids':     int(pg_extra.poids_pai or 0) if pg_extra else 0,
+            })
 
     return pai_data, total_fp, total_fadec, total_ptfs, total_global, total_nb
 
@@ -139,15 +106,24 @@ def index():
 
     pai_data, total_fp, total_fadec, total_ptfs, total_global, total_nb = _build_pai_data(annee)
 
-    # Création automatique des enregistrements PaiActivite pour les nouvelles activités.
-    # Seulement pour les champs extra (localisation, indicateurs, observations).
-    # Les poids sont calculés automatiquement depuis les montants.
+    # Création automatique des enregistrements pour les nouvelles activités/projets/programmes.
+    # Poids importés depuis le PTA par défaut (modifiables ensuite).
     changed = False
     for pg_d in pai_data:
+        pg = pg_d['programme']
+        if not PaiProgramme.query.filter_by(programme_id=pg.id).first():
+            db.session.add(PaiProgramme(programme_id=pg.id, poids_pai=0))
+            changed = True
         for pj_d in pg_d['projets']:
+            pj = pj_d['projet']
+            if not PaiProjet.query.filter_by(projet_id=pj.id).first():
+                db.session.add(PaiProjet(projet_id=pj.id, poids_pai=0))
+                changed = True
             for act in pj_d['activites']:
                 if not act.pai_extra:
-                    db.session.add(PaiActivite(activite_id=act.id))
+                    extra = PaiActivite(activite_id=act.id)
+                    extra.poids_pai = act.poids or 0.0
+                    db.session.add(extra)
                     changed = True
     if changed:
         db.session.commit()
@@ -355,7 +331,6 @@ def export_excel():
             r += 1
 
             pj_fp = pj_fadec = pj_ptfs = pj_total = 0.0
-            act_poids_list = pj_d['act_poids']
             for act_i, act in enumerate(pj_d['activites'], 1):
                 extra = act.pai_extra
                 a_fp    = act.src_rp / 1000
@@ -365,7 +340,7 @@ def export_excel():
                 a_ptfs  = (act.src_ap + act.src_af) / 1000
                 a_total = act.budget_total / 1000
                 pj_fp += a_fp; pj_fadec += a_fadec; pj_ptfs += a_ptfs; pj_total += a_total
-                a_poids = act_poids_list[act_i - 1]
+                a_poids = int(extra.poids_pai or 0) if extra else 0
                 fadec_lbl = _fadec_label(act.src_fa, act.src_fn)
 
                 row_data = [
@@ -437,6 +412,48 @@ def export_excel():
     )
 
 
+@pai_bp.route('/edit_prog/<int:programme_id>', methods=['POST'])
+@login_required
+def edit_prog(programme_id):
+    """Sauvegarde le poids PAI d'un programme."""
+    if current_user.role != 'admin_editeur':
+        abort(403)
+    programme = db.session.get(Programme, programme_id)
+    if not programme:
+        abort(404)
+    extra = PaiProgramme.query.filter_by(programme_id=programme_id).first()
+    if not extra:
+        extra = PaiProgramme(programme_id=programme_id)
+        db.session.add(extra)
+    try:
+        extra.poids_pai = float(request.form.get('poids_pai', 0) or 0)
+    except (ValueError, TypeError):
+        extra.poids_pai = 0.0
+    db.session.commit()
+    return jsonify({'ok': True})
+
+
+@pai_bp.route('/edit_proj/<int:projet_id>', methods=['POST'])
+@login_required
+def edit_proj(projet_id):
+    """Sauvegarde le poids PAI d'un projet."""
+    if current_user.role != 'admin_editeur':
+        abort(403)
+    projet = db.session.get(Projet, projet_id)
+    if not projet:
+        abort(404)
+    extra = PaiProjet.query.filter_by(projet_id=projet_id).first()
+    if not extra:
+        extra = PaiProjet(projet_id=projet_id)
+        db.session.add(extra)
+    try:
+        extra.poids_pai = float(request.form.get('poids_pai', 0) or 0)
+    except (ValueError, TypeError):
+        extra.poids_pai = 0.0
+    db.session.commit()
+    return jsonify({'ok': True})
+
+
 @pai_bp.route('/edit/<int:activite_id>', methods=['POST'])
 @login_required
 def edit(activite_id):
@@ -456,6 +473,10 @@ def edit(activite_id):
     extra.localisation     = request.form.get('localisation', '').strip() or None
     extra.indicateurs      = request.form.get('indicateurs', '').strip() or None
     extra.observations_pai = request.form.get('observations_pai', '').strip() or None
+    try:
+        extra.poids_pai = float(request.form.get('poids_pai', 0) or 0)
+    except (ValueError, TypeError):
+        pass
 
     db.session.commit()
     return jsonify({'ok': True})

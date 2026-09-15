@@ -190,10 +190,13 @@
         {% set pj_tot.fadec = pj_tot.fadec + a_fadec %}
         {% set pj_tot.ptfs  = pj_tot.ptfs  + a_ptfs %}
         {% set pj_tot.total = pj_tot.total + a_total %}
-        {# Label FADeC automatique #}
-        {% if a_fa > 0 and a_fn > 0 %}{% set fadec_lbl = 'FA + FNA' %}
-        {% elif a_fa > 0 %}{% set fadec_lbl = 'FA' %}
-        {% elif a_fn > 0 %}{% set fadec_lbl = 'FNA' %}
+        {# Label FADeC automatique avec montants en milliers #}
+        {% if a_fa > 0 and a_fn > 0 %}
+          {% set fadec_lbl = 'FA (' ~ (a_fa | fcfa) ~ ') + FNA (' ~ (a_fn | fcfa) ~ ')' %}
+        {% elif a_fa > 0 %}
+          {% set fadec_lbl = 'FA (' ~ (a_fa | fcfa) ~ ')' %}
+        {% elif a_fn > 0 %}
+          {% set fadec_lbl = 'FNA (' ~ (a_fn | fcfa) ~ ')' %}
         {% else %}{% set fadec_lbl = '' %}{% endif %}
         {# Poids auto #}
         {% set a_poids = pj_d.act_poids[loop.index0] %}

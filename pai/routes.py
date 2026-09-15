@@ -29,16 +29,36 @@ def _compute_poids_list(totals):
     return rounded
 
 
+def _fmt_mil(v):
+    """Formate un montant en milliers (français : espace milliers, virgule décimale, 0–3 décimales)."""
+    if v == 0:
+        return '0'
+    s = f'{v:.3f}'.rstrip('0').rstrip('.')
+    # Séparer partie entière et décimale
+    if '.' in s:
+        entier, dec = s.split('.')
+        dec_part = ',' + dec
+    else:
+        entier, dec_part = s, ''
+    # Séparateurs de milliers
+    entier_fmt = ''
+    for i, c in enumerate(reversed(entier)):
+        if i and i % 3 == 0:
+            entier_fmt = ' ' + entier_fmt
+        entier_fmt = c + entier_fmt
+    return entier_fmt + dec_part
+
+
 def _fadec_label(src_fa, src_fn):
-    """Libellé FADeC automatique depuis les montants."""
-    has_fa = src_fa > 0
-    has_fn = src_fn > 0
-    if has_fa and has_fn:
-        return 'FA + FNA'
-    if has_fa:
-        return 'FA'
-    if has_fn:
-        return 'FNA'
+    """Libellé FADeC automatique avec montants en milliers."""
+    a_fa = src_fa / 1000
+    a_fn = src_fn / 1000
+    if src_fa > 0 and src_fn > 0:
+        return f'FA ({_fmt_mil(a_fa)}) + FNA ({_fmt_mil(a_fn)})'
+    if src_fa > 0:
+        return f'FA ({_fmt_mil(a_fa)})'
+    if src_fn > 0:
+        return f'FNA ({_fmt_mil(a_fn)})'
     return ''
 
 

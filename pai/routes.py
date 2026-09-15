@@ -97,12 +97,12 @@ def _build_pai_data(annee):
 @pai_bp.route('/')
 @login_required
 def index():
-    """Vue écran du PAI (étend base.html). Admins seulement."""
-    if current_user.role not in ('admin_editeur', 'admin_lecteur'):
-        abort(403)
+    """Vue écran du PAI. Tous les utilisateurs pour l'année active ; admins seulement pour une année non active."""
     annee = get_annee()
     if not annee:
         abort(404)
+    if not annee.actif and current_user.role not in ('admin_editeur', 'admin_lecteur'):
+        abort(403)
 
     pai_data, total_fp, total_fadec, total_ptfs, total_global, total_nb = _build_pai_data(annee)
 
@@ -145,12 +145,12 @@ def index():
 @pai_bp.route('/print')
 @login_required
 def print_view():
-    """Vue impression A4 paysage du PAI. Admins seulement."""
-    if current_user.role not in ('admin_editeur', 'admin_lecteur'):
-        abort(403)
+    """Vue impression A4 paysage du PAI. Tous pour l'année active ; admins pour années non actives."""
     annee = get_annee()
     if not annee:
         abort(404)
+    if not annee.actif and current_user.role not in ('admin_editeur', 'admin_lecteur'):
+        abort(403)
 
     pai_data, total_fp, total_fadec, total_ptfs, total_global, total_nb = _build_pai_data(annee)
 
@@ -168,12 +168,12 @@ def print_view():
 @pai_bp.route('/export')
 @login_required
 def export_excel():
-    """Exporte le PAI en fichier Excel (.xlsx). Admins seulement."""
-    if current_user.role not in ('admin_editeur', 'admin_lecteur'):
-        abort(403)
+    """Exporte le PAI en fichier Excel (.xlsx). Tous pour l'année active ; admins pour années non actives."""
     annee = get_annee()
     if not annee:
         abort(404)
+    if not annee.actif and current_user.role not in ('admin_editeur', 'admin_lecteur'):
+        abort(403)
 
     pai_data, total_fp, total_fadec, total_ptfs, total_global, _ = _build_pai_data(annee)
 

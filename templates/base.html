@@ -60,6 +60,17 @@
       </li>
       {% endif %}
 
+      {# ── PAI : tous les utilisateurs, uniquement quand une année active existe ── #}
+      {# (pour les admins, le lien est aussi présent dans leur section ci-dessous) #}
+      {% if annee_active_id and current_user.role not in ('admin_editeur', 'admin_lecteur') %}
+      <li class="nav-item">
+        <a class="nav-link text-white py-2 px-3 {% if request.blueprint == 'pai' %}active-link{% endif %}"
+           href="{{ url_for('pai.index') }}">
+          <i class="fas fa-file-invoice me-2 fa-fw"></i>PAI
+        </a>
+      </li>
+      {% endif %}
+
       {# ── Menus admin uniquement ── #}
       {% if current_user.role in ('admin_editeur', 'admin_lecteur') %}
       <li><hr class="border-secondary my-1"></li>

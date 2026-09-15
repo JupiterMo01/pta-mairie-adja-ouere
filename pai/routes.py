@@ -1,7 +1,7 @@
 import io
 from flask import render_template, abort, request, jsonify, Response
 from flask_login import login_required, current_user
-from models import db, Programme, Activite, PaiActivite
+from models import db, Programme, Projet, Activite, PaiActivite, PaiProgramme, PaiProjet
 from pai import pai_bp
 from utils import get_annee
 
@@ -9,7 +9,7 @@ from utils import get_annee
 # ─── Helper commun ────────────────────────────────────────────────────────────
 
 def _build_pai_data(annee):
-    """Construit la structure PAI depuis les activités d'investissement du PTA."""
+    """Construit la structure PAI depuis les activités d'investissement marquées inclure_dans_pai."""
     programmes = (
         Programme.query
         .filter_by(annee_id=annee.id)
@@ -19,22 +19,27 @@ def _build_pai_data(annee):
     pai_data = []
     total_fp = total_fadec = total_ptfs = total_global = 0.0
     total_nb = 0
+    prog_num = 0
 
     for pg in programmes:
         pg_projets = []
+        proj_num = 0
         for pj in pg.projets:
             inv_acts = [a for a in pj.activites
-                       if a.type_activite and 'investissement' in a.type_activite.lower()]
+                        if a.type_activite and 'investissement' in a.type_activite.lower()
+                        and a.inclure_dans_pai is not False]
             if inv_acts:
-                pg_projets.append({'projet': pj, 'activites': inv_acts})
+                proj_num += 1
                 for a in inv_acts:
                     total_fp     += a.src_rp
                     total_fadec  += a.src_fa + a.src_fn
                     total_ptfs   += a.src_ap + a.src_af
                     total_global += a.budget_total
                     total_nb     += 1
+                pg_projets.append({'projet': pj, 'activites': inv_acts, 'proj_num': proj_num})
         if pg_projets:
-            pai_data.append({'programme': pg, 'projets': pg_projets})
+            prog_num += 1
+            pai_data.append({'programme': pg, 'projets': pg_projets, 'prog_num': prog_num})
 
     return pai_data, total_fp, total_fadec, total_ptfs, total_global, total_nb
 
@@ -118,12 +123,11 @@ def export_excel():
     right  = Alignment(horizontal='right', vertical='center')
     left   = Alignment(horizontal='left',  vertical='center', wrap_text=True)
 
-    # ── En-tête de colonne
     headers = [
-        'Code', 'Activités', 'Localisation', 'Poids (%)', 'Indicateurs',
+        'Code PAI', 'Activités', 'Localisation', 'Poids (%)', 'Indicateurs',
         "Période d'exécution", 'Struct. Resp.', 'Structures associées',
-        'FP (F CFA)', 'FADeC (libellé)', 'Montant FADeC (F CFA)',
-        'Autres PTFs (F CFA)', 'Coût Total (F CFA)', 'Observations',
+        'FP (milliers F CFA)', 'FADeC (libellé)', 'Montant FADeC (milliers)',
+        'Autres PTFs (milliers)', 'Coût Total (milliers)', 'Observations',
     ]
     for col, h in enumerate(headers, 1):
         c = ws.cell(row=1, column=col, value=h)
@@ -145,41 +149,52 @@ def export_excel():
     r = 2
     for pg_d in pai_data:
         pg = pg_d['programme']
-        # Ligne programme
-        ws.cell(row=r, column=1, value=str(pg.numero))
-        ws.cell(row=r, column=2, value=f'Programme {pg.numero} : {pg.nom}')
-        ws.merge_cells(start_row=r, start_column=2, end_row=r, end_column=14)
+        pn = pg_d['prog_num']
+        extra_pg = pg.pai_extra_prog
+        poids_pg = extra_pg.poids_pai if extra_pg else ''
+        ws.cell(row=r, column=1, value=str(pn))
+        ws.cell(row=r, column=2, value=f'Programme {pn} : {pg.nom}')
+        ws.cell(row=r, column=4, value=poids_pg if poids_pg else '')
+        ws.merge_cells(start_row=r, start_column=2, end_row=r, end_column=3)
+        ws.merge_cells(start_row=r, start_column=5, end_row=r, end_column=14)
         for col in range(1, 15):
             c = ws.cell(row=r, column=col)
             c.fill = fill('F4B183'); c.font = Font(bold=True, size=9); c.border = bord
         ws.cell(row=r, column=1).alignment = center
         ws.cell(row=r, column=2).alignment = left
+        ws.cell(row=r, column=4).alignment = center
         r += 1
 
         for pj_d in pg_d['projets']:
             pj = pj_d['projet']
-            ws.cell(row=r, column=1, value=pj.code)
-            ws.cell(row=r, column=2, value=f'Projet {pj.code} : {pj.nom}')
-            ws.merge_cells(start_row=r, start_column=2, end_row=r, end_column=14)
+            pjn = pj_d['proj_num']
+            extra_pj = pj.pai_extra_proj
+            poids_pj = extra_pj.poids_pai if extra_pj else ''
+            ws.cell(row=r, column=1, value=f'{pn}.{pjn}')
+            ws.cell(row=r, column=2, value=f'Projet {pn}.{pjn} : {pj.nom}')
+            ws.cell(row=r, column=4, value=poids_pj if poids_pj else '')
+            ws.merge_cells(start_row=r, start_column=2, end_row=r, end_column=3)
+            ws.merge_cells(start_row=r, start_column=5, end_row=r, end_column=14)
             for col in range(1, 15):
                 c = ws.cell(row=r, column=col)
                 c.fill = fill('FFFF00'); c.font = Font(bold=True, size=9); c.border = bord
             ws.cell(row=r, column=1).alignment = center
             ws.cell(row=r, column=2).alignment = left
+            ws.cell(row=r, column=4).alignment = center
             r += 1
 
             pj_fp = pj_fadec = pj_ptfs = pj_total = 0.0
 
-            for act in pj_d['activites']:
+            for act_i, act in enumerate(pj_d['activites'], 1):
                 extra = act.pai_extra
-                a_fp    = act.src_rp
-                a_fadec = act.src_fa + act.src_fn
-                a_ptfs  = act.src_ap + act.src_af
-                a_total = act.budget_total
+                a_fp    = act.src_rp / 1000
+                a_fadec = (act.src_fa + act.src_fn) / 1000
+                a_ptfs  = (act.src_ap + act.src_af) / 1000
+                a_total = act.budget_total / 1000
                 pj_fp += a_fp; pj_fadec += a_fadec; pj_ptfs += a_ptfs; pj_total += a_total
 
                 row_data = [
-                    act.code,
+                    f'{pn}.{pjn}.{act_i}',
                     act.nom,
                     extra.localisation     if extra and extra.localisation     else '',
                     extra.poids_pai        if extra and extra.poids_pai        else '',
@@ -198,37 +213,34 @@ def export_excel():
                     c = ws.cell(row=r, column=col, value=val)
                     c.fill = fill('C5DEB5'); c.font = Font(size=9); c.border = bord
                     if col in (9, 11, 12, 13):
-                        c.number_format = '#,##0.00'; c.alignment = right
+                        c.number_format = '#,##0.000'; c.alignment = right
                     elif col in (1, 4, 6, 7):
                         c.alignment = center
                     else:
                         c.alignment = left
                 r += 1
 
-            # Sous-total projet
-            st = ['', f'Sous-Total {pj.code}', '', '', '', '', '', '',
+            st = ['', f'Sous-Total {pn}.{pjn}', '', '', '', '', '', '',
                   pj_fp, '', pj_fadec, pj_ptfs, pj_total, '']
             for col, val in enumerate(st, 1):
                 c = ws.cell(row=r, column=col, value=val)
                 c.fill = fill('EAF0FB'); c.font = Font(bold=True, italic=True, size=9); c.border = bord
                 if col in (9, 11, 12, 13):
-                    c.number_format = '#,##0.00'; c.alignment = right
+                    c.number_format = '#,##0.000'; c.alignment = right
                 elif col == 2:
                     c.alignment = Alignment(horizontal='right', vertical='center')
             r += 1
 
-    # Total PAI
     tot = ['', f'TOTAL PAI {annee.annee}', '', '', '', '', '', '',
-           total_fp, '', total_fadec, total_ptfs, total_global, '']
+           total_fp / 1000, '', total_fadec / 1000, total_ptfs / 1000, total_global / 1000, '']
     for col, val in enumerate(tot, 1):
         c = ws.cell(row=r, column=col, value=val)
         c.fill = fill('1A3A5C'); c.font = Font(bold=True, size=9, color='FFFFFF'); c.border = bord
         if col in (9, 11, 12, 13):
-            c.number_format = '#,##0.00'; c.alignment = right
+            c.number_format = '#,##0.000'; c.alignment = right
         elif col == 2:
             c.alignment = Alignment(horizontal='right', vertical='center')
 
-    # Largeurs colonnes
     for i, w in enumerate([8, 35, 18, 8, 25, 12, 12, 20, 16, 22, 16, 16, 16, 22], 1):
         ws.column_dimensions[get_column_letter(i)].width = w
 
@@ -257,13 +269,62 @@ def edit(activite_id):
     extra = PaiActivite.query.filter_by(activite_id=activite_id).first()
     if not extra:
         extra = PaiActivite(activite_id=activite_id)
+        # Importer le poids depuis le PTA si non encore défini
+        extra.poids_pai = activite.poids or 0.0
         db.session.add(extra)
 
     extra.localisation     = request.form.get('localisation', '').strip() or None
-    extra.poids_pai        = float(request.form.get('poids_pai', 0) or 0)
+    poids_val = request.form.get('poids_pai', '').strip()
+    extra.poids_pai        = float(poids_val) if poids_val else (activite.poids or 0.0)
     extra.indicateurs      = request.form.get('indicateurs', '').strip() or None
     extra.fadec_type       = request.form.get('fadec_type', '').strip() or None
     extra.observations_pai = request.form.get('observations_pai', '').strip() or None
+
+    db.session.commit()
+    return jsonify({'ok': True})
+
+
+@pai_bp.route('/edit_prog/<int:programme_id>', methods=['POST'])
+@login_required
+def edit_prog(programme_id):
+    """Sauvegarde le poids PAI d'un programme."""
+    if current_user.role != 'admin_editeur':
+        abort(403)
+
+    programme = db.session.get(Programme, programme_id)
+    if not programme:
+        abort(404)
+
+    extra = PaiProgramme.query.filter_by(programme_id=programme_id).first()
+    if not extra:
+        extra = PaiProgramme(programme_id=programme_id)
+        db.session.add(extra)
+
+    poids_val = request.form.get('poids_pai', '').strip()
+    extra.poids_pai = float(poids_val) if poids_val else 0.0
+
+    db.session.commit()
+    return jsonify({'ok': True})
+
+
+@pai_bp.route('/edit_proj/<int:projet_id>', methods=['POST'])
+@login_required
+def edit_proj(projet_id):
+    """Sauvegarde le poids PAI d'un projet."""
+    if current_user.role != 'admin_editeur':
+        abort(403)
+
+    projet = db.session.get(Projet, projet_id)
+    if not projet:
+        abort(404)
+
+    extra = PaiProjet.query.filter_by(projet_id=projet_id).first()
+    if not extra:
+        extra = PaiProjet(projet_id=projet_id)
+        db.session.add(extra)
+
+    poids_val = request.form.get('poids_pai', '').strip()
+    extra.poids_pai = float(poids_val) if poids_val else 0.0
 
     db.session.commit()
     return jsonify({'ok': True})

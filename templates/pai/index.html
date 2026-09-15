@@ -10,7 +10,7 @@
   <span class="text-muted small">
     <i class="fas fa-hammer me-1"></i>{{ total_nb }} activité{{ 's' if total_nb != 1 }} d'investissement
     &nbsp;—&nbsp;
-    Total : <strong>{{ total_global | fcfa }} F CFA</strong>
+    Total : <strong>{{ (total_global / 1000) | fcfa }} milliers F CFA</strong>
   </span>
   {% endif %}
   <div class="ms-auto d-flex gap-2 flex-wrap">
@@ -31,9 +31,23 @@
 </div>
 {% elif not pai_data %}
 <div class="alert alert-info">
-  <i class="fas fa-info-circle me-2"></i>Aucune activité d'investissement dans le PTA {{ annee.annee }}.
+  <i class="fas fa-info-circle me-2"></i>Aucune activité d'investissement incluse dans le PAI {{ annee.annee }}.
 </div>
 {% else %}
+
+{# ── Bannières de validation des poids ─────────────────────────────────── #}
+{% set sum_prog = namespace(v=0.0) %}
+{% for pg_d in pai_data %}
+  {% set ep = pg_d.programme.pai_extra_prog %}
+  {% set sum_prog.v = sum_prog.v + (ep.poids_pai if ep and ep.poids_pai else 0) %}
+{% endfor %}
+{% if sum_prog.v > 0 %}
+  {% if (sum_prog.v - 100)|abs < 0.01 %}
+  <div class="alert alert-success py-1 small mb-2"><i class="fas fa-check-circle me-1"></i>Poids des programmes : {{ sum_prog.v | pct_nat }}% — ✓ Total = 100%</div>
+  {% else %}
+  <div class="alert alert-danger py-1 small mb-2"><i class="fas fa-exclamation-triangle me-1"></i>Poids des programmes : {{ sum_prog.v | pct_nat }}% — ⚠ La somme doit être égale à 100%</div>
+  {% endif %}
+{% endif %}
 
 {# ── Tableau PAI ─────────────────────────────────────────────────────────── #}
 <style>
@@ -66,7 +80,7 @@
   </colgroup>
   <thead style="position:sticky; top:0; z-index:5;">
     <tr style="background:#BDD7EE; color:#000; text-align:center; font-weight:700; font-size:.68rem;">
-      <th rowspan="2" style="background:#BDD7EE;">Code</th>
+      <th rowspan="2" style="background:#BDD7EE;">Code PAI</th>
       <th rowspan="2" style="background:#BDD7EE;">Programmes / Projets / Activités</th>
       <th rowspan="2" style="background:#BDD7EE;">Localisation</th>
       <th rowspan="2" style="background:#BDD7EE;">Poids<br>(%)</th>
@@ -74,7 +88,7 @@
       <th rowspan="2" style="background:#BDD7EE;">Période<br>d'exéc.</th>
       <th rowspan="2" style="background:#BDD7EE;">Struct.<br>Resp.</th>
       <th rowspan="2" style="background:#BDD7EE;">Structures associées</th>
-      <th colspan="5" style="background:#BDD7EE;">Sources de Financement (en F CFA)</th>
+      <th colspan="5" style="background:#BDD7EE;">Sources de Financement (en milliers de F CFA)</th>
       <th rowspan="2" style="background:#BDD7EE;">Observations</th>
       {% if can_edit %}<th rowspan="2" style="background:#BDD7EE;">Actions</th>{% endif %}
     </tr>
@@ -90,34 +104,95 @@
 
   {% for pg_d in pai_data %}
     {% set pg = pg_d.programme %}
+    {% set pn = pg_d.prog_num %}
+    {% set extra_pg = pg.pai_extra_prog %}
+
+    {# ── Bannière poids projets de ce programme ── #}
+    {# Calculée inline via namespace #}
+    {% set sum_pj_poids = namespace(v=0.0) %}
+    {% for pj_d2 in pg_d.projets %}
+      {% set ep2 = pj_d2.projet.pai_extra_proj %}
+      {% set sum_pj_poids.v = sum_pj_poids.v + (ep2.poids_pai if ep2 and ep2.poids_pai else 0) %}
+    {% endfor %}
+
     {# ── Ligne Programme ── #}
     <tr id="row-prog-{{ pg.id }}" style="background:#F4B183; font-weight:700; border-top:2px solid #aaa;">
-      <td class="text-center">{{ pg.numero }}</td>
-      <td colspan="{{ 14 if can_edit else 13 }}">
-        Programme {{ pg.numero }} : {{ pg.nom }}
+      <td class="text-center">{{ pn }}</td>
+      <td colspan="2">Programme {{ pn }} : {{ pg.nom }}</td>
+      <td class="text-center" id="poids-prog-{{ pg.id }}">
+        {%- if extra_pg and extra_pg.poids_pai -%}
+          {{ extra_pg.poids_pai | pct_nat }}%
+        {%- else -%}—{%- endif -%}
       </td>
+      <td colspan="{{ 11 if can_edit else 10 }}">
+        {% if sum_pj_poids.v > 0 %}
+          {% if (sum_pj_poids.v - 100)|abs < 0.01 %}
+            <span class="badge bg-success" style="font-size:.6rem;">✓ Poids projets = 100%</span>
+          {% else %}
+            <span class="badge bg-danger" style="font-size:.6rem;">⚠ Poids projets = {{ sum_pj_poids.v | pct_nat }}%</span>
+          {% endif %}
+        {% endif %}
+      </td>
+      {% if can_edit %}
+      <td class="text-center">
+        <button class="btn btn-warning" style="font-size:.6rem; padding:1px 4px;"
+                onclick="openEditProg({{ pg.id }}, {{ pn }})" title="Modifier poids programme">
+          <i class="fas fa-edit"></i>
+        </button>
+      </td>
+      {% endif %}
     </tr>
 
     {% set pg_tot = namespace(fp=0.0, fadec=0.0, ptfs=0.0, total=0.0) %}
 
     {% for pj_d in pg_d.projets %}
       {% set pj = pj_d.projet %}
+      {% set pjn = pj_d.proj_num %}
+      {% set extra_pj = pj.pai_extra_proj %}
+
+      {# ── Bannière poids activités de ce projet ── #}
+      {% set sum_act_poids = namespace(v=0.0) %}
+      {% for a2 in pj_d.activites %}
+        {% set ea2 = a2.pai_extra %}
+        {% set sum_act_poids.v = sum_act_poids.v + (ea2.poids_pai if ea2 and ea2.poids_pai else 0) %}
+      {% endfor %}
+
       {# ── Ligne Projet ── #}
       <tr style="background:#FFFF00; font-weight:700;">
-        <td class="text-center">{{ pj.code }}</td>
-        <td colspan="{{ 14 if can_edit else 13 }}">
-          Projet {{ pj.code }} : {{ pj.nom }}
+        <td class="text-center">{{ pn }}.{{ pjn }}</td>
+        <td colspan="2">Projet {{ pn }}.{{ pjn }} : {{ pj.nom }}</td>
+        <td class="text-center" id="poids-proj-{{ pj.id }}">
+          {%- if extra_pj and extra_pj.poids_pai -%}
+            {{ extra_pj.poids_pai | pct_nat }}%
+          {%- else -%}—{%- endif -%}
         </td>
+        <td colspan="{{ 11 if can_edit else 10 }}">
+          {% if sum_act_poids.v > 0 %}
+            {% if (sum_act_poids.v - 100)|abs < 0.01 %}
+              <span class="badge bg-success" style="font-size:.6rem;">✓ Poids activités = 100%</span>
+            {% else %}
+              <span class="badge bg-danger" style="font-size:.6rem;">⚠ Poids activités = {{ sum_act_poids.v | pct_nat }}%</span>
+            {% endif %}
+          {% endif %}
+        </td>
+        {% if can_edit %}
+        <td class="text-center">
+          <button class="btn btn-warning" style="font-size:.6rem; padding:1px 4px;"
+                  onclick="openEditProj({{ pj.id }}, '{{ pn }}.{{ pjn }}')" title="Modifier poids projet">
+            <i class="fas fa-edit"></i>
+          </button>
+        </td>
+        {% endif %}
       </tr>
 
       {% set pj_tot = namespace(fp=0.0, fadec=0.0, ptfs=0.0, total=0.0) %}
 
       {% for act in pj_d.activites %}
         {% set extra = act.pai_extra %}
-        {% set a_fp    = act.src_rp %}
-        {% set a_fadec = act.src_fa + act.src_fn %}
-        {% set a_ptfs  = act.src_ap + act.src_af %}
-        {% set a_total = act.budget_total %}
+        {% set a_fp    = act.src_rp / 1000 %}
+        {% set a_fadec = (act.src_fa + act.src_fn) / 1000 %}
+        {% set a_ptfs  = (act.src_ap + act.src_af) / 1000 %}
+        {% set a_total = act.budget_total / 1000 %}
         {% set pj_tot.fp    = pj_tot.fp    + a_fp %}
         {% set pj_tot.fadec = pj_tot.fadec + a_fadec %}
         {% set pj_tot.ptfs  = pj_tot.ptfs  + a_ptfs %}
@@ -138,7 +213,7 @@
         {% for s in act.services_intervenants %}{% if assoc.append(s.code) %}{% endif %}{% endfor %}
 
         <tr style="background:#C5DEB5;" data-act-id="{{ act.id }}">
-          <td class="text-center">{{ act.code }}</td>
+          <td class="text-center">{{ pn }}.{{ pjn }}.{{ loop.index }}</td>
           <td>{{ act.nom }}</td>
           <td class="act-loc">{{ extra.localisation if extra and extra.localisation else '' }}</td>
           <td class="text-center act-pds">
@@ -177,7 +252,7 @@
 
       {# ── Sous-total Projet ── #}
       <tr style="background:#EAF0FB; font-weight:700; font-style:italic;">
-        <td colspan="8" class="text-end">Sous-Total {{ pj.code }}</td>
+        <td colspan="8" class="text-end">Sous-Total {{ pn }}.{{ pjn }}</td>
         <td class="text-end">{{ pj_tot.fp    | fcfa }}</td>
         <td></td>
         <td class="text-end">{{ pj_tot.fadec | fcfa }}</td>
@@ -190,7 +265,7 @@
 
     {# ── Total Programme ── #}
     <tr style="background:#AED6F1; font-weight:700;">
-      <td colspan="8" class="text-end">Total Programme {{ pg.numero }}</td>
+      <td colspan="8" class="text-end">Total Programme {{ pn }}</td>
       <td class="text-end">{{ pg_tot.fp    | fcfa }}</td>
       <td></td>
       <td class="text-end">{{ pg_tot.fadec | fcfa }}</td>
@@ -204,20 +279,25 @@
   {# ── Total PAI ── #}
   <tr style="background:#1a3a5c; color:#fff; font-weight:700;">
     <td colspan="8" class="text-end">TOTAL PAI {{ annee.annee }}</td>
-    <td class="text-end" style="color:#fff;">{{ total_fp     | fcfa }}</td>
+    <td class="text-end" style="color:#fff;">{{ (total_fp / 1000)     | fcfa }}</td>
     <td></td>
-    <td class="text-end" style="color:#fff;">{{ total_fadec  | fcfa }}</td>
-    <td class="text-end" style="color:#fff;">{{ total_ptfs   | fcfa }}</td>
-    <td class="text-end" style="color:#fff;">{{ total_global | fcfa }}</td>
+    <td class="text-end" style="color:#fff;">{{ (total_fadec / 1000)  | fcfa }}</td>
+    <td class="text-end" style="color:#fff;">{{ (total_ptfs / 1000)   | fcfa }}</td>
+    <td class="text-end" style="color:#fff;">{{ (total_global / 1000) | fcfa }}</td>
     <td></td>
     {% if can_edit %}<td></td>{% endif %}
   </tr>
   </tbody>
 </table>
 </div><!-- /paiContainer -->
+
+<div class="text-muted small mt-1">
+  <i class="fas fa-info-circle me-1"></i>Montants en milliers de F CFA &nbsp;|&nbsp;
+  FP = Fonds Propres &nbsp;|&nbsp; FADeC = Fonds d'Appui au Développement des Communes &nbsp;|&nbsp; PTFs = Partenaires Techniques et Financiers
+</div>
 {% endif %}
 
-{# ═══ Modal d'édition PAI (admin éditeur seulement) ═══ #}
+{# ═══ Modal édition activité PAI ═══ #}
 {% if can_edit %}
 <div class="modal fade" id="editPaiModal" tabindex="-1" aria-labelledby="editPaiLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg">
@@ -236,8 +316,7 @@
 
           <div class="alert alert-info py-2 small mb-3">
             <i class="fas fa-info-circle me-1"></i>
-            Les montants et structures viennent automatiquement du PTA.
-            Vous pouvez saisir ici : <strong>Localisation, Poids, Indicateurs, FADeC (libellé) et Observations</strong>.
+            Les montants et structures viennent automatiquement du PTA. Le poids est initialement importé du PTA, vous pouvez le modifier.
           </div>
 
           <div class="row g-3">
@@ -284,6 +363,68 @@
     </div>
   </div>
 </div>
+
+{# ═══ Modal édition poids Programme ═══ #}
+<div class="modal fade" id="editProgModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header" style="background:#F4B183;">
+        <h5 class="modal-title fw-bold">Poids Programme <span id="modal-prog-num"></span></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="editProgForm" onsubmit="saveProgEdit(event)">
+        <div class="modal-body">
+          <input type="hidden" id="edit-prog-id">
+          <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+          <label class="form-label fw-bold">Poids (%)</label>
+          <div class="input-group">
+            <input type="number" class="form-control" id="ep-prog-poids"
+                   name="poids_pai" step="0.01" min="0" max="100" placeholder="0,00">
+            <span class="input-group-text">%</span>
+          </div>
+          <div id="ep-prog-status" class="text-danger small mt-2" hidden></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-sm btn-success" id="ep-prog-save-btn">
+            <i class="fas fa-save me-1"></i>Enregistrer
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{# ═══ Modal édition poids Projet ═══ #}
+<div class="modal fade" id="editProjModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header" style="background:#FFFF00;">
+        <h5 class="modal-title fw-bold">Poids Projet <span id="modal-proj-num"></span></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="editProjForm" onsubmit="saveProjEdit(event)">
+        <div class="modal-body">
+          <input type="hidden" id="edit-proj-id">
+          <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+          <label class="form-label fw-bold">Poids (%)</label>
+          <div class="input-group">
+            <input type="number" class="form-control" id="ep-proj-poids"
+                   name="poids_pai" step="0.01" min="0" max="100" placeholder="0,00">
+            <span class="input-group-text">%</span>
+          </div>
+          <div id="ep-proj-status" class="text-danger small mt-2" hidden></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-sm btn-success" id="ep-proj-save-btn">
+            <i class="fas fa-save me-1"></i>Enregistrer
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
 {% endif %}
 {% endblock %}
 
@@ -294,9 +435,10 @@
 const PAI_EXTRA = {
 {% for pg_d in pai_data %}{% for pj_d in pg_d.projets %}{% for act in pj_d.activites %}
   {{ act.id }}: {
-    code:            {{ act.code | tojson }},
+    code:            {{ (pg_d.prog_num ~ '.' ~ pj_d.proj_num ~ '.' ~ loop.index) | tojson }},
+    pta_poids:       {{ act.poids or 0 }},
     localisation:    {{ (act.pai_extra.localisation or '')     | tojson if act.pai_extra else '""' }},
-    poids_pai:       {{ act.pai_extra.poids_pai                          if act.pai_extra else 0    }},
+    poids_pai:       {{ act.pai_extra.poids_pai                          if act.pai_extra else act.poids or 0 }},
     indicateurs:     {{ (act.pai_extra.indicateurs or '')      | tojson if act.pai_extra else '""' }},
     fadec_type:      {{ (act.pai_extra.fadec_type or '')       | tojson if act.pai_extra else '""' }},
     observations_pai:{{ (act.pai_extra.observations_pai or '') | tojson if act.pai_extra else '""' }},
@@ -304,12 +446,25 @@ const PAI_EXTRA = {
 {% endfor %}{% endfor %}{% endfor %}
 };
 
+const PAI_PROG = {
+{% for pg_d in pai_data %}
+  {{ pg_d.programme.id }}: {{ (pg_d.programme.pai_extra_prog.poids_pai if pg_d.programme.pai_extra_prog else 0) }},
+{% endfor %}
+};
+
+const PAI_PROJ = {
+{% for pg_d in pai_data %}{% for pj_d in pg_d.projets %}
+  {{ pj_d.projet.id }}: {{ (pj_d.projet.pai_extra_proj.poids_pai if pj_d.projet.pai_extra_proj else 0) }},
+{% endfor %}{% endfor %}
+};
+
+/* ── Modal activité ── */
 function openEditPai(actId) {
   const d = PAI_EXTRA[actId] || {};
   document.getElementById('modal-act-code').textContent = d.code || actId;
   document.getElementById('edit-pai-id').value          = actId;
   document.getElementById('ep-localisation').value      = d.localisation    || '';
-  document.getElementById('ep-poids').value             = d.poids_pai       || '';
+  document.getElementById('ep-poids').value             = d.poids_pai !== undefined ? d.poids_pai : (d.pta_poids || '');
   document.getElementById('ep-indicateurs').value       = d.indicateurs     || '';
   document.getElementById('ep-fadec-type').value        = d.fadec_type      || '';
   document.getElementById('ep-observations').value      = d.observations_pai || '';
@@ -323,26 +478,23 @@ async function savePaiEdit(e) {
   const btn    = document.getElementById('ep-save-btn');
   const status = document.getElementById('ep-status');
   const fd     = new FormData(form);
-  const actId  = fd.get('activite_id');
+  const actId  = document.getElementById('edit-pai-id').value;
 
-  btn.disabled    = true;
-  btn.innerHTML   = '<i class="fas fa-spinner fa-spin me-1"></i>Enregistrement…';
-  status.hidden   = true;
+  btn.disabled  = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Enregistrement…';
+  status.hidden = true;
 
   try {
     const resp = await fetch(`/pai/edit/${actId}`, { method: 'POST', body: fd });
     const data = await resp.json();
     if (data.ok) {
-      /* Mettre à jour le cache local */
-      PAI_EXTRA[actId] = {
-        code:            PAI_EXTRA[actId]?.code || actId,
+      PAI_EXTRA[actId] = Object.assign(PAI_EXTRA[actId] || {}, {
         localisation:    fd.get('localisation'),
         poids_pai:       parseFloat(fd.get('poids_pai') || 0),
         indicateurs:     fd.get('indicateurs'),
         fadec_type:      fd.get('fadec_type'),
         observations_pai:fd.get('observations_pai'),
-      };
-      /* Mettre à jour les cellules de la ligne */
+      });
       const row = document.querySelector(`tr[data-act-id="${actId}"]`);
       if (row) {
         row.querySelector('.act-loc').textContent   = fd.get('localisation')  || '';
@@ -360,6 +512,86 @@ async function savePaiEdit(e) {
   } catch (err) {
     status.textContent = 'Erreur réseau : ' + err.message;
     status.hidden = false;
+  } finally {
+    btn.disabled  = false;
+    btn.innerHTML = '<i class="fas fa-save me-1"></i>Enregistrer';
+  }
+}
+
+/* ── Modal programme ── */
+function openEditProg(progId, progNum) {
+  document.getElementById('modal-prog-num').textContent = progNum;
+  document.getElementById('edit-prog-id').value         = progId;
+  document.getElementById('ep-prog-poids').value        = PAI_PROG[progId] || '';
+  document.getElementById('ep-prog-status').hidden      = true;
+  new bootstrap.Modal(document.getElementById('editProgModal')).show();
+}
+
+async function saveProgEdit(e) {
+  e.preventDefault();
+  const progId = document.getElementById('edit-prog-id').value;
+  const btn    = document.getElementById('ep-prog-save-btn');
+  const status = document.getElementById('ep-prog-status');
+  const fd     = new FormData(document.getElementById('editProgForm'));
+
+  btn.disabled  = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>';
+  status.hidden = true;
+
+  try {
+    const resp = await fetch(`/pai/edit_prog/${progId}`, { method: 'POST', body: fd });
+    const data = await resp.json();
+    if (data.ok) {
+      const pds = parseFloat(fd.get('poids_pai') || 0);
+      PAI_PROG[progId] = pds;
+      const cell = document.getElementById(`poids-prog-${progId}`);
+      if (cell) cell.textContent = pds ? pds + '%' : '—';
+      bootstrap.Modal.getInstance(document.getElementById('editProgModal')).hide();
+    } else {
+      status.textContent = "Erreur."; status.hidden = false;
+    }
+  } catch (err) {
+    status.textContent = 'Erreur réseau.'; status.hidden = false;
+  } finally {
+    btn.disabled  = false;
+    btn.innerHTML = '<i class="fas fa-save me-1"></i>Enregistrer';
+  }
+}
+
+/* ── Modal projet ── */
+function openEditProj(projId, projNum) {
+  document.getElementById('modal-proj-num').textContent = projNum;
+  document.getElementById('edit-proj-id').value         = projId;
+  document.getElementById('ep-proj-poids').value        = PAI_PROJ[projId] || '';
+  document.getElementById('ep-proj-status').hidden      = true;
+  new bootstrap.Modal(document.getElementById('editProjModal')).show();
+}
+
+async function saveProjEdit(e) {
+  e.preventDefault();
+  const projId = document.getElementById('edit-proj-id').value;
+  const btn    = document.getElementById('ep-proj-save-btn');
+  const status = document.getElementById('ep-proj-status');
+  const fd     = new FormData(document.getElementById('editProjForm'));
+
+  btn.disabled  = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>';
+  status.hidden = true;
+
+  try {
+    const resp = await fetch(`/pai/edit_proj/${projId}`, { method: 'POST', body: fd });
+    const data = await resp.json();
+    if (data.ok) {
+      const pds = parseFloat(fd.get('poids_pai') || 0);
+      PAI_PROJ[projId] = pds;
+      const cell = document.getElementById(`poids-proj-${projId}`);
+      if (cell) cell.textContent = pds ? pds + '%' : '—';
+      bootstrap.Modal.getInstance(document.getElementById('editProjModal')).hide();
+    } else {
+      status.textContent = "Erreur."; status.hidden = false;
+    }
+  } catch (err) {
+    status.textContent = 'Erreur réseau.'; status.hidden = false;
   } finally {
     btn.disabled  = false;
     btn.innerHTML = '<i class="fas fa-save me-1"></i>Enregistrer';

@@ -168,6 +168,7 @@ class Activite(db.Model):
     mode_execution = db.Column(db.String(100), nullable=True, default='Direct')
     type_activite = db.Column(db.String(50), nullable=False, default='Activité de fonctionnement')
     poids = db.Column(db.Float, default=0.0)
+    inclure_dans_pai = db.Column(db.Boolean, default=True)
     observations = db.Column(db.Text, nullable=True)
 
     direction_responsable = db.relationship('Direction', foreign_keys=[direction_responsable_id])
@@ -513,15 +514,34 @@ BiblioTache.structures_externes = db.relationship(
 # ─── PAI – Champs complémentaires des activités d'investissement ──────────────
 
 class PaiActivite(db.Model):
-    """Champs PAI saisis manuellement par l'admin pour chaque activité d'investissement du PTA.
-    Les données financières et structurelles viennent directement de la table activites."""
+    """Champs PAI saisis manuellement par l'admin pour chaque activité d'investissement du PTA."""
     __tablename__ = 'pai_activites'
     id               = db.Column(db.Integer, primary_key=True)
     activite_id      = db.Column(db.Integer, db.ForeignKey('activites.id'), nullable=False, unique=True)
     localisation     = db.Column(db.Text,        nullable=True)
     poids_pai        = db.Column(db.Float,        default=0.0)   # en % direct (5.0 = 5 %)
     indicateurs      = db.Column(db.Text,        nullable=True)
-    fadec_type       = db.Column(db.String(300), nullable=True)   # libellé de la ligne FADeC
+    fadec_type       = db.Column(db.String(300), nullable=True)
     observations_pai = db.Column(db.Text,        nullable=True)
 
     activite = db.relationship('Activite', backref=db.backref('pai_extra', uselist=False))
+
+
+class PaiProgramme(db.Model):
+    """Poids PAI d'un programme (modifiable par l'admin)."""
+    __tablename__ = 'pai_programmes'
+    id           = db.Column(db.Integer, primary_key=True)
+    programme_id = db.Column(db.Integer, db.ForeignKey('programmes.id'), nullable=False, unique=True)
+    poids_pai    = db.Column(db.Float, default=0.0)
+
+    programme = db.relationship('Programme', backref=db.backref('pai_extra_prog', uselist=False))
+
+
+class PaiProjet(db.Model):
+    """Poids PAI d'un projet (modifiable par l'admin)."""
+    __tablename__ = 'pai_projets'
+    id        = db.Column(db.Integer, primary_key=True)
+    projet_id = db.Column(db.Integer, db.ForeignKey('projets.id'), nullable=False, unique=True)
+    poids_pai = db.Column(db.Float, default=0.0)
+
+    projet = db.relationship('Projet', backref=db.backref('pai_extra_proj', uselist=False))

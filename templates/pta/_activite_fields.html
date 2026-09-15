@@ -104,14 +104,38 @@
       <input class="form-check-input" type="radio" name="type_activite"
              id="ta_fonct_{{ uid }}" value="Activité de fonctionnement"
              {% if not act or act.type_activite == 'Activité de fonctionnement' %}checked{% endif %}
-             required>
+             required onchange="togglePaiQuestion(this)">
       <label class="form-check-label" for="ta_fonct_{{ uid }}">Activité de fonctionnement</label>
     </div>
     <div class="form-check">
       <input class="form-check-input" type="radio" name="type_activite"
              id="ta_invest_{{ uid }}" value="Activité d'investissement"
-             {% if act and act.type_activite == "Activité d'investissement" %}checked{% endif %}>
+             {% if act and act.type_activite == "Activité d'investissement" %}checked{% endif %}
+             onchange="togglePaiQuestion(this)">
       <label class="form-check-label" for="ta_invest_{{ uid }}">Activité d'investissement</label>
+    </div>
+  </div>
+</div>
+
+{# ── Question PAI (visible seulement pour investissement) ── #}
+<div class="col-12" id="pai_question_{{ uid }}"
+     {% if not (act and act.type_activite == "Activité d'investissement") %}style="display:none;"{% endif %}>
+  <div class="alert alert-warning py-2 mb-0 d-flex align-items-center gap-3">
+    <i class="fas fa-map-marked-alt text-warning fs-5"></i>
+    <div>
+      <strong>Ajouter cette activité au PAI ?</strong>
+      <div class="form-check form-check-inline ms-3">
+        <input class="form-check-input" type="radio" name="inclure_dans_pai"
+               id="pai_oui_{{ uid }}" value="oui"
+               {% if not act or act.inclure_dans_pai is none or act.inclure_dans_pai %}checked{% endif %}>
+        <label class="form-check-label fw-semibold text-success" for="pai_oui_{{ uid }}">Oui</label>
+      </div>
+      <div class="form-check form-check-inline">
+        <input class="form-check-input" type="radio" name="inclure_dans_pai"
+               id="pai_non_{{ uid }}" value="non"
+               {% if act and act.inclure_dans_pai == false %}checked{% endif %}>
+        <label class="form-check-label fw-semibold text-danger" for="pai_non_{{ uid }}">Non</label>
+      </div>
     </div>
   </div>
 </div>
@@ -319,6 +343,11 @@ function toggleStructMode(uid) {
   var sel = document.getElementById('struct_mode_' + uid);
   var manual = document.getElementById('struct_manual_' + uid);
   if (manual) manual.style.display = (sel.value === 'manuel') ? '' : 'none';
+}
+function togglePaiQuestion(radio) {
+  var uid = radio.id.replace('ta_invest_', '').replace('ta_fonct_', '');
+  var paiQ = document.getElementById('pai_question_' + uid);
+  if (paiQ) paiQ.style.display = (radio.value === "Activité d'investissement") ? '' : 'none';
 }
 function filterBiblioSel(input, selId) {
   var filter = input.value.toLowerCase();

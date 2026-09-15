@@ -126,7 +126,7 @@
   <h1>Plan Annuel d'Investissement (PAI) {{ annee.annee if annee }}</h1>
   <h2>Commune d'Adja-Ouèrè — Département du Plateau</h2>
   <div class="montant-total">
-    Montant total : {{ total_global | fcfa }} F CFA
+    Montant total : {{ (total_global / 1000) | fcfa }} milliers de F CFA
   </div>
 </div>
 
@@ -142,7 +142,7 @@
       <th class="col-per"  rowspan="2">Période<br>d'exéc.</th>
       <th class="col-resp" rowspan="2">Struct.<br>Resp.</th>
       <th class="col-assoc" rowspan="2">Structures associées</th>
-      <th colspan="5">Sources de Financement (en F CFA)</th>
+      <th colspan="5">Sources de Financement (en milliers de F CFA)</th>
       <th class="col-obs"  rowspan="2">Observations</th>
     </tr>
     <tr>
@@ -163,28 +163,42 @@
 
   {% for pg_d in pai_data %}
     {% set pg = pg_d.programme %}
+    {% set pn = pg_d.prog_num %}
+    {% set extra_pg = pg.pai_extra_prog %}
     <tr class="prog">
-      <td class="num col-code">{{ pg.numero }}</td>
-      <td colspan="13">Programme {{ pg.numero }} : {{ pg.nom }}</td>
+      <td class="num col-code">{{ pn }}</td>
+      <td class="col-nom">Programme {{ pn }} : {{ pg.nom }}</td>
+      <td class="col-loc"></td>
+      <td class="pct col-pds">
+        {%- if extra_pg and extra_pg.poids_pai -%}{{ extra_pg.poids_pai | pct_nat }}%{%- else -%}—{%- endif -%}
+      </td>
+      <td colspan="10"></td>
     </tr>
 
     {% set pg_tot = namespace(fp=0.0, fadec=0.0, ptfs=0.0, total=0.0) %}
 
     {% for pj_d in pg_d.projets %}
       {% set pj = pj_d.projet %}
+      {% set pjn = pj_d.proj_num %}
+      {% set extra_pj = pj.pai_extra_proj %}
       <tr class="proj">
-        <td class="num col-code">{{ pj.code }}</td>
-        <td colspan="13">Projet {{ pj.code }} : {{ pj.nom }}</td>
+        <td class="num col-code">{{ pn }}.{{ pjn }}</td>
+        <td class="col-nom">Projet {{ pn }}.{{ pjn }} : {{ pj.nom }}</td>
+        <td class="col-loc"></td>
+        <td class="pct col-pds">
+          {%- if extra_pj and extra_pj.poids_pai -%}{{ extra_pj.poids_pai | pct_nat }}%{%- else -%}—{%- endif -%}
+        </td>
+        <td colspan="10"></td>
       </tr>
 
       {% set pj_tot = namespace(fp=0.0, fadec=0.0, ptfs=0.0, total=0.0) %}
 
       {% for act in pj_d.activites %}
         {% set extra = act.pai_extra %}
-        {% set a_fp    = act.src_rp %}
-        {% set a_fadec = act.src_fa + act.src_fn %}
-        {% set a_ptfs  = act.src_ap + act.src_af %}
-        {% set a_total = act.budget_total %}
+        {% set a_fp    = act.src_rp / 1000 %}
+        {% set a_fadec = (act.src_fa + act.src_fn) / 1000 %}
+        {% set a_ptfs  = (act.src_ap + act.src_af) / 1000 %}
+        {% set a_total = act.budget_total / 1000 %}
         {% set pj_tot.fp    = pj_tot.fp    + a_fp %}
         {% set pj_tot.fadec = pj_tot.fadec + a_fadec %}
         {% set pj_tot.ptfs  = pj_tot.ptfs  + a_ptfs %}
@@ -203,7 +217,7 @@
         {% for s in act.services_intervenants %}{% if assoc.append(s.code) %}{% endif %}{% endfor %}
 
         <tr class="act">
-          <td class="num col-code">{{ act.code }}</td>
+          <td class="num col-code">{{ pn }}.{{ pjn }}.{{ loop.index }}</td>
           <td class="col-nom">{{ act.nom }}</td>
           <td class="col-loc">{{ extra.localisation if extra and extra.localisation else '' }}</td>
           <td class="pct col-pds">
@@ -232,7 +246,7 @@
       {% set pg_tot.total = pg_tot.total + pj_tot.total %}
 
       <tr class="stotal">
-        <td colspan="8" style="text-align:right;">Sous-Total {{ pj.code }}</td>
+        <td colspan="8" style="text-align:right;">Sous-Total {{ pn }}.{{ pjn }}</td>
         <td class="mnt">{{ pj_tot.fp    | fcfa }}</td>
         <td></td>
         <td class="mnt">{{ pj_tot.fadec | fcfa }}</td>
@@ -243,7 +257,7 @@
     {% endfor %}
 
     <tr class="total">
-      <td colspan="8" style="text-align:right;">Total Programme {{ pg.numero }}</td>
+      <td colspan="8" style="text-align:right;">Total Programme {{ pn }}</td>
       <td class="mnt">{{ pg_tot.fp    | fcfa }}</td>
       <td></td>
       <td class="mnt">{{ pg_tot.fadec | fcfa }}</td>
@@ -255,11 +269,11 @@
 
   <tr class="grand">
     <td colspan="8" style="text-align:right;">TOTAL PAI {{ annee.annee if annee }}</td>
-    <td class="mnt">{{ total_fp     | fcfa }}</td>
+    <td class="mnt">{{ (total_fp / 1000)     | fcfa }}</td>
     <td></td>
-    <td class="mnt">{{ total_fadec  | fcfa }}</td>
-    <td class="mnt">{{ total_ptfs   | fcfa }}</td>
-    <td class="mnt">{{ total_global | fcfa }}</td>
+    <td class="mnt">{{ (total_fadec / 1000)  | fcfa }}</td>
+    <td class="mnt">{{ (total_ptfs / 1000)   | fcfa }}</td>
+    <td class="mnt">{{ (total_global / 1000) | fcfa }}</td>
     <td></td>
   </tr>
   </tbody>
@@ -267,7 +281,7 @@
 
 <div class="legende">
   FP = Fonds Propres &nbsp;|&nbsp; FADeC = Fonds d'Appui au Développement des Communes &nbsp;|&nbsp; PTFs = Partenaires Techniques et Financiers
-  &nbsp;&nbsp;—&nbsp;&nbsp; Montants en F CFA
+  &nbsp;&nbsp;—&nbsp;&nbsp; Montants en milliers de F CFA
 </div>
 
 </body>

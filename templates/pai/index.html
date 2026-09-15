@@ -277,13 +277,13 @@
   {% endfor %}
 
   {# ── Total PAI ── #}
-  <tr style="background:#1a3a5c; color:#fff; font-weight:700;">
+  <tr style="background:#1a3a5c; color:#000; font-weight:700;">
     <td colspan="8" class="text-end">TOTAL PAI {{ annee.annee }}</td>
-    <td class="text-end" style="color:#fff;">{{ (total_fp / 1000)     | fcfa }}</td>
+    <td class="text-end">{{ (total_fp / 1000)     | fcfa }}</td>
     <td></td>
-    <td class="text-end" style="color:#fff;">{{ (total_fadec / 1000)  | fcfa }}</td>
-    <td class="text-end" style="color:#fff;">{{ (total_ptfs / 1000)   | fcfa }}</td>
-    <td class="text-end" style="color:#fff;">{{ (total_global / 1000) | fcfa }}</td>
+    <td class="text-end">{{ (total_fadec / 1000)  | fcfa }}</td>
+    <td class="text-end">{{ (total_ptfs / 1000)   | fcfa }}</td>
+    <td class="text-end">{{ (total_global / 1000) | fcfa }}</td>
     <td></td>
     {% if can_edit %}<td></td>{% endif %}
   </tr>

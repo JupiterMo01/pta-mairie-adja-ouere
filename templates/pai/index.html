@@ -35,18 +35,16 @@
 </div>
 {% else %}
 
-{# ── Bannières de validation des poids ─────────────────────────────────── #}
+{# ── Bannière de validation poids des programmes ─────────────────────────── #}
 {% set sum_prog = namespace(v=0.0) %}
 {% for pg_d in pai_data %}
   {% set ep = pg_d.programme.pai_extra_prog %}
   {% set sum_prog.v = sum_prog.v + (ep.poids_pai if ep and ep.poids_pai else 0) %}
 {% endfor %}
-{% if sum_prog.v > 0 %}
-  {% if (sum_prog.v - 100)|abs < 0.01 %}
-  <div class="alert alert-success py-1 small mb-2"><i class="fas fa-check-circle me-1"></i>Poids des programmes : {{ sum_prog.v | pct_nat }}% — ✓ Total = 100%</div>
-  {% else %}
-  <div class="alert alert-danger py-1 small mb-2"><i class="fas fa-exclamation-triangle me-1"></i>Poids des programmes : {{ sum_prog.v | pct_nat }}% — ⚠ La somme doit être égale à 100%</div>
-  {% endif %}
+{% if (sum_prog.v - 100)|abs < 0.01 %}
+<div class="alert alert-success py-1 small mb-2"><i class="fas fa-check-circle me-1"></i>Poids des programmes : {{ sum_prog.v | pct_nat }}% — ✓ Total = 100%</div>
+{% else %}
+<div class="alert alert-danger py-1 small mb-2"><i class="fas fa-exclamation-triangle me-1"></i>Poids des programmes : {{ sum_prog.v | pct_nat }}% — ⚠ La somme doit être égale à 100%</div>
 {% endif %}
 
 {# ── Tableau PAI ─────────────────────────────────────────────────────────── #}
@@ -125,12 +123,10 @@
         {%- else -%}—{%- endif -%}
       </td>
       <td colspan="10">
-        {% if sum_pj_poids.v > 0 %}
-          {% if (sum_pj_poids.v - 100)|abs < 0.01 %}
-            <span class="badge bg-success" style="font-size:.6rem;">✓ Poids projets = 100%</span>
-          {% else %}
-            <span class="badge bg-danger" style="font-size:.6rem;">⚠ Poids projets = {{ sum_pj_poids.v | pct_nat }}%</span>
-          {% endif %}
+        {% if (sum_pj_poids.v - 100)|abs < 0.01 %}
+          <span class="badge bg-success" style="font-size:.6rem;">✓ Poids projets = 100%</span>
+        {% else %}
+          <span class="badge bg-danger" style="font-size:.6rem;">⚠ Poids projets = {{ sum_pj_poids.v | pct_nat }}%</span>
         {% endif %}
       </td>
       {% if can_edit %}
@@ -167,12 +163,10 @@
           {%- else -%}—{%- endif -%}
         </td>
         <td colspan="10">
-          {% if sum_act_poids.v > 0 %}
-            {% if (sum_act_poids.v - 100)|abs < 0.01 %}
-              <span class="badge bg-success" style="font-size:.6rem;">✓ Poids activités = 100%</span>
-            {% else %}
-              <span class="badge bg-danger" style="font-size:.6rem;">⚠ Poids activités = {{ sum_act_poids.v | pct_nat }}%</span>
-            {% endif %}
+          {% if (sum_act_poids.v - 100)|abs < 0.01 %}
+            <span class="badge bg-success" style="font-size:.6rem;">✓ Poids activités = 100%</span>
+          {% else %}
+            <span class="badge bg-danger" style="font-size:.6rem;">⚠ Poids activités = {{ sum_act_poids.v | pct_nat }}%</span>
           {% endif %}
         </td>
         {% if can_edit %}
@@ -469,7 +463,7 @@ function openEditPai(actId) {
   document.getElementById('ep-fadec-type').value        = d.fadec_type      || '';
   document.getElementById('ep-observations').value      = d.observations_pai || '';
   document.getElementById('ep-status').hidden           = true;
-  new bootstrap.Modal(document.getElementById('editPaiModal')).show();
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('editPaiModal')).show();
 }
 
 async function savePaiEdit(e) {
@@ -524,7 +518,7 @@ function openEditProg(progId, progNum) {
   document.getElementById('edit-prog-id').value         = progId;
   document.getElementById('ep-prog-poids').value        = PAI_PROG[progId] || '';
   document.getElementById('ep-prog-status').hidden      = true;
-  new bootstrap.Modal(document.getElementById('editProgModal')).show();
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('editProgModal')).show();
 }
 
 async function saveProgEdit(e) {
@@ -564,7 +558,7 @@ function openEditProj(projId, projNum) {
   document.getElementById('edit-proj-id').value         = projId;
   document.getElementById('ep-proj-poids').value        = PAI_PROJ[projId] || '';
   document.getElementById('ep-proj-status').hidden      = true;
-  new bootstrap.Modal(document.getElementById('editProjModal')).show();
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('editProjModal')).show();
 }
 
 async function saveProjEdit(e) {

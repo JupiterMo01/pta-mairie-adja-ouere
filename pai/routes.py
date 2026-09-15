@@ -1,5 +1,5 @@
 from flask import render_template, abort
-from flask_login import login_required
+from flask_login import login_required, current_user
 from models import db, Annee, PaiProgramme
 from pai import pai_bp
 from utils import get_annee
@@ -8,7 +8,9 @@ from utils import get_annee
 @pai_bp.route('/')
 @login_required
 def index():
-    """Affiche le PAI au nouveau format (vue écran + impression)."""
+    """Affiche le PAI au nouveau format (vue écran + impression). Admins seulement."""
+    if current_user.role not in ('admin_editeur', 'admin_lecteur'):
+        abort(403)
     annee = get_annee()
     if not annee:
         abort(404)

@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>PAI {{ annee.annee if annee }} — Mairie d'Adja-Ouèrè</title>
+<style>
+  @page {
+    size: A4 landscape;
+    margin: 1.5cm 0.8cm 2cm 0.8cm;
+    @bottom-left  { content: "Mairie d'Adja-Ouèrè — Plan Annuel d'Investissement {{ annee.annee if annee }}"; font-size:6.5pt; color:#444; font-weight:bold; }
+    @bottom-center{ content: ""; }
+    @bottom-right { content: "Page " counter(page) " / " counter(pages); font-size:6.5pt; color:#444; font-weight:bold; }
+  }
+  * { box-sizing:border-box; margin:0; padding:0;
+      -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
+  body { font-family:Arial,Helvetica,sans-serif; font-size:7pt; color:#000; background:#fff; }
+
+  /* ── Barre écran ── */
+  .screen-bar {
+    background:#1a3a5c; color:#fff; padding:9px 20px;
+    display:flex; align-items:center; gap:12px;
+  }
+  .screen-bar span { font-size:13px; font-weight:bold; flex:1; }
+  .screen-bar button {
+    padding:7px 18px; border:none; border-radius:4px;
+    cursor:pointer; font-size:13px; font-weight:bold;
+  }
+  .btn-p { background:#27ae60; color:#fff; }
+  .btn-c { background:#6c757d; color:#fff; }
+  @media print { .screen-bar { display:none !important; } }
+
+  /* ── En-tête officiel ── */
+  .entete {
+    display:flex; justify-content:space-between; align-items:center;
+    margin-bottom:5px; border-bottom:2px solid #1a3a5c; padding-bottom:5px;
+  }
+  .entete-centre { text-align:center; font-size:7.5pt; line-height:1.9; }
+  .entete-centre .pays { font-weight:bold; font-size:8.5pt; text-transform:uppercase; letter-spacing:1px; }
+  .entete-centre .devise { font-style:italic; font-size:7pt; color:#444; }
+  .entete-centre .mairie { font-weight:bold; font-size:9pt; text-transform:uppercase; }
+  .logo-placeholder {
+    width:72px; height:72px; border:1.5px solid #ccc; border-radius:4px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:6pt; color:#999; text-align:center; line-height:1.3;
+  }
+
+  /* ── Titre ── */
+  .titre-pai {
+    text-align:center; margin:6px 0 5px 0;
+    border:2.5px solid #1a3a5c; border-radius:4px;
+    padding:7px 0; background:#dbeeff;
+  }
+  .titre-pai h1 { font-size:12pt; font-weight:bold; letter-spacing:2px; text-transform:uppercase; color:#1a3a5c; }
+  .titre-pai h2 { font-size:9pt; font-weight:bold; color:#1a3a5c; margin-top:3px; }
+  .titre-pai .montant-total {
+    display:inline-block; margin-top:5px;
+    background:#1a3a5c; color:#fff; border-radius:4px;
+    padding:2px 14px; font-weight:bold; font-size:9pt;
+  }
+
+  /* ── Tableau ── */
+  table { width:100%; border-collapse:collapse; margin-top:4px; }
+  th, td {
+    border:0.6pt solid #555; padding:2px 3px;
+    vertical-align:middle; text-align:left; line-height:1.3;
+  }
+  th { text-align:center; font-size:6.5pt; background:#BDD7EE; font-weight:bold; }
+  td.num  { text-align:center; }
+  td.pct  { text-align:center; white-space:nowrap; }
+  td.mnt  { text-align:right;  white-space:nowrap; font-variant-numeric:tabular-nums; }
+  td.per  { text-align:center; white-space:nowrap; }
+
+  /* ── Lignes par niveau ── */
+  tr.prog td {
+    background:#F4B183; font-weight:bold; font-size:7.5pt;
+    text-transform:uppercase; letter-spacing:0.5px;
+  }
+  tr.proj td { background:#FFFF00; font-weight:bold; font-size:7pt; }
+  tr.act  td { background:#C5DEB5; font-size:6.8pt; }
+
+  /* ── Sous-totaux & totaux ── */
+  tr.stotal td { background:#EAF0FB; font-weight:bold; font-style:italic; font-size:6.8pt; }
+  tr.total  td { background:#AED6F1; font-weight:bold; font-size:7pt; }
+  tr.grand  td { background:#1a3a5c; color:#fff; font-weight:bold; font-size:7.5pt; }
+  tr.grand td.mnt { color:#fff; }
+
+  /* Numérotation colonnes financement */
+  .col-code  { width:4%; }
+  .col-nom   { width:20%; }
+  .col-loc   { width:7%; }
+  .col-pds   { width:4%; }
+  .col-ind   { width:13%; }
+  .col-per   { width:5%; }
+  .col-resp  { width:4%; }
+  .col-assoc { width:9%; }
+  .col-fp    { width:5%; }
+  .col-fadec { width:10%; }
+  .col-mfad  { width:6%; }
+  .col-ptfs  { width:5%; }
+  .col-tot   { width:7%; }
+  .col-obs   { width:10%; }
+
+  /* Légende bas de page (écran seulement) */
+  .legende {
+    margin-top:8px; font-size:6.5pt; color:#444;
+    border-top:1px solid #aaa; padding-top:4px;
+  }
+  @media print { .legende { display:none; } }
+</style>
+</head>
+<body>
+
+<div class="screen-bar">
+  <span>PAI {{ annee.annee if annee }} — Plan Annuel d'Investissement (Nouveau Format)</span>
+  <button class="btn-p" onclick="window.print()">🖨️ Imprimer / PDF</button>
+  <button class="btn-c" onclick="history.back()">← Retour</button>
+</div>
+
+<!-- En-tête officiel -->
+<div class="entete">
+  <div class="logo-placeholder">Logo<br>Bénin</div>
+  <div class="entete-centre">
+    <div class="pays">République du Bénin</div>
+    <div class="devise">Fraternité – Justice – Travail</div>
+    <div style="margin-top:4px;">Département du Plateau</div>
+    <div class="mairie">Mairie d'Adja-Ouèrè</div>
+  </div>
+  <div class="logo-placeholder">Logo<br>Mairie</div>
+</div>
+
+<!-- Titre -->
+<div class="titre-pai">
+  <h1>Plan Annuel d'Investissement (PAI) {{ annee.annee if annee }}</h1>
+  <h2>Commune d'Adja-Ouèrè — Département du Plateau</h2>
+  <div class="montant-total">
+    Montant total : {{ total_global | milliers }} milliers de F CFA
+  </div>
+</div>
+
+<!-- Tableau PAI -->
+<table>
+  <thead>
+    <tr>
+      <th class="col-code" rowspan="2">Code</th>
+      <th class="col-nom"  rowspan="2">Programmes / Projets / Activités</th>
+      <th class="col-loc"  rowspan="2">Localisation</th>
+      <th class="col-pds"  rowspan="2">Poids<br>(%)</th>
+      <th class="col-ind"  rowspan="2">Indicateurs</th>
+      <th class="col-per"  rowspan="2">Période<br>d'exéc.</th>
+      <th class="col-resp" rowspan="2">Struct.<br>Resp.</th>
+      <th class="col-assoc" rowspan="2">Structures associées</th>
+      <th colspan="4">Sources de Financement (en milliers de F CFA)</th>
+      <th class="col-obs"  rowspan="2">Observations</th>
+    </tr>
+    <tr>
+      <th class="col-fp">FP</th>
+      <th class="col-fadec">FADeC</th>
+      <th class="col-mfad">Montant<br>FADeC</th>
+      <th class="col-ptfs">Autres<br>PTFs</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for pg in programmes %}
+    {# ── Ligne Programme ── #}
+    <tr class="prog">
+      <td class="num col-code">{{ pg.numero }}</td>
+      <td colspan="13">Programme {{ pg.numero }} : {{ pg.nom }}</td>
+    </tr>
+
+    {% set pg_tot = namespace(fp=0, fadec=0, ptfs=0, total=0) %}
+
+    {% for pj in pg.projets %}
+      {# ── Ligne Projet ── #}
+      <tr class="proj">
+        <td class="num col-code">{{ pj.code }}</td>
+        <td colspan="12">Projet {{ pj.code }} : {{ pj.nom }}</td>
+      </tr>
+
+      {# Accumule sous-total projet PENDANT l'affichage des activités #}
+      {% set pj_tot = namespace(fp=0, fadec=0, ptfs=0, total=0) %}
+
+      {% for act in pj.activites %}
+        {% set pj_tot.fp    = pj_tot.fp    + (act.fp or 0) %}
+        {% set pj_tot.fadec = pj_tot.fadec + (act.montant_fadec or 0) %}
+        {% set pj_tot.ptfs  = pj_tot.ptfs  + (act.autres_ptfs or 0) %}
+        {% set pj_tot.total = pj_tot.total + (act.cout_total or 0) %}
+        <tr class="act">
+          <td class="num col-code">{{ act.code }}</td>
+          <td class="col-nom">{{ act.nom }}</td>
+          <td class="col-loc">{{ act.localisation or '' }}</td>
+          <td class="pct col-pds">{{ act.poids | pct_nat }}%</td>
+          <td class="col-ind">{{ act.indicateurs or '' }}</td>
+          <td class="per col-per">{{ act.periode_execution or '' }}</td>
+          <td class="num col-resp">{{ act.structures_responsables or '' }}</td>
+          <td class="col-assoc">{{ act.structures_associees or '' }}</td>
+          <td class="mnt col-fp">
+            {% if act.fp %}{{ act.fp | milliers }}{% else %}—{% endif %}
+          </td>
+          <td class="col-fadec" style="font-size:6pt;">{{ act.fadec_type or '—' }}</td>
+          <td class="mnt col-mfad">
+            {% if act.montant_fadec %}{{ act.montant_fadec | milliers }}{% else %}—{% endif %}
+          </td>
+          <td class="mnt col-ptfs">
+            {% if act.autres_ptfs %}{{ act.autres_ptfs | milliers }}{% else %}—{% endif %}
+          </td>
+          <td class="col-obs" style="font-size:6.2pt;">{{ act.observations or '' }}</td>
+        </tr>
+      {% endfor %}
+
+      {# Accumule dans le total programme #}
+      {% set pg_tot.fp    = pg_tot.fp    + pj_tot.fp %}
+      {% set pg_tot.fadec = pg_tot.fadec + pj_tot.fadec %}
+      {% set pg_tot.ptfs  = pg_tot.ptfs  + pj_tot.ptfs %}
+      {% set pg_tot.total = pg_tot.total + pj_tot.total %}
+
+      {# ── Sous-total Projet ── #}
+      <tr class="stotal">
+        <td colspan="8" style="text-align:right;">Sous-Total {{ pj.code }}</td>
+        <td class="mnt">{{ pj_tot.fp    | milliers }}</td>
+        <td></td>
+        <td class="mnt">{{ pj_tot.fadec | milliers }}</td>
+        <td class="mnt">{{ pj_tot.ptfs  | milliers }}</td>
+        <td class="col-obs"></td>
+      </tr>
+    {% endfor %}
+
+    {# ── Total Programme ── #}
+    <tr class="total">
+      <td colspan="8" style="text-align:right;">Total Programme {{ pg.numero }}</td>
+      <td class="mnt">{{ pg_tot.fp    | milliers }}</td>
+      <td></td>
+      <td class="mnt">{{ pg_tot.fadec | milliers }}</td>
+      <td class="mnt">{{ pg_tot.ptfs  | milliers }}</td>
+      <td class="col-obs"></td>
+    </tr>
+
+  {% endfor %}
+
+  {# ── Total PAI ── #}
+  <tr class="grand">
+    <td colspan="8" style="text-align:right;">TOTAL PAI {{ annee.annee if annee }}</td>
+    <td class="mnt">{{ total_fp     | milliers }}</td>
+    <td></td>
+    <td class="mnt">{{ total_fadec  | milliers }}</td>
+    <td class="mnt">{{ total_ptfs   | milliers }}</td>
+    <td></td>
+  </tr>
+  </tbody>
+</table>
+
+<div class="legende">
+  FP = Fonds Propres &nbsp;|&nbsp; FADeC = Fonds d'Appui au Développement des Communes &nbsp;|&nbsp; PTFs = Partenaires Techniques et Financiers
+  &nbsp;&nbsp;—&nbsp;&nbsp; Montants en milliers de F CFA
+</div>
+
+</body>
+</html>

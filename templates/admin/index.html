@@ -102,6 +102,38 @@
             <i class="fas fa-paper-plane me-2"></i>Envoyer le bilan PTA
           </button>
         </form>
+        <hr class="my-2">
+        {# ── Notifier des mises à jour PTA/PAI ── #}
+        <div class="border rounded p-2 bg-light">
+          <div class="small fw-semibold text-secondary mb-2">
+            <i class="fas fa-bullhorn me-1 text-warning"></i>Notifier des mises à jour PTA/PAI
+          </div>
+          <form method="POST" action="{{ url_for('admin.notifier_pta_pai') }}"
+                id="formNotifPai"
+                onsubmit="return _confirmNotif(this)">
+            <div class="mb-2">
+              <label class="form-label small mb-1">Année concernée</label>
+              <select name="annee_id" class="form-select form-select-sm">
+                {% for a in toutes_annees %}
+                <option value="{{ a.id }}"
+                  {% if a.actif %}selected{% endif %}>
+                  {{ a.annee }}{% if a.actif %} (active){% endif %}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="mb-2">
+              <label class="form-label small mb-1">Type de notification</label>
+              <select name="type_notif" class="form-select form-select-sm" id="selTypeNotif">
+                <option value="maj">Mise à jour PTA/PAI (même exercice)</option>
+                <option value="nouvelle_annee">Nouveau PTA/PAI disponible (N+1)</option>
+              </select>
+            </div>
+            <button type="submit" class="btn btn-warning w-100 btn-sm">
+              <i class="fas fa-bullhorn me-2"></i>Envoyer la notification
+            </button>
+          </form>
+        </div>
         <hr class="my-1">
         <form method="POST" action="{{ url_for('admin.purge_suivi') }}"
               onsubmit="return confirm('⚠️ PURGE DU SUIVI\n\nCette action va supprimer TOUS les suivis et observations de l\'année en cours.\nTout reviendra à « Non exécuté ».\n\nConfirmer ?')">
@@ -160,4 +192,18 @@
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function _confirmNotif(form) {
+  var sel = form.querySelector('#selTypeNotif');
+  var annee = form.querySelector('[name="annee_id"] option:checked');
+  var anneeLabel = annee ? annee.textContent.trim() : '?';
+  var msg = sel.value === 'nouvelle_annee'
+    ? 'Notifier tous les utilisateurs qu\'un nouveau PTA et PAI (' + anneeLabel + ') sont disponibles ?'
+    : 'Notifier tous les utilisateurs d\'une mise à jour du PTA et PAI (' + anneeLabel + ') ?';
+  return confirm(msg);
+}
+</script>
 {% endblock %}

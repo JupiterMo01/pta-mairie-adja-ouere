@@ -1353,3 +1353,133 @@ def bilan_pta():
               f"— {total_glob} activité(s), taux global {taux_global}%")
     flash(f"Bilan envoyé à {len(destinataires)} destinataire(s) + {len(copies_fixes)} copie(s).", 'success')
     return redirect(url_for('admin.index'))
+
+
+@admin_bp.route('/notifier-pta-pai', methods=['POST'])
+@limiter.limit('10 per hour')
+@editeur_required
+def notifier_pta_pai():
+    """Informe tous les utilisateurs d'une mise à jour PTA/PAI ou de la disponibilité d'une nouvelle année."""
+    import datetime
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.text import MIMEText
+    from models import Annee
+
+    type_notif  = request.form.get('type_notif', 'maj')   # 'maj' ou 'nouvelle_annee'
+    annee_id    = request.form.get('annee_id', type=int)
+    annee       = db.session.get(Annee, annee_id) if annee_id else None
+    if not annee:
+        flash("Année introuvable.", 'danger')
+        return redirect(url_for('admin.index'))
+
+    annee_label = annee.annee
+    date_str    = datetime.date.today().strftime('%d/%m/%Y')
+    plateforme  = request.host_url.rstrip('/')
+
+    destinataires = _get_destinataires()
+    if not destinataires:
+        flash("Aucun utilisateur actif n'a d'adresse email renseignée.", 'warning')
+        return redirect(url_for('admin.index'))
+
+    try:
+        cfg = _lire_cfg_smtp()
+    except FileNotFoundError:
+        flash("Fichier de configuration email introuvable (~/.pta_backup_config).", 'danger')
+        return redirect(url_for('admin.index'))
+    except (ValueError, OSError) as e:
+        flash(f"Configuration email : {e}", 'danger')
+        return redirect(url_for('admin.index'))
+
+    copies_fixes = _get_copies_fixes(cfg)
+
+    if type_notif == 'nouvelle_annee':
+        sujet      = f"[PTA Mairie {annee_label}] Nouveau PTA et PAI {annee_label} disponibles"
+        titre_mail = f"Nouveau PTA & PAI {annee_label} disponibles"
+        intro      = (
+            f"Le Plan de Travail Annuel (PTA) et le Plan Annuel d'Investissement (PAI) "
+            f"pour l'exercice <strong>{annee_label}</strong> sont désormais disponibles sur la plateforme."
+        )
+        badge_couleur = '#0f6f3a'
+        badge_texte   = f'Nouvelle année {annee_label}'
+    else:
+        sujet      = f"[PTA Mairie {annee_label}] PTA et PAI {annee_label} mis à jour"
+        titre_mail = f"PTA & PAI {annee_label} mis à jour"
+        intro      = (
+            f"Le Plan de Travail Annuel (PTA) et le Plan Annuel d'Investissement (PAI) "
+            f"de l'exercice <strong>{annee_label}</strong> ont été mis à jour. "
+            "Connectez-vous pour consulter les dernières informations."
+        )
+        badge_couleur = '#1e3a5f'
+        badge_texte   = f'Mise à jour {annee_label}'
+
+    html_body = f"""<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#f3f4f6;font-family:Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:24px 0;">
+<tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0"
+       style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,.08);">
+  <tr><td style="background:{badge_couleur};padding:24px 32px;">
+    <p style="margin:0;color:#fcd116;font-size:11px;letter-spacing:1px;text-transform:uppercase;">
+      Mairie d'Adja-Ouèrè · Système PTA &amp; PAI</p>
+    <h1 style="margin:8px 0 0;color:#fff;font-size:20px;line-height:1.3;">{titre_mail}</h1>
+    <p style="margin:4px 0 0;color:rgba(255,255,255,.7);font-size:13px;">{date_str}</p>
+  </td></tr>
+  <tr><td style="padding:28px 32px;">
+    <p style="margin:0 0 16px;color:#374151;">Madame, Monsieur,</p>
+    <p style="margin:0 0 20px;color:#374151;line-height:1.7;">{intro}</p>
+    <div style="text-align:center;margin:24px 0;">
+      <a href="{plateforme}" target="_blank"
+         style="background:{badge_couleur};color:#fcd116;text-decoration:none;
+                padding:12px 28px;border-radius:8px;font-weight:700;font-size:15px;
+                display:inline-block;">
+        Se connecter à la plateforme
+      </a>
+    </div>
+    <p style="margin:16px 0 0;color:#6b7280;font-size:12px;">
+      En cas de difficulté de connexion, contactez votre administrateur.
+    </p>
+  </td></tr>
+  <tr><td style="background:#f9fafb;padding:16px 32px;border-top:1px solid #e5e7eb;">
+    <p style="margin:0;color:#9ca3af;font-size:11px;line-height:1.7;">
+      Message envoyé automatiquement depuis le Système PTA de la Mairie d'Adja-Ouèrè.<br>
+      Émis par : <strong>Jupiter GBOYOU</strong> ·
+      <a href="mailto:jupiter.gboyou@mairie.bj" style="color:#1e3a5f;">jupiter.gboyou@mairie.bj</a>
+    </p>
+    <p style="margin:6px 0 0;color:#9ca3af;font-size:11px;">
+      &#x1F1E7;&#x1F1EF; République du Bénin &nbsp;·&nbsp; Mairie d'Adja-Ouèrè
+    </p>
+  </td></tr>
+</table>
+</td></tr>
+</table>
+</body></html>"""
+
+    texte_brut = (
+        f"{titre_mail}\n\n"
+        f"{intro.replace('<strong>','').replace('</strong>','')}\n\n"
+        f"Connectez-vous : {plateforme}\n\n"
+        "---\nMairie d'Adja-Ouèrè · Système PTA"
+    )
+
+    msg = MIMEMultipart('alternative')
+    msg['From']     = f"Mairie d'Adja-Ouèrè PTA <{cfg['GMAIL_USER']}>"
+    msg['To']       = cfg['GMAIL_USER']
+    msg['Cc']       = ', '.join(destinataires)
+    msg['Bcc']      = ', '.join(copies_fixes)
+    msg['Subject']  = sujet
+    msg['Reply-To'] = 'jupiter.gboyou@mairie.bj'
+    msg.attach(MIMEText(texte_brut, 'plain', 'utf-8'))
+    msg.attach(MIMEText(html_body,  'html',  'utf-8'))
+
+    try:
+        _envoyer_smtp(cfg, msg, destinataires, copies_fixes)
+    except Exception as e:
+        flash(f"Erreur lors de l'envoi : {e}", 'danger')
+        return redirect(url_for('admin.index'))
+
+    log_audit('notifier_pta_pai',
+              f"Notification PTA/PAI «{type_notif}» — année {annee_label} — "
+              f"{len(destinataires)} destinataire(s)")
+    flash(f"Notification envoyée à {len(destinataires)} utilisateur(s) + {len(copies_fixes)} copie(s).", 'success')
+    return redirect(url_for('admin.index'))

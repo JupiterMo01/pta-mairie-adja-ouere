@@ -307,6 +307,10 @@ def _activite_from_form(a):
     a.periode_fin = request.form.get('periode_fin', '').strip()
     a.mode_execution = request.form.get('mode_execution', '').strip() or 'Direct'
     a.type_activite = request.form.get('type_activite', 'Activité de fonctionnement').strip() or 'Activité de fonctionnement'
+    if 'investissement' in a.type_activite.lower():
+        a.inclure_dans_pai = request.form.get('inclure_dans_pai', 'oui') != 'non'
+    else:
+        a.inclure_dans_pai = False
     a.details_financement = request.form.get('details_financement', '').strip() or 'RAS'
     a.acteurs_externes = request.form.get('acteurs_externes', '').strip()
     a.observations = request.form.get('observations', '').strip() or None

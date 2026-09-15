@@ -156,6 +156,7 @@ def create_app(test_config=None):
     from exportation import exportation_bp
     from suivi import suivi_bp
     from dashboard import dashboard_bp
+    from pai import pai_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(admin_bp, url_prefix='/admin')
@@ -167,6 +168,7 @@ def create_app(test_config=None):
     app.register_blueprint(exportation_bp, url_prefix='/exportation')
     app.register_blueprint(suivi_bp, url_prefix='/suivi')
     app.register_blueprint(dashboard_bp, url_prefix='/dashboard')
+    app.register_blueprint(pai_bp, url_prefix='/pai')
 
     # Gestionnaire d'erreur 429 (trop de tentatives de connexion)
     from flask import render_template as _rt

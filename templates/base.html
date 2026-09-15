@@ -93,6 +93,12 @@
           <i class="fas fa-file-export me-2 fa-fw"></i>Exportation
         </a>
       </li>
+      <li class="nav-item">
+        <a class="nav-link text-white py-2 px-3 {% if request.blueprint == 'pai' %}active-link{% endif %}"
+           href="{{ url_for('pai.index') }}">
+          <i class="fas fa-file-invoice me-2 fa-fw"></i>PAI
+        </a>
+      </li>
       <li><hr class="border-secondary my-1"></li>
       <li class="nav-item">
         <a class="nav-link text-white py-2 px-3 {% if request.blueprint == 'biblio' %}active-link{% endif %}"

@@ -188,16 +188,16 @@
           <td>{{ act.nom }}</td>
           <td class="text-center act-loc">{{ extra.localisation if extra and extra.localisation else '' }}</td>
           <td class="text-center">{{ a_poids }}%</td>
-          <td class="act-ind" style="font-size:.65rem;">{{ extra.indicateurs if extra and extra.indicateurs else '' }}</td>
+          <td class="text-center act-ind" style="font-size:.65rem;">{{ extra.indicateurs if extra and extra.indicateurs else '' }}</td>
           <td class="text-center">{{ periode_str }}</td>
           <td class="text-center">{{ act.direction_responsable.code if act.direction_responsable else '' }}</td>
           <td class="text-center" style="font-size:.65rem;">{{ assoc | join(', ') }}</td>
-          <td class="text-end">{{ a_fp | fcfa }}</td>
+          <td class="text-center">{{ a_fp | fcfa }}</td>
           <td class="text-center act-fadec" style="font-size:.65rem;">{{ fadec_lbl }}</td>
-          <td class="text-end">{{ a_fadec | fcfa }}</td>
-          <td class="text-end">{{ a_ptfs | fcfa }}</td>
-          <td class="text-end fw-bold">{{ a_total | fcfa }}</td>
-          <td class="act-obs" style="font-size:.65rem;">
+          <td class="text-center">{{ a_fadec | fcfa }}</td>
+          <td class="text-center">{{ a_ptfs | fcfa }}</td>
+          <td class="text-center fw-bold">{{ a_total | fcfa }}</td>
+          <td class="text-center act-obs" style="font-size:.65rem;">
             {{- extra.observations_pai if extra and extra.observations_pai else '' -}}
           </td>
           {% if can_edit %}
@@ -220,11 +220,11 @@
       {# ── Sous-total Projet ── #}
       <tr style="background:#EAF0FB; font-weight:700; font-style:italic;">
         <td colspan="8" class="text-end">Sous-Total {{ pn }}.{{ pjn }}</td>
-        <td class="text-end">{{ pj_tot.fp    | fcfa }}</td>
+        <td class="text-center">{{ pj_tot.fp    | fcfa }}</td>
         <td></td>
-        <td class="text-end">{{ pj_tot.fadec | fcfa }}</td>
-        <td class="text-end">{{ pj_tot.ptfs  | fcfa }}</td>
-        <td class="text-end">{{ pj_tot.total | fcfa }}</td>
+        <td class="text-center">{{ pj_tot.fadec | fcfa }}</td>
+        <td class="text-center">{{ pj_tot.ptfs  | fcfa }}</td>
+        <td class="text-center">{{ pj_tot.total | fcfa }}</td>
         <td></td>
         {% if can_edit %}<td></td>{% endif %}
       </tr>
@@ -233,24 +233,24 @@
     {# ── Total Programme ── #}
     <tr style="background:#AED6F1; font-weight:700;">
       <td colspan="8" class="text-end">Total Programme {{ pn }}</td>
-      <td class="text-end">{{ pg_tot.fp    | fcfa }}</td>
+      <td class="text-center">{{ pg_tot.fp    | fcfa }}</td>
       <td></td>
-      <td class="text-end">{{ pg_tot.fadec | fcfa }}</td>
-      <td class="text-end">{{ pg_tot.ptfs  | fcfa }}</td>
-      <td class="text-end">{{ pg_tot.total | fcfa }}</td>
+      <td class="text-center">{{ pg_tot.fadec | fcfa }}</td>
+      <td class="text-center">{{ pg_tot.ptfs  | fcfa }}</td>
+      <td class="text-center">{{ pg_tot.total | fcfa }}</td>
       <td></td>
       {% if can_edit %}<td></td>{% endif %}
     </tr>
   {% endfor %}
 
   {# ── Total PAI ── #}
-  <tr style="background:#1a3a5c; color:#000; font-weight:700;">
+  <tr style="background:#1a3a5c; color:#fff; font-weight:700;">
     <td colspan="8" class="text-end">TOTAL PAI {{ annee.annee }}</td>
-    <td class="text-end">{{ (total_fp / 1000)     | fcfa }}</td>
+    <td class="text-center">{{ (total_fp / 1000)     | fcfa }}</td>
     <td></td>
-    <td class="text-end">{{ (total_fadec / 1000)  | fcfa }}</td>
-    <td class="text-end">{{ (total_ptfs / 1000)   | fcfa }}</td>
-    <td class="text-end">{{ (total_global / 1000) | fcfa }}</td>
+    <td class="text-center">{{ (total_fadec / 1000)  | fcfa }}</td>
+    <td class="text-center">{{ (total_ptfs / 1000)   | fcfa }}</td>
+    <td class="text-center">{{ (total_global / 1000) | fcfa }}</td>
     <td></td>
     {% if can_edit %}<td></td>{% endif %}
   </tr>

@@ -65,7 +65,7 @@
   }
   th { text-align:center; font-size:6.5pt; background:#BDD7EE !important; font-weight:bold; }
   td.num  { text-align:center; }
-  td.mnt  { text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums; }
+  td.mnt  { text-align:center; white-space:nowrap; font-variant-numeric:tabular-nums; }
   td.ctr  { text-align:center; }
   td.lft  { text-align:left; }
 
@@ -225,7 +225,7 @@
           <td class="lft col-nom">{{ act.nom }}</td>
           <td class="ctr col-loc">{{ extra.localisation if extra and extra.localisation else '' }}</td>
           <td class="ctr col-pds">{{ a_poids }}%</td>
-          <td class="lft col-ind" style="font-size:6pt;">{{ extra.indicateurs if extra and extra.indicateurs else '' }}</td>
+          <td class="ctr col-ind" style="font-size:6pt;">{{ extra.indicateurs if extra and extra.indicateurs else '' }}</td>
           <td class="ctr col-per">{{ periode_str }}</td>
           <td class="ctr col-resp">{{ act.direction_responsable.code if act.direction_responsable else '' }}</td>
           <td class="ctr col-assoc" style="font-size:6pt;">{{ assoc | join(', ') }}</td>
@@ -234,7 +234,7 @@
           <td class="mnt col-mfad">{{ a_fadec | fcfa }}</td>
           <td class="mnt col-ptfs">{{ a_ptfs | fcfa }}</td>
           <td class="mnt col-tot">{{ a_total | fcfa }}</td>
-          <td class="lft col-obs" style="font-size:6pt;">
+          <td class="ctr col-obs" style="font-size:6pt;">
             {{- extra.observations_pai if extra and extra.observations_pai else '' -}}
           </td>
         </tr>

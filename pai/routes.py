@@ -375,8 +375,6 @@ def edit(activite_id):
     extra = PaiActivite.query.filter_by(activite_id=activite_id).first()
     if not extra:
         extra = PaiActivite(activite_id=activite_id)
-        # Importer le poids depuis le PTA si non encore défini
-        extra.poids_pai = activite.poids or 0.0
         db.session.add(extra)
 
     extra.localisation     = request.form.get('localisation', '').strip() or None

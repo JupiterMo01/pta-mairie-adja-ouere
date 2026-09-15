@@ -58,6 +58,28 @@ def index():
 
     pai_data, total_fp, total_fadec, total_ptfs, total_global, total_nb = _build_pai_data(annee)
 
+    # Auto-import des poids depuis le PTA pour les nouveaux enregistrements.
+    # N'écrase jamais un enregistrement existant — garantit la préservation des données PAI saisies.
+    changed = False
+    for pg_d in pai_data:
+        pg = pg_d['programme']
+        if not pg.pai_extra_prog:
+            db.session.add(PaiProgramme(programme_id=pg.id, poids_pai=pg.poids or 0.0))
+            changed = True
+        for pj_d in pg_d['projets']:
+            pj = pj_d['projet']
+            if not pj.pai_extra_proj:
+                db.session.add(PaiProjet(projet_id=pj.id, poids_pai=pj.poids or 0.0))
+                changed = True
+            for act in pj_d['activites']:
+                if not act.pai_extra:
+                    db.session.add(PaiActivite(activite_id=act.id, poids_pai=act.poids or 0.0))
+                    changed = True
+    if changed:
+        db.session.commit()
+        # Recharger pour que les nouvelles relations soient visibles dans le template
+        pai_data, total_fp, total_fadec, total_ptfs, total_global, total_nb = _build_pai_data(annee)
+
     return render_template(
         'pai/index.html',
         annee=annee,

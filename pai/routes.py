@@ -1,4 +1,5 @@
 import io
+import math
 from flask import render_template, abort, request, jsonify, Response
 from flask_login import login_required, current_user
 from models import db, Programme, Projet, Activite, PaiActivite, PaiProgramme, PaiProjet
@@ -6,10 +7,48 @@ from pai import pai_bp
 from utils import get_annee
 
 
+# ─── Helpers poids automatiques ───────────────────────────────────────────────
+
+def _half_up_round(x):
+    """Arrondi demi-supérieur entier : < 0,5 → inférieur, >= 0,5 → supérieur."""
+    return int(math.floor(x + 0.5))
+
+
+def _compute_poids_list(totals):
+    """
+    Poids entiers calculés depuis les montants.
+    Le dernier élément = 100 - somme(autres) pour garantir 100%.
+    """
+    if not totals:
+        return []
+    s = sum(totals)
+    if s == 0:
+        return [0] * len(totals)
+    rounded = [_half_up_round(t / s * 100) for t in totals[:-1]]
+    rounded.append(100 - sum(rounded))
+    return rounded
+
+
+def _fadec_label(src_fa, src_fn):
+    """Libellé FADeC automatique depuis les montants."""
+    has_fa = src_fa > 0
+    has_fn = src_fn > 0
+    if has_fa and has_fn:
+        return 'FA + FNA'
+    if has_fa:
+        return 'FA'
+    if has_fn:
+        return 'FNA'
+    return ''
+
+
 # ─── Helper commun ────────────────────────────────────────────────────────────
 
 def _build_pai_data(annee):
-    """Construit la structure PAI depuis les activités d'investissement marquées inclure_dans_pai."""
+    """
+    Construit la structure PAI depuis les activités d'investissement marquées inclure_dans_pai.
+    Calcule automatiquement les poids depuis les montants (arrondi demi-supérieur, dernier = 100 - autres).
+    """
     programmes = (
         Programme.query
         .filter_by(annee_id=annee.id)
@@ -41,6 +80,29 @@ def _build_pai_data(annee):
             prog_num += 1
             pai_data.append({'programme': pg, 'projets': pg_projets, 'prog_num': prog_num})
 
+    # ── Calcul automatique des poids depuis les montants ─────────────────────
+    # Niveau programme
+    pg_totals = []
+    for pg_d in pai_data:
+        pt = sum(a.budget_total for pj_d in pg_d['projets'] for a in pj_d['activites'])
+        pg_d['budget_total'] = pt
+        pg_totals.append(pt)
+
+    pg_poids = _compute_poids_list(pg_totals)
+    for pg_d, pw in zip(pai_data, pg_poids):
+        pg_d['poids'] = pw
+
+        # Niveau projet
+        pj_totals = [sum(a.budget_total for a in pj_d['activites']) for pj_d in pg_d['projets']]
+        pj_poids  = _compute_poids_list(pj_totals)
+        for pj_d, pjt, pjw in zip(pg_d['projets'], pj_totals, pj_poids):
+            pj_d['budget_total'] = pjt
+            pj_d['poids']        = pjw
+
+            # Niveau activité
+            act_totals = [a.budget_total for a in pj_d['activites']]
+            pj_d['act_poids'] = _compute_poids_list(act_totals)
+
     return pai_data, total_fp, total_fadec, total_ptfs, total_global, total_nb
 
 
@@ -58,26 +120,18 @@ def index():
 
     pai_data, total_fp, total_fadec, total_ptfs, total_global, total_nb = _build_pai_data(annee)
 
-    # Auto-import des poids depuis le PTA pour les nouveaux enregistrements.
-    # N'écrase jamais un enregistrement existant — garantit la préservation des données PAI saisies.
+    # Création automatique des enregistrements PaiActivite pour les nouvelles activités.
+    # Seulement pour les champs extra (localisation, indicateurs, observations).
+    # Les poids sont calculés automatiquement depuis les montants.
     changed = False
     for pg_d in pai_data:
-        pg = pg_d['programme']
-        if not pg.pai_extra_prog:
-            db.session.add(PaiProgramme(programme_id=pg.id, poids_pai=pg.poids or 0.0))
-            changed = True
         for pj_d in pg_d['projets']:
-            pj = pj_d['projet']
-            if not pj.pai_extra_proj:
-                db.session.add(PaiProjet(projet_id=pj.id, poids_pai=pj.poids or 0.0))
-                changed = True
             for act in pj_d['activites']:
                 if not act.pai_extra:
-                    db.session.add(PaiActivite(activite_id=act.id, poids_pai=act.poids or 0.0))
+                    db.session.add(PaiActivite(activite_id=act.id))
                     changed = True
     if changed:
         db.session.commit()
-        # Recharger pour que les nouvelles relations soient visibles dans le template
         pai_data, total_fp, total_fadec, total_ptfs, total_global, total_nb = _build_pai_data(annee)
 
     return render_template(
@@ -146,9 +200,9 @@ def export_excel():
     left   = Alignment(horizontal='left',  vertical='center', wrap_text=True)
 
     headers = [
-        'Code PAI', 'Activités', 'Localisation', 'Poids (%)', 'Indicateurs',
+        'Code PAI', 'Programmes / Projets / Activités', 'Localisation', 'Poids (%)', 'Indicateurs',
         "Période d'exécution", 'Struct. Resp.', 'Structures associées',
-        'FP (milliers F CFA)', 'FADeC (libellé)', 'Montant FADeC (milliers)',
+        'FP (milliers F CFA)', 'FADeC', 'Montant FADeC (milliers)',
         'Autres PTFs (milliers)', 'Coût Total (milliers)', 'Observations',
     ]
     for col, h in enumerate(headers, 1):
@@ -172,11 +226,10 @@ def export_excel():
     for pg_d in pai_data:
         pg = pg_d['programme']
         pn = pg_d['prog_num']
-        extra_pg = pg.pai_extra_prog
-        poids_pg = extra_pg.poids_pai if extra_pg else ''
+        poids_pg = pg_d['poids']
         ws.cell(row=r, column=1, value=str(pn))
         ws.cell(row=r, column=2, value=f'Programme {pn} : {pg.nom}')
-        ws.cell(row=r, column=4, value=poids_pg if poids_pg else '')
+        ws.cell(row=r, column=4, value=poids_pg if poids_pg else 0)
         ws.merge_cells(start_row=r, start_column=2, end_row=r, end_column=3)
         ws.merge_cells(start_row=r, start_column=5, end_row=r, end_column=14)
         for col in range(1, 15):
@@ -190,11 +243,10 @@ def export_excel():
         for pj_d in pg_d['projets']:
             pj = pj_d['projet']
             pjn = pj_d['proj_num']
-            extra_pj = pj.pai_extra_proj
-            poids_pj = extra_pj.poids_pai if extra_pj else ''
+            poids_pj = pj_d['poids']
             ws.cell(row=r, column=1, value=f'{pn}.{pjn}')
             ws.cell(row=r, column=2, value=f'Projet {pn}.{pjn} : {pj.nom}')
-            ws.cell(row=r, column=4, value=poids_pj if poids_pj else '')
+            ws.cell(row=r, column=4, value=poids_pj if poids_pj else 0)
             ws.merge_cells(start_row=r, start_column=2, end_row=r, end_column=3)
             ws.merge_cells(start_row=r, start_column=5, end_row=r, end_column=14)
             for col in range(1, 15):
@@ -207,28 +259,33 @@ def export_excel():
 
             pj_fp = pj_fadec = pj_ptfs = pj_total = 0.0
 
+            act_poids_list = pj_d['act_poids']
             for act_i, act in enumerate(pj_d['activites'], 1):
                 extra = act.pai_extra
                 a_fp    = act.src_rp / 1000
-                a_fadec = (act.src_fa + act.src_fn) / 1000
+                a_fa    = act.src_fa / 1000
+                a_fn    = act.src_fn / 1000
+                a_fadec = a_fa + a_fn
                 a_ptfs  = (act.src_ap + act.src_af) / 1000
                 a_total = act.budget_total / 1000
                 pj_fp += a_fp; pj_fadec += a_fadec; pj_ptfs += a_ptfs; pj_total += a_total
+                a_poids = act_poids_list[act_i - 1]
+                fadec_lbl = _fadec_label(act.src_fa, act.src_fn)
 
                 row_data = [
                     f'{pn}.{pjn}.{act_i}',
                     act.nom,
                     extra.localisation     if extra and extra.localisation     else '',
-                    extra.poids_pai        if extra and extra.poids_pai        else '',
+                    a_poids,
                     extra.indicateurs      if extra and extra.indicateurs      else '',
                     _periode(act),
                     act.direction_responsable.code if act.direction_responsable else '',
                     _assoc(act),
-                    a_fp    or '',
-                    extra.fadec_type       if extra and extra.fadec_type       else '',
-                    a_fadec or '',
-                    a_ptfs  or '',
-                    a_total or '',
+                    a_fp,
+                    fadec_lbl,
+                    a_fadec,
+                    a_ptfs,
+                    a_total,
                     extra.observations_pai if extra and extra.observations_pai else '',
                 ]
                 for col, val in enumerate(row_data, 1):
@@ -243,7 +300,7 @@ def export_excel():
                 r += 1
 
             st = ['', f'Sous-Total {pn}.{pjn}', '', '', '', '', '', '',
-                  pj_fp, '', pj_fadec, pj_ptfs, pj_total, '']
+                  pj_fp, 'Total FADeC', pj_fadec, pj_ptfs, pj_total, '']
             for col, val in enumerate(st, 1):
                 c = ws.cell(row=r, column=col, value=val)
                 c.fill = fill('EAF0FB'); c.font = Font(bold=True, italic=True, size=9); c.border = bord
@@ -263,7 +320,14 @@ def export_excel():
         elif col == 2:
             c.alignment = Alignment(horizontal='right', vertical='center')
 
-    for i, w in enumerate([8, 35, 18, 8, 25, 12, 12, 20, 16, 22, 16, 16, 16, 22], 1):
+    r += 1
+    legende = ws.cell(row=r, column=1,
+        value="FP = Fonds Propres  |  FA = FADeC Affecté  |  FNA = FADeC Non Affecté  |  PTFs = Partenaires Techniques et Financiers  |  Montants en milliers de F CFA")
+    legende.font = Font(italic=True, size=8, color='444444')
+    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=14)
+    legende.alignment = Alignment(horizontal='left', vertical='center')
+
+    for i, w in enumerate([8, 35, 18, 8, 25, 12, 12, 20, 16, 16, 16, 16, 16, 22], 1):
         ws.column_dimensions[get_column_letter(i)].width = w
 
     output = io.BytesIO()
@@ -296,57 +360,8 @@ def edit(activite_id):
         db.session.add(extra)
 
     extra.localisation     = request.form.get('localisation', '').strip() or None
-    poids_val = request.form.get('poids_pai', '').strip()
-    extra.poids_pai        = float(poids_val) if poids_val else (activite.poids or 0.0)
     extra.indicateurs      = request.form.get('indicateurs', '').strip() or None
-    extra.fadec_type       = request.form.get('fadec_type', '').strip() or None
     extra.observations_pai = request.form.get('observations_pai', '').strip() or None
-
-    db.session.commit()
-    return jsonify({'ok': True})
-
-
-@pai_bp.route('/edit_prog/<int:programme_id>', methods=['POST'])
-@login_required
-def edit_prog(programme_id):
-    """Sauvegarde le poids PAI d'un programme."""
-    if current_user.role != 'admin_editeur':
-        abort(403)
-
-    programme = db.session.get(Programme, programme_id)
-    if not programme:
-        abort(404)
-
-    extra = PaiProgramme.query.filter_by(programme_id=programme_id).first()
-    if not extra:
-        extra = PaiProgramme(programme_id=programme_id)
-        db.session.add(extra)
-
-    poids_val = request.form.get('poids_pai', '').strip()
-    extra.poids_pai = float(poids_val) if poids_val else 0.0
-
-    db.session.commit()
-    return jsonify({'ok': True})
-
-
-@pai_bp.route('/edit_proj/<int:projet_id>', methods=['POST'])
-@login_required
-def edit_proj(projet_id):
-    """Sauvegarde le poids PAI d'un projet."""
-    if current_user.role != 'admin_editeur':
-        abort(403)
-
-    projet = db.session.get(Projet, projet_id)
-    if not projet:
-        abort(404)
-
-    extra = PaiProjet.query.filter_by(projet_id=projet_id).first()
-    if not extra:
-        extra = PaiProjet(projet_id=projet_id)
-        db.session.add(extra)
-
-    poids_val = request.form.get('poids_pai', '').strip()
-    extra.poids_pai = float(poids_val) if poids_val else 0.0
 
     db.session.commit()
     return jsonify({'ok': True})

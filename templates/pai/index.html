@@ -87,7 +87,7 @@
       <th rowspan="2" style="background:#BDD7EE;">Indicateurs</th>
       <th rowspan="2" style="background:#BDD7EE;">Période<br>d'exéc.</th>
       <th rowspan="2" style="background:#BDD7EE;">Struct.<br>Resp.</th>
-      <th rowspan="2" style="background:#BDD7EE;">Structures associées</th>
+      <th rowspan="2" style="background:#BDD7EE;">Structures<br>associées</th>
       <th colspan="5" style="background:#BDD7EE;">Sources de Financement (en milliers de F CFA)</th>
       <th rowspan="2" style="background:#BDD7EE;">Observations</th>
       {% if can_edit %}<th rowspan="2" style="background:#BDD7EE;">Actions</th>{% endif %}
@@ -124,7 +124,7 @@
           {{ extra_pg.poids_pai | pct_nat }}%
         {%- else -%}—{%- endif -%}
       </td>
-      <td colspan="{{ 11 if can_edit else 10 }}">
+      <td colspan="10">
         {% if sum_pj_poids.v > 0 %}
           {% if (sum_pj_poids.v - 100)|abs < 0.01 %}
             <span class="badge bg-success" style="font-size:.6rem;">✓ Poids projets = 100%</span>
@@ -166,7 +166,7 @@
             {{ extra_pj.poids_pai | pct_nat }}%
           {%- else -%}—{%- endif -%}
         </td>
-        <td colspan="{{ 11 if can_edit else 10 }}">
+        <td colspan="10">
           {% if sum_act_poids.v > 0 %}
             {% if (sum_act_poids.v - 100)|abs < 0.01 %}
               <span class="badge bg-success" style="font-size:.6rem;">✓ Poids activités = 100%</span>

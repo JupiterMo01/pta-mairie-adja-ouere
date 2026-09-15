@@ -49,11 +49,32 @@
   word-break: break-word; overflow-wrap: break-word;
   vertical-align: middle; line-height: 1.2; padding: 2px 3px !important;
 }
+.search-match   { outline: 2px solid #ffc107; }
+.search-current { outline: 3px solid #198754 !important; background-color: rgba(255,243,205,0.5) !important; }
 </style>
+
+{# ── Barre de recherche ── #}
+<div class="d-flex align-items-center gap-2 mb-2 px-1 py-2 bg-light border rounded">
+  <i class="fas fa-search text-muted"></i>
+  <input type="text" id="paiSearch" class="form-control form-control-sm"
+         placeholder="Rechercher (code, activité, localisation, montant…)"
+         style="max-width:320px;" autocomplete="off">
+  <span id="paiSearchCount" class="small fw-semibold ms-1"></span>
+  <button class="btn btn-xs btn-outline-secondary" id="paiPrevMatch" title="Résultat précédent ↑">
+    <i class="fas fa-chevron-up"></i>
+  </button>
+  <button class="btn btn-xs btn-outline-secondary" id="paiNextMatch" title="Résultat suivant ↓">
+    <i class="fas fa-chevron-down"></i>
+  </button>
+  <button class="btn btn-xs btn-outline-danger" id="paiClearSearch" title="Effacer la recherche">
+    <i class="fas fa-times"></i>
+  </button>
+  <span class="text-muted small ms-2">Entrée = suivant • Échap = effacer</span>
+</div>
 
 <div id="paiContainer"
      style="font-size:.72rem; max-height:calc(100vh - 200px); overflow-y:auto; overflow-x:auto; width:100%;">
-<table class="table table-bordered table-sm align-middle mb-0"
+<table class="table table-bordered table-sm align-middle mb-0" id="tablePAI"
        style="table-layout:fixed; width:100%; min-width:1400px;">
   <colgroup>
     <col style="width:4%">
@@ -140,7 +161,7 @@
       {% set sum_act_poids = ns_ap.s %}
 
       {# ── Ligne Projet ── #}
-      <tr style="background:#FFFF00; font-weight:700;">
+      <tr id="row-proj-{{ pj.id }}" style="background:#FFFF00; font-weight:700;">
         <td class="text-center">{{ pn }}.{{ pjn }}</td>
         <td colspan="2">Projet {{ pn }}.{{ pjn }} : {{ pj.nom }}</td>
         <td class="text-center">{{ pj_d.poids }}%</td>
@@ -475,6 +496,8 @@ async function savePaiEdit(e) {
         row.querySelector('.act-loc').textContent   = fd.get('localisation')  || '';
         row.querySelector('.act-ind').textContent   = fd.get('indicateurs')   || '';
         row.querySelector('.act-obs').textContent   = fd.get('observations_pai') || '';
+        /* scroll retour vers la ligne éditée */
+        setTimeout(function() { _paiScrollTo(row); }, 80);
       }
       bootstrap.Modal.getInstance(document.getElementById('editPaiModal')).hide();
     } else {
@@ -513,7 +536,7 @@ async function saveProgEdit(e) {
     const data = await resp.json();
     if (data.ok) {
       bootstrap.Modal.getInstance(document.getElementById('editProgModal')).hide();
-      window.location.reload();
+      window.location.href = window.location.pathname + '?go=prog-' + _editProgId;
     } else {
       status.textContent = "Erreur lors de l'enregistrement.";
       status.hidden = false;
@@ -550,7 +573,7 @@ async function saveProjEdit(e) {
     const data = await resp.json();
     if (data.ok) {
       bootstrap.Modal.getInstance(document.getElementById('editProjModal')).hide();
-      window.location.reload();
+      window.location.href = window.location.pathname + '?go=proj-' + _editProjId;
     } else {
       status.textContent = "Erreur lors de l'enregistrement.";
       status.hidden = false;
@@ -565,4 +588,83 @@ async function saveProjEdit(e) {
 }
 </script>
 {% endif %}
+
+{# ── Scroll vers ?go= + barre de recherche ── #}
+<script>
+/* Utilitaire de scroll dans #paiContainer */
+function _paiScrollTo(target) {
+  var c = document.getElementById('paiContainer');
+  if (!target) return;
+  if (c) {
+    var top = c.scrollTop + target.getBoundingClientRect().top - c.getBoundingClientRect().top - 80;
+    c.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+  } else {
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+  /* ── Scroll vers ?go=prog-X / ?go=proj-X ── */
+  var goParam = new URLSearchParams(window.location.search).get('go');
+  if (goParam) {
+    var target = document.getElementById('row-' + goParam);
+    if (target) {
+      setTimeout(function () { _paiScrollTo(target); }, 150);
+      history.replaceState(null, '', window.location.pathname);
+    }
+  }
+});
+
+/* ── Recherche filtrée ── */
+(function () {
+  var inp      = document.getElementById('paiSearch');
+  if (!inp) return;
+  var countEl  = document.getElementById('paiSearchCount');
+  var prevBtn  = document.getElementById('paiPrevMatch');
+  var nextBtn  = document.getElementById('paiNextMatch');
+  var clearBtn = document.getElementById('paiClearSearch');
+  var matches  = [], cur = -1, timer;
+
+  function doSearch() {
+    var q = inp.value.trim().toLowerCase();
+    var rows = document.querySelectorAll('#tablePAI tbody tr');
+    matches = [];
+    rows.forEach(function (row) {
+      row.classList.remove('search-match', 'search-current');
+      if (!q) return;
+      var text = Array.from(row.querySelectorAll('td'))
+        .map(function (td) { return td.textContent; }).join(' ').toLowerCase();
+      if (text.includes(q)) { row.classList.add('search-match'); matches.push(row); }
+    });
+    cur = matches.length > 0 ? 0 : -1;
+    if (cur >= 0) goTo(0);
+    updateCount();
+  }
+
+  function goTo(idx) {
+    if (!matches.length) return;
+    matches.forEach(function (r) { r.classList.remove('search-current'); });
+    cur = ((idx % matches.length) + matches.length) % matches.length;
+    var row = matches[cur];
+    row.classList.add('search-current');
+    _paiScrollTo(row);
+    updateCount();
+  }
+
+  function updateCount() {
+    if (!inp.value.trim()) { countEl.innerHTML = ''; return; }
+    if (!matches.length)   { countEl.innerHTML = '<span class="text-danger">Aucun résultat</span>'; return; }
+    countEl.innerHTML = '<span class="text-success fw-bold">' + (cur + 1) + ' / ' + matches.length + '</span>';
+  }
+
+  inp.addEventListener('keyup', function (e) {
+    if (e.key === 'Enter') { if (matches.length) goTo(cur + 1); return; }
+    if (e.key === 'Escape') { inp.value = ''; doSearch(); return; }
+    clearTimeout(timer); timer = setTimeout(doSearch, 200);
+  });
+  if (prevBtn)  prevBtn.addEventListener('click',  function () { goTo(cur - 1); });
+  if (nextBtn)  nextBtn.addEventListener('click',  function () { goTo(cur + 1); });
+  if (clearBtn) clearBtn.addEventListener('click', function () { inp.value = ''; doSearch(); inp.focus(); });
+})();
+</script>
 {% endblock %}

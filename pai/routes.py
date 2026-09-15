@@ -203,6 +203,8 @@ def export_excel():
     pai_data, total_fp, total_fadec, total_ptfs, total_global, _ = _build_pai_data(annee)
 
     import openpyxl
+    import os as _os
+    from flask import current_app
     from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
     from openpyxl.utils import get_column_letter
 
@@ -216,9 +218,85 @@ def export_excel():
     thin = Side(style='thin')
     bord = Border(left=thin, right=thin, top=thin, bottom=thin)
     center = Alignment(horizontal='center', vertical='center', wrap_text=True)
-    right  = Alignment(horizontal='right', vertical='center')
     left   = Alignment(horizontal='left',  vertical='center', wrap_text=True)
 
+    # ── Lignes 1-3 : En-tête institutionnel (conforme PTA) ───────────────────
+    # Gauche  A1:D3 : bandeau.png
+    # Centre  E1:I3 : coordonnées (BP, Tél, Email)
+    # Droite  J1:N3 : logo commune
+    ws.row_dimensions[1].height = 22
+    ws.row_dimensions[2].height = 8
+    ws.row_dimensions[3].height = 22
+
+    ws.merge_cells('A1:D3')
+
+    ws.merge_cells('E1:I3')
+    _cc = ws['E1']
+    _cc.value = "BP 02 Adja-Ouèrè\nTél : +229 01 61 91 96 12\nEmail : contact.adjaouere@mairie.bj"
+    _cc.font = Font(bold=True, size=9)
+    _cc.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+
+    ws.merge_cells('J1:N3')
+
+    _static_img = _os.path.join(current_app.root_path, 'static', 'img')
+    try:
+        from openpyxl.drawing.image import Image as _XLImg
+        from PIL import Image as _PILImg
+        import io as _imgio
+        _band_path = _os.path.join(_static_img, 'bandeau.png')
+        _logo_path = _os.path.join(_static_img, 'logo_commune.png')
+        _H = 52
+        if _os.path.exists(_band_path):
+            _buf = _imgio.BytesIO()
+            with _PILImg.open(_band_path) as _pil:
+                _ow, _oh = _pil.size
+                _pil.save(_buf, format='PNG')
+            _buf.seek(0)
+            _i = _XLImg(_buf)
+            _i.height = _H
+            _i.width = int(_ow * _H / _oh)
+            ws.add_image(_i, 'A1')
+        if _os.path.exists(_logo_path):
+            _buf2 = _imgio.BytesIO()
+            with _PILImg.open(_logo_path) as _pil2:
+                _ow2, _oh2 = _pil2.size
+                _pil2.save(_buf2, format='PNG')
+            _buf2.seek(0)
+            _i2 = _XLImg(_buf2)
+            _lw = int(_ow2 * _H / _oh2)
+            _i2.height = _H
+            _i2.width = _lw
+            try:
+                from openpyxl.drawing.spreadsheet_drawing import OneCellAnchor, AnchorMarker
+                from openpyxl.drawing.xdr import XDRPositiveSize2D
+                _lw_emu = int(_lw * 9525)
+                _lh_emu = int(_H * 9525)
+                _anch2 = OneCellAnchor()
+                _anch2._from = AnchorMarker(col=14, colOff=-_lw_emu, row=0, rowOff=0)
+                _anch2.ext = XDRPositiveSize2D(_lw_emu, _lh_emu)
+                _i2.anchor = _anch2
+                ws.add_image(_i2)
+            except Exception:
+                ws.add_image(_i2, 'M1')
+    except Exception:
+        pass
+
+    # ── Ligne 4 : Titre PAI ───────────────────────────────────────────────────
+    ws.merge_cells('A4:N4')
+    ws['A4'].value = f"PLAN ANNUEL D'INVESTISSEMENT (PAI) — Exercice {annee.annee}"
+    ws['A4'].font = Font(bold=True, size=14)
+    ws['A4'].alignment = Alignment(horizontal='center', vertical='center')
+    ws['A4'].fill = fill('D6EAF8')
+    _med = Side(style='medium')
+    for _tc in range(1, 15):
+        ws.cell(row=4, column=_tc).border = Border(
+            left=_med  if _tc == 1  else Side(style=None),
+            right=_med if _tc == 14 else Side(style=None),
+            top=_med, bottom=_med,
+        )
+    ws.row_dimensions[4].height = 28
+
+    # ── Ligne 5 : En-têtes colonnes ───────────────────────────────────────────
     headers = [
         'Code PAI', 'Programmes / Projets / Activités', 'Localisation', 'Poids (%)', 'Indicateurs',
         "Période d'exécution", 'Struct. Resp.', 'Structures associées',
@@ -226,12 +304,12 @@ def export_excel():
         'Autres PTFs (milliers)', 'Coût Total (milliers)', 'Observations',
     ]
     for col, h in enumerate(headers, 1):
-        c = ws.cell(row=1, column=col, value=h)
+        c = ws.cell(row=5, column=col, value=h)
         c.font = Font(bold=True, size=9)
         c.fill = fill('BDD7EE')
         c.alignment = center
         c.border = bord
-    ws.row_dimensions[1].height = 30
+    ws.row_dimensions[5].height = 30
 
     def _periode(act):
         if act.periode_debut and act.periode_fin and act.periode_debut != act.periode_fin:
@@ -242,7 +320,7 @@ def export_excel():
         codes = [d.code for d in act.directions_associees] + [s.code for s in act.services_intervenants]
         return ', '.join(codes)
 
-    r = 2
+    r = 6
     for pg_d in pai_data:
         pg = pg_d['programme']
         pn = pg_d['prog_num']
@@ -278,7 +356,6 @@ def export_excel():
             r += 1
 
             pj_fp = pj_fadec = pj_ptfs = pj_total = 0.0
-
             act_poids_list = pj_d['act_poids']
             for act_i, act in enumerate(pj_d['activites'], 1):
                 extra = act.pai_extra
@@ -312,11 +389,8 @@ def export_excel():
                     c = ws.cell(row=r, column=col, value=val)
                     c.fill = fill('C5DEB5'); c.font = Font(size=9); c.border = bord
                     if col in (9, 11, 12, 13):
-                        c.number_format = '#,##0.000'; c.alignment = right
-                    elif col in (1, 4, 6, 7):
-                        c.alignment = center
-                    else:
-                        c.alignment = left
+                        c.number_format = '#,##0.000'
+                    c.alignment = left if col == 2 else center
                 r += 1
 
             st = ['', f'Sous-Total {pn}.{pjn}', '', '', '', '', '', '',
@@ -325,9 +399,8 @@ def export_excel():
                 c = ws.cell(row=r, column=col, value=val)
                 c.fill = fill('EAF0FB'); c.font = Font(bold=True, italic=True, size=9); c.border = bord
                 if col in (9, 11, 12, 13):
-                    c.number_format = '#,##0.000'; c.alignment = right
-                elif col == 2:
-                    c.alignment = Alignment(horizontal='right', vertical='center')
+                    c.number_format = '#,##0.000'
+                c.alignment = Alignment(horizontal='right', vertical='center') if col == 2 else center
             r += 1
 
     tot = ['', f'TOTAL PAI {annee.annee}', '', '', '', '', '', '',
@@ -336,9 +409,8 @@ def export_excel():
         c = ws.cell(row=r, column=col, value=val)
         c.fill = fill('1A3A5C'); c.font = Font(bold=True, size=9, color='FFFFFF'); c.border = bord
         if col in (9, 11, 12, 13):
-            c.number_format = '#,##0.000'; c.alignment = right
-        elif col == 2:
-            c.alignment = Alignment(horizontal='right', vertical='center')
+            c.number_format = '#,##0.000'
+        c.alignment = Alignment(horizontal='right', vertical='center') if col == 2 else center
 
     r += 1
     legende = ws.cell(row=r, column=1,

@@ -44,12 +44,19 @@ def create_app(test_config=None):
 
     @app.template_filter('fcfa')
     def fcfa_filter(v):
-        """Format F CFA : séparateur milliers = espace, décimales conservées si présentes."""
+        """Format F CFA : séparateur milliers = espace, décimales exactes sans arrondi.
+        Affiche le minimum de décimales nécessaires (0 à 3) pour représenter la valeur exacte."""
         try:
             val = float(v or 0)
+            # Éliminer le bruit flottant en plafonnant à 3 décimales (précision max en milliers)
+            val = round(val, 3)
             if val == int(val):
-                return '{:,.0f}'.format(val).replace(',', ' ')
-            return '{:,.2f}'.format(val).replace(',', ' ').replace('.', ',')
+                return '{:,.0f}'.format(int(val)).replace(',', ' ')
+            # Trouver le nombre minimal de décimales pour représenter la valeur exacte
+            for d in (1, 2, 3):
+                if round(val, d) == val:
+                    return ('{:,.' + str(d) + 'f}').format(val).replace(',', ' ').replace('.', ',')
+            return '{:,.3f}'.format(val).replace(',', ' ').replace('.', ',')
         except (TypeError, ValueError):
             return '0'
 

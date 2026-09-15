@@ -271,20 +271,55 @@ def export_excel():
         )
     ws.row_dimensions[4].height = 28
 
-    # ── Ligne 5 : En-têtes colonnes ───────────────────────────────────────────
-    headers = [
-        'Code PAI', 'Programmes / Projets / Activités', 'Localisation', 'Poids (%)', 'Indicateurs',
-        "Période d'exécution", 'Struct. Resp.', 'Structures associées',
-        'FP (milliers F CFA)', 'FADeC', 'Montant FADeC (milliers)',
-        'Autres PTFs (milliers)', 'Coût Total (milliers)', 'Observations',
+    # ── Lignes 5-6 : En-têtes colonnes (2 niveaux, identiques au tableau HTML) ──
+    ws.row_dimensions[5].height = 24
+    ws.row_dimensions[6].height = 22
+
+    # Colonnes sans sous-groupe : merge sur 2 lignes (rowspan=2)
+    simple_headers = [
+        (1,  'Code PAI'),
+        (2,  'Programmes / Projets / Activités'),
+        (3,  'Localisation'),
+        (4,  'Poids (%)'),
+        (5,  'Indicateurs'),
+        (6,  "Période d'exécution"),
+        (7,  'Struct. Resp.'),
+        (8,  'Structures associées'),
+        (14, 'Observations'),
     ]
-    for col, h in enumerate(headers, 1):
+    for col, h in simple_headers:
+        ws.merge_cells(start_row=5, start_column=col, end_row=6, end_column=col)
         c = ws.cell(row=5, column=col, value=h)
         c.font = Font(bold=True, size=9)
         c.fill = fill('BDD7EE')
         c.alignment = center
         c.border = bord
-    ws.row_dimensions[5].height = 30
+        ws.cell(row=6, column=col).border = bord
+
+    # Groupe "Sources de Financement" : cols 9-13, ligne 5 fusionnée
+    ws.merge_cells(start_row=5, start_column=9, end_row=5, end_column=13)
+    c = ws.cell(row=5, column=9, value='SOURCES DE FINANCEMENT (en milliers de F CFA)')
+    c.font = Font(bold=True, size=9)
+    c.fill = fill('BDD7EE')
+    c.alignment = center
+    c.border = bord
+
+    # Sous-en-têtes financiers ligne 6 (FP | FADeC | Montant FADeC | Autres PTFs | Coût Total)
+    fin_sub = [
+        (9,  'FP'),
+        (10, 'FADeC'),
+        (11, 'Montant FADeC'),
+        (12, 'Autres PTFs'),
+        (13, 'Coût Total'),
+    ]
+    for col, h in fin_sub:
+        c = ws.cell(row=6, column=col, value=h)
+        c.font = Font(bold=True, size=9)
+        c.fill = fill('BDD7EE')
+        c.alignment = center
+        c.border = bord
+
+    r = 7  # les données commencent à la ligne 7
 
     def _periode(act):
         if act.periode_debut and act.periode_fin and act.periode_debut != act.periode_fin:
@@ -295,7 +330,6 @@ def export_excel():
         codes = [d.code for d in act.directions_associees] + [s.code for s in act.services_intervenants]
         return ', '.join(codes)
 
-    r = 6
     for pg_d in pai_data:
         pg = pg_d['programme']
         pn = pg_d['prog_num']

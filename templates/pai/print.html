@@ -37,7 +37,11 @@
     display:flex; justify-content:space-between; align-items:center;
     margin-bottom:5px; border-bottom:2px solid #1a3a5c; padding-bottom:4px;
   }
-  .entete img { max-height:72px; max-width:120px; object-fit:contain; }
+  .entete-gauche { width:38%; }
+  .entete-gauche img { height:72px; width:auto; }
+  .entete-centre { text-align:center; width:24%; font-size:7.5pt; line-height:2.0; }
+  .entete-droite { text-align:right; width:38%; }
+  .entete-droite img { height:72px; width:auto; }
 
   /* ── Titre ── */
   .titre-pai {
@@ -102,14 +106,17 @@
 
 <!-- En-tête officiel -->
 <div class="entete">
-  <img src="{{ url_for('static', filename='img/bandeau.png') }}" alt="Bandeau Bénin">
-  <div style="text-align:center; font-size:7.5pt; line-height:1.9;">
-    <div style="font-weight:bold; font-size:8.5pt; text-transform:uppercase; letter-spacing:1px;">République du Bénin</div>
-    <div style="font-style:italic; font-size:7pt; color:#444;">Fraternité – Justice – Travail</div>
-    <div style="margin-top:3px;">Département du Plateau</div>
-    <div style="font-weight:bold; font-size:9pt; text-transform:uppercase;">Mairie d'Adja-Ouèrè</div>
+  <div class="entete-gauche">
+    <img src="{{ url_for('static', filename='img/bandeau.png') }}" alt="Bandeau officiel">
   </div>
-  <img src="{{ url_for('static', filename='img/logo_commune.png') }}" alt="Logo Commune">
+  <div class="entete-centre">
+    <strong>BP 02 Adja-Ouèrè</strong><br>
+    <strong>Tél&nbsp;: +229 01 61 91 96 12</strong><br>
+    <strong>Email&nbsp;: contact.adjaouere@mairie.bj</strong>
+  </div>
+  <div class="entete-droite">
+    <img src="{{ url_for('static', filename='img/logo_commune.png') }}" alt="Logo Commune">
+  </div>
 </div>
 
 <!-- Titre -->
@@ -272,10 +279,11 @@
   </tbody>
   <tfoot>
     <tr>
-      <td colspan="9" id="ft-date">Imprimé le —</td>
-      <td colspan="5" style="text-align:right;">
+      <td colspan="5" id="ft-date">Imprimé le —</td>
+      <td colspan="4" style="text-align:center;">
         FP = Fonds Propres &nbsp;|&nbsp; FA = FADeC Affecté &nbsp;|&nbsp; FNA = FADeC Non Affecté &nbsp;|&nbsp; PTFs = Partenaires Techniques et Financiers &nbsp;|&nbsp; Montants en milliers de F CFA
       </td>
+      <td colspan="5" style="text-align:right; font-weight:bold;">Direction du Développement Local et de la Planification (DDLP)</td>
     </tr>
   </tfoot>
 </table>

@@ -344,8 +344,13 @@ def export_excel():
     legende = ws.cell(row=r, column=1,
         value="FP = Fonds Propres  |  FA = FADeC Affecté  |  FNA = FADeC Non Affecté  |  PTFs = Partenaires Techniques et Financiers  |  Montants en milliers de F CFA")
     legende.font = Font(italic=True, size=8, color='444444')
-    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=14)
+    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=9)
     legende.alignment = Alignment(horizontal='left', vertical='center')
+
+    dir_cell = ws.cell(row=r, column=10, value='Direction du Développement Local et de la Planification (DDLP)')
+    dir_cell.font = Font(bold=True, size=8)
+    ws.merge_cells(start_row=r, start_column=10, end_row=r, end_column=14)
+    dir_cell.alignment = Alignment(horizontal='right', vertical='center')
 
     for i, w in enumerate([8, 35, 18, 8, 25, 12, 12, 20, 16, 16, 16, 16, 16, 22], 1):
         ws.column_dimensions[get_column_letter(i)].width = w

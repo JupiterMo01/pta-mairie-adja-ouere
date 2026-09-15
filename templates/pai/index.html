@@ -101,7 +101,7 @@
     {% set pn = pg_d.prog_num %}
     {% set extra_pg = pg.pai_extra_prog %}
 
-    {# ── Poids projets (calculés automatiquement) ── #}
+    {# ── Somme poids projets ── #}
     {% set sum_pj_poids = pg_d.projets | sum(attribute='poids') %}
 
     {# ── Ligne Programme ── #}
@@ -116,7 +116,14 @@
           <span class="badge bg-danger" style="font-size:.6rem;">⚠ Poids projets = {{ sum_pj_poids }}%</span>
         {% endif %}
       </td>
-      {% if can_edit %}<td></td>{% endif %}
+      {% if can_edit %}
+      <td class="text-center">
+        <button class="btn btn-warning" style="font-size:.6rem; padding:1px 4px;"
+                onclick="openEditProg({{ pg.id }}, {{ pg_d.poids }})" title="Modifier poids programme">
+          <i class="fas fa-edit"></i>
+        </button>
+      </td>
+      {% endif %}
     </tr>
 
     {% set pg_tot = namespace(fp=0.0, fadec=0.0, ptfs=0.0, total=0.0) %}
@@ -124,10 +131,13 @@
     {% for pj_d in pg_d.projets %}
       {% set pj = pj_d.projet %}
       {% set pjn = pj_d.proj_num %}
-      {% set extra_pj = pj.pai_extra_proj %}
 
-      {# ── Poids activités de ce projet (calculés automatiquement) ── #}
-      {% set sum_act_poids = pj_d.act_poids | sum %}
+      {# ── Somme poids activités de ce projet ── #}
+      {% set ns_ap = namespace(s=0) %}
+      {% for act in pj_d.activites %}
+        {% set ns_ap.s = ns_ap.s + ((act.pai_extra.poids_pai | int) if act.pai_extra and act.pai_extra.poids_pai else 0) %}
+      {% endfor %}
+      {% set sum_act_poids = ns_ap.s %}
 
       {# ── Ligne Projet ── #}
       <tr style="background:#FFFF00; font-weight:700;">
@@ -141,7 +151,14 @@
             <span class="badge bg-danger" style="font-size:.6rem;">⚠ Poids activités = {{ sum_act_poids }}%</span>
           {% endif %}
         </td>
-        {% if can_edit %}<td></td>{% endif %}
+        {% if can_edit %}
+        <td class="text-center">
+          <button class="btn btn-warning" style="font-size:.6rem; padding:1px 4px;"
+                  onclick="openEditProj({{ pj.id }}, {{ pj_d.poids }})" title="Modifier poids projet">
+            <i class="fas fa-edit"></i>
+          </button>
+        </td>
+        {% endif %}
       </tr>
 
       {% set pj_tot = namespace(fp=0.0, fadec=0.0, ptfs=0.0, total=0.0) %}
@@ -166,8 +183,8 @@
         {% elif a_fn > 0 %}
           {% set fadec_lbl = 'FNA (' ~ (a_fn | fcfa) ~ ')' %}
         {% else %}{% set fadec_lbl = '' %}{% endif %}
-        {# Poids auto depuis liste calculée #}
-        {% set a_poids = pj_d.act_poids[loop.index0] %}
+        {# Poids depuis DB #}
+        {% set a_poids = (extra.poids_pai | int) if extra and extra.poids_pai else 0 %}
         {# Période #}
         {% if act.periode_debut and act.periode_fin and act.periode_debut != act.periode_fin %}
           {% set periode_str = act.periode_debut ~ ' – ' ~ act.periode_fin %}
@@ -187,7 +204,7 @@
           <td class="text-center">{{ pn }}.{{ pjn }}.{{ loop.index }}</td>
           <td>{{ act.nom }}</td>
           <td class="text-center act-loc">{{ extra.localisation if extra and extra.localisation else '' }}</td>
-          <td class="text-center">{{ a_poids }}%</td>
+          <td class="text-center act-poids">{{ a_poids }}%</td>
           <td class="text-center act-ind" style="font-size:.65rem;">{{ extra.indicateurs if extra and extra.indicateurs else '' }}</td>
           <td class="text-center">{{ periode_str }}</td>
           <td class="text-center">{{ act.direction_responsable.code if act.direction_responsable else '' }}</td>
@@ -264,7 +281,7 @@
   FA = FADeC Affecté &nbsp;|&nbsp;
   FNA = FADeC Non Affecté &nbsp;|&nbsp;
   PTFs = Partenaires Techniques et Financiers &nbsp;|&nbsp;
-  Poids calculés automatiquement depuis les montants
+  Poids saisis manuellement, importés du PTA par défaut
 </div>
 {% endif %}
 
@@ -287,11 +304,16 @@
 
           <div class="alert alert-info py-2 small mb-3">
             <i class="fas fa-info-circle me-1"></i>
-            Les montants, structures et poids viennent automatiquement du PTA. Renseignez ici la localisation, les indicateurs et les observations.
+            Le poids est importé depuis le PTA par défaut et peut être modifié. Les montants et structures viennent du PTA.
           </div>
 
           <div class="row g-3">
-            <div class="col-12">
+            <div class="col-md-3">
+              <label class="form-label fw-bold mb-1">Poids (%)</label>
+              <input type="number" class="form-control form-control-sm" id="ep-poids"
+                     name="poids_pai" min="0" max="100" step="1" placeholder="0">
+            </div>
+            <div class="col-md-9">
               <label class="form-label fw-bold mb-1">Localisation</label>
               <input type="text" class="form-control form-control-sm" id="ep-localisation"
                      name="localisation" placeholder="Village, quartier, zone d'intervention…">
@@ -322,7 +344,75 @@
   </div>
 </div>
 
-{# Poids programmes/projets/activités calculés automatiquement — pas de modals d'édition #}
+{# ═══ Modal édition poids Programme ═══ #}
+<div class="modal fade" id="editProgModal" tabindex="-1" aria-labelledby="editProgLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header" style="background:#F4B183; color:#000;">
+        <h5 class="modal-title" id="editProgLabel">
+          <i class="fas fa-edit me-2"></i>Modifier poids du Programme
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="editProgForm" onsubmit="saveProgEdit(event)">
+        <div class="modal-body bg-light">
+          <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+          <div class="alert alert-info py-2 small mb-3">
+            <i class="fas fa-info-circle me-1"></i>
+            La somme des poids de tous les programmes doit être égale à 100%.
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold">Poids (%)</label>
+            <input type="number" class="form-control" id="ep-prog-poids" name="poids_pai"
+                   min="0" max="100" step="1" placeholder="0">
+          </div>
+          <div id="ep-prog-status" class="text-danger small" hidden></div>
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-sm btn-success" id="ep-prog-save-btn">
+            <i class="fas fa-save me-1"></i>Enregistrer
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{# ═══ Modal édition poids Projet ═══ #}
+<div class="modal fade" id="editProjModal" tabindex="-1" aria-labelledby="editProjLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header" style="background:#d4d400; color:#000;">
+        <h5 class="modal-title" id="editProjLabel">
+          <i class="fas fa-edit me-2"></i>Modifier poids du Projet
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="editProjForm" onsubmit="saveProjEdit(event)">
+        <div class="modal-body bg-light">
+          <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+          <div class="alert alert-info py-2 small mb-3">
+            <i class="fas fa-info-circle me-1"></i>
+            La somme des poids de tous les projets du programme doit être égale à 100%.
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold">Poids (%)</label>
+            <input type="number" class="form-control" id="ep-proj-poids" name="poids_pai"
+                   min="0" max="100" step="1" placeholder="0">
+          </div>
+          <div id="ep-proj-status" class="text-danger small" hidden></div>
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-sm btn-success" id="ep-proj-save-btn">
+            <i class="fas fa-save me-1"></i>Enregistrer
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
 {% endif %}
 {% endblock %}
 
@@ -334,6 +424,7 @@ const PAI_EXTRA = {
 {% for pg_d in pai_data %}{% for pj_d in pg_d.projets %}{% for act in pj_d.activites %}
   {{ act.id }}: {
     code:            {{ (pg_d.prog_num ~ '.' ~ pj_d.proj_num ~ '.' ~ loop.index) | tojson }},
+    poids_pai:       {{ (act.pai_extra.poids_pai | int) if act.pai_extra and act.pai_extra.poids_pai else 0 }},
     localisation:    {{ (act.pai_extra.localisation or '')     | tojson if act.pai_extra else '""' }},
     indicateurs:     {{ (act.pai_extra.indicateurs or '')      | tojson if act.pai_extra else '""' }},
     observations_pai:{{ (act.pai_extra.observations_pai or '') | tojson if act.pai_extra else '""' }},
@@ -346,6 +437,7 @@ function openEditPai(actId) {
   const d = PAI_EXTRA[actId] || {};
   document.getElementById('modal-act-code').textContent = d.code || actId;
   document.getElementById('edit-pai-id').value          = actId;
+  document.getElementById('ep-poids').value             = d.poids_pai !== undefined ? d.poids_pai : 0;
   document.getElementById('ep-localisation').value      = d.localisation    || '';
   document.getElementById('ep-indicateurs').value       = d.indicateurs     || '';
   document.getElementById('ep-observations').value      = d.observations_pai || '';
@@ -369,13 +461,17 @@ async function savePaiEdit(e) {
     const resp = await fetch(`/pai/edit/${actId}`, { method: 'POST', body: fd });
     const data = await resp.json();
     if (data.ok) {
+      const newPoids = parseInt(fd.get('poids_pai') || 0);
       PAI_EXTRA[actId] = Object.assign(PAI_EXTRA[actId] || {}, {
+        poids_pai:       newPoids,
         localisation:    fd.get('localisation'),
         indicateurs:     fd.get('indicateurs'),
         observations_pai:fd.get('observations_pai'),
       });
       const row = document.querySelector(`tr[data-act-id="${actId}"]`);
       if (row) {
+        const poidsCell = row.querySelector('.act-poids');
+        if (poidsCell) poidsCell.textContent = newPoids + '%';
         row.querySelector('.act-loc').textContent   = fd.get('localisation')  || '';
         row.querySelector('.act-ind').textContent   = fd.get('indicateurs')   || '';
         row.querySelector('.act-obs').textContent   = fd.get('observations_pai') || '';
@@ -394,6 +490,79 @@ async function savePaiEdit(e) {
   }
 }
 
+/* ── Modal Programme ── */
+let _editProgId = null;
+
+function openEditProg(progId, currentPoids) {
+  _editProgId = progId;
+  document.getElementById('ep-prog-poids').value  = currentPoids || 0;
+  document.getElementById('ep-prog-status').hidden = true;
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('editProgModal')).show();
+}
+
+async function saveProgEdit(e) {
+  e.preventDefault();
+  const btn    = document.getElementById('ep-prog-save-btn');
+  const status = document.getElementById('ep-prog-status');
+  const fd     = new FormData(document.getElementById('editProgForm'));
+  btn.disabled  = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Enregistrement…';
+  status.hidden = true;
+  try {
+    const resp = await fetch(`/pai/edit_prog/${_editProgId}`, { method: 'POST', body: fd });
+    const data = await resp.json();
+    if (data.ok) {
+      bootstrap.Modal.getInstance(document.getElementById('editProgModal')).hide();
+      window.location.reload();
+    } else {
+      status.textContent = "Erreur lors de l'enregistrement.";
+      status.hidden = false;
+    }
+  } catch (err) {
+    status.textContent = 'Erreur réseau : ' + err.message;
+    status.hidden = false;
+  } finally {
+    btn.disabled  = false;
+    btn.innerHTML = '<i class="fas fa-save me-1"></i>Enregistrer';
+  }
+}
+
+/* ── Modal Projet ── */
+let _editProjId = null;
+
+function openEditProj(projId, currentPoids) {
+  _editProjId = projId;
+  document.getElementById('ep-proj-poids').value  = currentPoids || 0;
+  document.getElementById('ep-proj-status').hidden = true;
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('editProjModal')).show();
+}
+
+async function saveProjEdit(e) {
+  e.preventDefault();
+  const btn    = document.getElementById('ep-proj-save-btn');
+  const status = document.getElementById('ep-proj-status');
+  const fd     = new FormData(document.getElementById('editProjForm'));
+  btn.disabled  = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Enregistrement…';
+  status.hidden = true;
+  try {
+    const resp = await fetch(`/pai/edit_proj/${_editProjId}`, { method: 'POST', body: fd });
+    const data = await resp.json();
+    if (data.ok) {
+      bootstrap.Modal.getInstance(document.getElementById('editProjModal')).hide();
+      window.location.reload();
+    } else {
+      status.textContent = "Erreur lors de l'enregistrement.";
+      status.hidden = false;
+    }
+  } catch (err) {
+    status.textContent = 'Erreur réseau : ' + err.message;
+    status.hidden = false;
+  } finally {
+    btn.disabled  = false;
+    btn.innerHTML = '<i class="fas fa-save me-1"></i>Enregistrer';
+  }
+}
 </script>
 {% endif %}
 {% endblock %}

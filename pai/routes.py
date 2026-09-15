@@ -1,5 +1,4 @@
 import io
-import math
 from flask import render_template, abort, request, jsonify, Response
 from flask_login import login_required, current_user
 from models import db, Programme, Projet, Activite, PaiActivite, PaiProgramme, PaiProjet
@@ -9,24 +8,24 @@ from utils import get_annee
 
 # ─── Helpers poids automatiques ───────────────────────────────────────────────
 
-def _half_up_round(x):
-    """Arrondi demi-supérieur entier : < 0,5 → inférieur, >= 0,5 → supérieur."""
-    return int(math.floor(x + 0.5))
-
-
 def _compute_poids_list(totals):
     """
-    Poids entiers calculés depuis les montants.
-    Le dernier élément = 100 - somme(autres) pour garantir 100%.
+    Poids entiers : floor pour tous.
+    Si une activité a un montant > 0 mais que floor donne 0, on met 1 (minimum visible).
+    Les activités à montant nul restent à 0.
     """
     if not totals:
         return []
     s = sum(totals)
     if s == 0:
         return [0] * len(totals)
-    rounded = [_half_up_round(t / s * 100) for t in totals[:-1]]
-    rounded.append(100 - sum(rounded))
-    return rounded
+    result = []
+    for t in totals:
+        p = int(t / s * 100)   # floor
+        if p == 0 and t > 0:
+            p = 1               # minimum 1 si budget non nul
+        result.append(p)
+    return result
 
 
 def _fmt_mil(v):

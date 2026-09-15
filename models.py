@@ -510,63 +510,18 @@ BiblioTache.structures_externes = db.relationship(
     'StructureExterne', secondary=biblio_tache_struct_ext, lazy='subquery')
 
 
-# ─── PAI Nouveau Format ───────────────────────────────────────────────────────
-
-class PaiProgramme(db.Model):
-    """Programme tel qu'il apparaît dans le PAI au nouveau format."""
-    __tablename__ = 'pai_programmes'
-    id       = db.Column(db.Integer, primary_key=True)
-    annee_id = db.Column(db.Integer, db.ForeignKey('annees.id'), nullable=False)
-    numero   = db.Column(db.Integer, nullable=False)
-    nom      = db.Column(db.Text,    nullable=False)
-    poids    = db.Column(db.Float,   default=0.0)   # % stocké en décimal (0.30 = 30 %)
-
-    annee   = db.relationship('Annee', backref='pai_programmes')
-    projets = db.relationship('PaiProjet', backref='programme', lazy=True,
-                              cascade='all, delete-orphan',
-                              order_by='PaiProjet.numero')
-
-    @property
-    def code(self): return str(self.numero)
-
-
-class PaiProjet(db.Model):
-    """Projet tel qu'il apparaît dans le PAI au nouveau format."""
-    __tablename__ = 'pai_projets'
-    id           = db.Column(db.Integer, primary_key=True)
-    programme_id = db.Column(db.Integer, db.ForeignKey('pai_programmes.id'), nullable=False)
-    numero       = db.Column(db.Integer, nullable=False)
-    nom          = db.Column(db.Text,    nullable=False)
-    poids        = db.Column(db.Float,   default=0.0)
-
-    activites = db.relationship('PaiActivite', backref='projet', lazy=True,
-                                cascade='all, delete-orphan',
-                                order_by='PaiActivite.numero')
-
-    @property
-    def code(self): return f"{self.programme.numero}.{self.numero}"
-
+# ─── PAI – Champs complémentaires des activités d'investissement ──────────────
 
 class PaiActivite(db.Model):
-    """Activité d'investissement telle qu'elle apparaît dans le PAI nouveau format."""
+    """Champs PAI saisis manuellement par l'admin pour chaque activité d'investissement du PTA.
+    Les données financières et structurelles viennent directement de la table activites."""
     __tablename__ = 'pai_activites'
-    id         = db.Column(db.Integer, primary_key=True)
-    projet_id  = db.Column(db.Integer, db.ForeignKey('pai_projets.id'), nullable=False)
-    numero     = db.Column(db.Integer, nullable=False)
-    nom        = db.Column(db.Text,    nullable=False)
-    localisation          = db.Column(db.Text,         nullable=True)
-    poids                 = db.Column(db.Float,         default=0.0)   # % (ex : 5.0 = 5 %)
-    indicateurs           = db.Column(db.Text,         nullable=True)
-    periode_execution     = db.Column(db.String(20),   nullable=True)  # ex : 'T1', 'T1-T2'
-    structures_responsables = db.Column(db.String(100), nullable=True)
-    structures_associees  = db.Column(db.Text,         nullable=True)
-    fp                    = db.Column(db.Float,         default=0.0)   # Fonds Propres (milliers F CFA)
-    fadec_type            = db.Column(db.String(300),  nullable=True)  # libellé FADeC
-    montant_fadec         = db.Column(db.Float,         default=0.0)
-    autres_ptfs           = db.Column(db.Float,         default=0.0)
-    cout_total            = db.Column(db.Float,         default=0.0)
-    observations          = db.Column(db.Text,         nullable=True)
+    id               = db.Column(db.Integer, primary_key=True)
+    activite_id      = db.Column(db.Integer, db.ForeignKey('activites.id'), nullable=False, unique=True)
+    localisation     = db.Column(db.Text,        nullable=True)
+    poids_pai        = db.Column(db.Float,        default=0.0)   # en % direct (5.0 = 5 %)
+    indicateurs      = db.Column(db.Text,        nullable=True)
+    fadec_type       = db.Column(db.String(300), nullable=True)   # libellé de la ligne FADeC
+    observations_pai = db.Column(db.Text,        nullable=True)
 
-    @property
-    def code(self):
-        return f"{self.projet.programme.numero}.{self.projet.numero}.{self.numero}"
+    activite = db.relationship('Activite', backref=db.backref('pai_extra', uselist=False))

@@ -1,201 +1,101 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PAI {{ annee.annee if annee }} — Mairie d'Adja-Ouèrè</title>
-{% if can_edit %}
-<link media="screen" rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
-{% endif %}
+{% extends "base.html" %}
+{% block title %}PAI {{ annee.annee if annee }}{% endblock %}
+{% block page_title %}<i class="fas fa-file-invoice me-2"></i>Plan Annuel d'Investissement (PAI){% endblock %}
+
+{% block content %}
+{# ── Barre d'outils ─────────────────────────────────────────────────────── #}
+<div class="d-flex flex-wrap gap-2 align-items-center mt-2 mb-3">
+  {% if annee %}
+  <span class="badge bg-primary fs-6 px-3">{{ annee.annee }}</span>
+  <span class="text-muted small">
+    <i class="fas fa-hammer me-1"></i>{{ total_nb }} activité{{ 's' if total_nb != 1 }} d'investissement
+    &nbsp;—&nbsp;
+    Total : <strong>{{ total_global | fcfa }} F CFA</strong>
+  </span>
+  {% endif %}
+  <div class="ms-auto d-flex gap-2 flex-wrap">
+    {% if annee %}
+    <a href="{{ url_for('pai.print_view') }}" target="_blank" class="btn btn-outline-secondary btn-sm">
+      <i class="fas fa-print me-1"></i>Imprimer
+    </a>
+    <a href="{{ url_for('pai.export_excel') }}" class="btn btn-success btn-sm">
+      <i class="fas fa-file-excel me-1"></i>Exporter Excel
+    </a>
+    {% endif %}
+  </div>
+</div>
+
+{% if not annee %}
+<div class="alert alert-warning">
+  <i class="fas fa-exclamation-triangle me-2"></i>Aucune année active.
+</div>
+{% elif not pai_data %}
+<div class="alert alert-info">
+  <i class="fas fa-info-circle me-2"></i>Aucune activité d'investissement dans le PTA {{ annee.annee }}.
+</div>
+{% else %}
+
+{# ── Tableau PAI ─────────────────────────────────────────────────────────── #}
 <style>
-  @page {
-    size: A4 landscape;
-    margin: 1.5cm 0.8cm 2cm 0.8cm;
-    @bottom-left  { content: "Mairie d'Adja-Ouèrè — Plan Annuel d'Investissement {{ annee.annee if annee }}"; font-size:6.5pt; color:#444; font-weight:bold; }
-    @bottom-center{ content: ""; }
-    @bottom-right { content: "Page " counter(page) " / " counter(pages); font-size:6.5pt; color:#444; font-weight:bold; }
-  }
-  *, *::before, *::after { box-sizing:border-box; margin:0; padding:0;
-      -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
-  body { font-family:Arial,Helvetica,sans-serif; font-size:7pt; color:#000; background:#fff; }
-
-  /* ── Barre écran ── */
-  .screen-bar {
-    background:#1a3a5c; color:#fff; padding:9px 20px;
-    display:flex; align-items:center; gap:12px;
-  }
-  .screen-bar span { font-size:13px; font-weight:bold; flex:1; }
-  .screen-bar button {
-    padding:7px 18px; border:none; border-radius:4px;
-    cursor:pointer; font-size:13px; font-weight:bold;
-  }
-  .btn-p { background:#27ae60; color:#fff; }
-  .btn-c { background:#6c757d; color:#fff; }
-  @media print { .screen-bar { display:none !important; } }
-
-  /* ── En-tête officiel ── */
-  .entete {
-    display:flex; justify-content:space-between; align-items:center;
-    margin-bottom:5px; border-bottom:2px solid #1a3a5c; padding-bottom:5px;
-  }
-  .entete-centre { text-align:center; font-size:7.5pt; line-height:1.9; }
-  .entete-centre .pays  { font-weight:bold; font-size:8.5pt; text-transform:uppercase; letter-spacing:1px; }
-  .entete-centre .devise{ font-style:italic; font-size:7pt; color:#444; }
-  .entete-centre .mairie{ font-weight:bold; font-size:9pt; text-transform:uppercase; }
-  .logo-placeholder {
-    width:72px; height:72px; border:1.5px solid #ccc; border-radius:4px;
-    display:flex; align-items:center; justify-content:center;
-    font-size:6pt; color:#999; text-align:center; line-height:1.3;
-  }
-
-  /* ── Titre ── */
-  .titre-pai {
-    text-align:center; margin:6px 0 5px 0;
-    border:2.5px solid #1a3a5c; border-radius:4px;
-    padding:7px 0; background:#dbeeff;
-  }
-  .titre-pai h1 { font-size:12pt; font-weight:bold; letter-spacing:2px; text-transform:uppercase; color:#1a3a5c; }
-  .titre-pai h2 { font-size:9pt; font-weight:bold; color:#1a3a5c; margin-top:3px; }
-  .titre-pai .montant-total {
-    display:inline-block; margin-top:5px;
-    background:#1a3a5c; color:#fff; border-radius:4px;
-    padding:2px 14px; font-weight:bold; font-size:9pt;
-  }
-
-  /* ── Tableau ── */
-  table.pai-table { width:100%; border-collapse:collapse; margin-top:4px; }
-  .pai-table th, .pai-table td {
-    border:0.6pt solid #555; padding:2px 3px;
-    vertical-align:middle; text-align:left; line-height:1.3;
-  }
-  .pai-table th { text-align:center; font-size:6.5pt; background:#BDD7EE; font-weight:bold; }
-  .pai-table td.num  { text-align:center; }
-  .pai-table td.pct  { text-align:center; white-space:nowrap; }
-  .pai-table td.mnt  { text-align:right;  white-space:nowrap; font-variant-numeric:tabular-nums; }
-  .pai-table td.per  { text-align:center; white-space:nowrap; }
-
-  /* ── Lignes par niveau ── */
-  .pai-table tr.prog td {
-    background:#F4B183; font-weight:bold; font-size:7.5pt;
-    text-transform:uppercase; letter-spacing:0.5px;
-  }
-  .pai-table tr.proj td { background:#FFFF00; font-weight:bold; font-size:7pt; }
-  .pai-table tr.act  td { background:#C5DEB5; font-size:6.8pt; }
-
-  /* ── Sous-totaux & totaux ── */
-  .pai-table tr.stotal td { background:#EAF0FB; font-weight:bold; font-style:italic; font-size:6.8pt; }
-  .pai-table tr.total  td { background:#AED6F1; font-weight:bold; font-size:7pt; }
-  .pai-table tr.grand  td { background:#1a3a5c; color:#fff; font-weight:bold; font-size:7.5pt; }
-  .pai-table tr.grand td.mnt { color:#fff; }
-
-  /* ── Bouton édition ── */
-  .edit-btn {
-    display:none; border:none; background:none; cursor:pointer;
-    font-size:9pt; padding:0 2px; opacity:0.5; vertical-align:middle;
-    line-height:1;
-  }
-  @media screen {
-    .pai-table tr.act:hover .edit-btn { display:inline-block; }
-    .edit-btn:hover { opacity:1; transform:scale(1.2); }
-  }
-  @media print { .edit-btn { display:none !important; } }
-
-  /* ── Largeurs colonnes ── */
-  .col-code  { width:4%; }
-  .col-nom   { width:18%; }
-  .col-loc   { width:7%; }
-  .col-pds   { width:4%; }
-  .col-ind   { width:11%; }
-  .col-per   { width:5%; }
-  .col-resp  { width:4%; }
-  .col-assoc { width:8%; }
-  .col-fp    { width:5%; }
-  .col-fadec { width:9%; }
-  .col-mfad  { width:6%; }
-  .col-ptfs  { width:5%; }
-  .col-tot   { width:6%; }
-  .col-obs   { width:8%; }
-
-  /* Légende bas de page (écran seulement) */
-  .legende {
-    margin-top:8px; font-size:6.5pt; color:#444;
-    border-top:1px solid #aaa; padding-top:4px;
-  }
-  @media print { .legende { display:none; } }
-
-  /* ── Modal (écran seulement) ── */
-  @media print { .modal, #editModal { display:none !important; } }
+#paiContainer thead th {
+  word-break: break-word; overflow-wrap: break-word;
+  vertical-align: middle; line-height: 1.2; padding: 2px 3px !important;
+}
 </style>
-</head>
-<body>
 
-<div class="screen-bar">
-  <span>PAI {{ annee.annee if annee }} — Plan Annuel d'Investissement (Nouveau Format)</span>
-  <button class="btn-p" onclick="window.print()">Imprimer / PDF</button>
-  <button class="btn-c" onclick="history.back()">&#8592; Retour</button>
-</div>
-
-<!-- En-tête officiel -->
-<div class="entete">
-  <div class="logo-placeholder">Logo<br>Bénin</div>
-  <div class="entete-centre">
-    <div class="pays">République du Bénin</div>
-    <div class="devise">Fraternité – Justice – Travail</div>
-    <div style="margin-top:4px;">Département du Plateau</div>
-    <div class="mairie">Mairie d'Adja-Ouèrè</div>
-  </div>
-  <div class="logo-placeholder">Logo<br>Mairie</div>
-</div>
-
-<!-- Titre -->
-<div class="titre-pai">
-  <h1>Plan Annuel d'Investissement (PAI) {{ annee.annee if annee }}</h1>
-  <h2>Commune d'Adja-Ouèrè — Département du Plateau</h2>
-  <div class="montant-total">
-    Montant total : {{ total_global | milliers }} milliers de F CFA
-  </div>
-</div>
-
-<!-- Tableau PAI -->
-<table class="pai-table">
-  <thead>
-    <tr>
-      <th class="col-code" rowspan="2">Code</th>
-      <th class="col-nom"  rowspan="2">Programmes / Projets / Activités</th>
-      <th class="col-loc"  rowspan="2">Localisation</th>
-      <th class="col-pds"  rowspan="2">Poids<br>(%)</th>
-      <th class="col-ind"  rowspan="2">Indicateurs</th>
-      <th class="col-per"  rowspan="2">Période<br>d'exéc.</th>
-      <th class="col-resp" rowspan="2">Struct.<br>Resp.</th>
-      <th class="col-assoc" rowspan="2">Structures associées</th>
-      <th colspan="5">Sources de Financement (en milliers de F CFA)</th>
-      <th class="col-obs"  rowspan="2">Observations</th>
+<div id="paiContainer"
+     style="font-size:.72rem; max-height:calc(100vh - 200px); overflow-y:auto; overflow-x:auto; width:100%;">
+<table class="table table-bordered table-sm align-middle mb-0"
+       style="table-layout:fixed; width:100%; min-width:1400px;">
+  <colgroup>
+    <col style="width:4%">
+    <col style="width:16%">
+    <col style="width:6%">
+    <col style="width:3.5%">
+    <col style="width:10%">
+    <col style="width:5%">
+    <col style="width:4%">
+    <col style="width:6%">
+    <col style="width:6.5%">
+    <col style="width:8%">
+    <col style="width:6.5%">
+    <col style="width:6%">
+    <col style="width:6%">
+    <col style="width:7%">
+    {% if can_edit %}<col style="width:5%">{% endif %}
+  </colgroup>
+  <thead style="position:sticky; top:0; z-index:5;">
+    <tr style="background:#BDD7EE; color:#000; text-align:center; font-weight:700; font-size:.68rem;">
+      <th rowspan="2" style="background:#BDD7EE;">Code</th>
+      <th rowspan="2" style="background:#BDD7EE;">Programmes / Projets / Activités</th>
+      <th rowspan="2" style="background:#BDD7EE;">Localisation</th>
+      <th rowspan="2" style="background:#BDD7EE;">Poids<br>(%)</th>
+      <th rowspan="2" style="background:#BDD7EE;">Indicateurs</th>
+      <th rowspan="2" style="background:#BDD7EE;">Période<br>d'exéc.</th>
+      <th rowspan="2" style="background:#BDD7EE;">Struct.<br>Resp.</th>
+      <th rowspan="2" style="background:#BDD7EE;">Structures associées</th>
+      <th colspan="5" style="background:#BDD7EE;">Sources de Financement (en F CFA)</th>
+      <th rowspan="2" style="background:#BDD7EE;">Observations</th>
+      {% if can_edit %}<th rowspan="2" style="background:#BDD7EE;">Actions</th>{% endif %}
     </tr>
-    <tr>
-      <th class="col-fp">FP</th>
-      <th class="col-fadec">FADeC</th>
-      <th class="col-mfad">Montant<br>FADeC</th>
-      <th class="col-ptfs">Autres<br>PTFs</th>
-      <th class="col-tot">Coût<br>Total</th>
+    <tr style="background:#BDD7EE; color:#000; text-align:center; font-weight:700; font-size:.68rem;">
+      <th style="background:#BDD7EE;">FP</th>
+      <th style="background:#BDD7EE;">FADeC</th>
+      <th style="background:#BDD7EE;">Montant<br>FADeC</th>
+      <th style="background:#BDD7EE;">Autres<br>PTFs</th>
+      <th style="background:#BDD7EE;">Coût<br>Total</th>
     </tr>
   </thead>
   <tbody>
 
-  {% if not pai_data %}
-  <tr>
-    <td colspan="14" style="text-align:center; padding:20px; color:#666; font-size:9pt;">
-      Aucune activité d'investissement dans le PTA {{ annee.annee if annee }}.
-    </td>
-  </tr>
-  {% endif %}
-
   {% for pg_d in pai_data %}
     {% set pg = pg_d.programme %}
     {# ── Ligne Programme ── #}
-    <tr class="prog">
-      <td class="num col-code">{{ pg.numero }}</td>
-      <td colspan="13">Programme {{ pg.numero }} : {{ pg.nom }}</td>
+    <tr id="row-prog-{{ pg.id }}" style="background:#F4B183; font-weight:700; border-top:2px solid #aaa;">
+      <td class="text-center">{{ pg.numero }}</td>
+      <td colspan="{{ 14 if can_edit else 13 }}">
+        Programme {{ pg.numero }} : {{ pg.nom }}
+      </td>
     </tr>
 
     {% set pg_tot = namespace(fp=0.0, fadec=0.0, ptfs=0.0, total=0.0) %}
@@ -203,26 +103,26 @@
     {% for pj_d in pg_d.projets %}
       {% set pj = pj_d.projet %}
       {# ── Ligne Projet ── #}
-      <tr class="proj">
-        <td class="num col-code">{{ pj.code }}</td>
-        <td colspan="13">Projet {{ pj.code }} : {{ pj.nom }}</td>
+      <tr style="background:#FFFF00; font-weight:700;">
+        <td class="text-center">{{ pj.code }}</td>
+        <td colspan="{{ 14 if can_edit else 13 }}">
+          Projet {{ pj.code }} : {{ pj.nom }}
+        </td>
       </tr>
 
       {% set pj_tot = namespace(fp=0.0, fadec=0.0, ptfs=0.0, total=0.0) %}
 
       {% for act in pj_d.activites %}
         {% set extra = act.pai_extra %}
-        {# Montants convertis en milliers de F CFA #}
-        {% set a_fp    = act.src_rp / 1000 %}
-        {% set a_fadec = (act.src_fa + act.src_fn) / 1000 %}
-        {% set a_ptfs  = (act.src_ap + act.src_af) / 1000 %}
-        {% set a_total = act.budget_total / 1000 %}
-        {# Accumulation projet #}
+        {% set a_fp    = act.src_rp %}
+        {% set a_fadec = act.src_fa + act.src_fn %}
+        {% set a_ptfs  = act.src_ap + act.src_af %}
+        {% set a_total = act.budget_total %}
         {% set pj_tot.fp    = pj_tot.fp    + a_fp %}
         {% set pj_tot.fadec = pj_tot.fadec + a_fadec %}
         {% set pj_tot.ptfs  = pj_tot.ptfs  + a_ptfs %}
         {% set pj_tot.total = pj_tot.total + a_total %}
-        {# Période d'exécution #}
+        {# Période #}
         {% if act.periode_debut and act.periode_fin and act.periode_debut != act.periode_fin %}
           {% set periode_str = act.periode_debut ~ ' – ' ~ act.periode_fin %}
         {% elif act.periode_debut %}
@@ -232,36 +132,40 @@
         {% else %}
           {% set periode_str = '' %}
         {% endif %}
-        {# Structures associées : directions + services #}
+        {# Structures associées #}
         {% set assoc = [] %}
         {% for d in act.directions_associees %}{% if assoc.append(d.code) %}{% endif %}{% endfor %}
         {% for s in act.services_intervenants %}{% if assoc.append(s.code) %}{% endif %}{% endfor %}
-        <tr class="act" data-act-id="{{ act.id }}">
-          <td class="num col-code">
-            {{ act.code }}
-            {% if can_edit %}
-            <button class="edit-btn" onclick="openEdit({{ act.id }})" title="Modifier champs PAI">&#9998;</button>
-            {% endif %}
-          </td>
-          <td class="col-nom">{{ act.nom }}</td>
-          <td class="col-loc act-loc">{{ extra.localisation if extra and extra.localisation else '' }}</td>
-          <td class="pct col-pds act-pds">
+
+        <tr style="background:#C5DEB5;" data-act-id="{{ act.id }}">
+          <td class="text-center">{{ act.code }}</td>
+          <td>{{ act.nom }}</td>
+          <td class="act-loc">{{ extra.localisation if extra and extra.localisation else '' }}</td>
+          <td class="text-center act-pds">
             {%- if extra and extra.poids_pai -%}{{ extra.poids_pai | pct_nat }}%{%- else -%}—{%- endif -%}
           </td>
-          <td class="col-ind act-ind">{{ extra.indicateurs if extra and extra.indicateurs else '' }}</td>
-          <td class="per col-per">{{ periode_str }}</td>
-          <td class="num col-resp">{{ act.direction_responsable.code if act.direction_responsable else '' }}</td>
-          <td class="col-assoc">{{ assoc | join(', ') }}</td>
-          <td class="mnt col-fp">{% if a_fp %}{{ a_fp | milliers }}{% else %}—{% endif %}</td>
-          <td class="col-fadec act-fadec" style="font-size:6pt;">
+          <td class="act-ind" style="font-size:.65rem;">{{ extra.indicateurs if extra and extra.indicateurs else '' }}</td>
+          <td class="text-center">{{ periode_str }}</td>
+          <td class="text-center">{{ act.direction_responsable.code if act.direction_responsable else '' }}</td>
+          <td style="font-size:.65rem;">{{ assoc | join(', ') }}</td>
+          <td class="text-end">{% if a_fp %}{{ a_fp | fcfa }}{% else %}—{% endif %}</td>
+          <td class="act-fadec" style="font-size:.65rem;">
             {{- extra.fadec_type if extra and extra.fadec_type else '—' -}}
           </td>
-          <td class="mnt col-mfad">{% if a_fadec %}{{ a_fadec | milliers }}{% else %}—{% endif %}</td>
-          <td class="mnt col-ptfs">{% if a_ptfs %}{{ a_ptfs | milliers }}{% else %}—{% endif %}</td>
-          <td class="mnt col-tot">{{ a_total | milliers }}</td>
-          <td class="col-obs act-obs" style="font-size:6.2pt;">
+          <td class="text-end">{% if a_fadec %}{{ a_fadec | fcfa }}{% else %}—{% endif %}</td>
+          <td class="text-end">{% if a_ptfs %}{{ a_ptfs | fcfa }}{% else %}—{% endif %}</td>
+          <td class="text-end fw-bold">{{ a_total | fcfa }}</td>
+          <td class="act-obs" style="font-size:.65rem;">
             {{- extra.observations_pai if extra and extra.observations_pai else '' -}}
           </td>
+          {% if can_edit %}
+          <td class="text-center">
+            <button class="btn btn-warning" style="font-size:.65rem; padding:1px 5px;"
+                    onclick="openEditPai({{ act.id }})" title="Modifier champs PAI">
+              <i class="fas fa-edit"></i>
+            </button>
+          </td>
+          {% endif %}
         </tr>
       {% endfor %}
 
@@ -272,115 +176,121 @@
       {% set pg_tot.total = pg_tot.total + pj_tot.total %}
 
       {# ── Sous-total Projet ── #}
-      <tr class="stotal">
-        <td colspan="8" style="text-align:right;">Sous-Total {{ pj.code }}</td>
-        <td class="mnt">{{ pj_tot.fp    | milliers }}</td>
+      <tr style="background:#EAF0FB; font-weight:700; font-style:italic;">
+        <td colspan="8" class="text-end">Sous-Total {{ pj.code }}</td>
+        <td class="text-end">{{ pj_tot.fp    | fcfa }}</td>
         <td></td>
-        <td class="mnt">{{ pj_tot.fadec | milliers }}</td>
-        <td class="mnt">{{ pj_tot.ptfs  | milliers }}</td>
-        <td class="mnt">{{ pj_tot.total | milliers }}</td>
+        <td class="text-end">{{ pj_tot.fadec | fcfa }}</td>
+        <td class="text-end">{{ pj_tot.ptfs  | fcfa }}</td>
+        <td class="text-end">{{ pj_tot.total | fcfa }}</td>
         <td></td>
+        {% if can_edit %}<td></td>{% endif %}
       </tr>
     {% endfor %}
 
     {# ── Total Programme ── #}
-    <tr class="total">
-      <td colspan="8" style="text-align:right;">Total Programme {{ pg.numero }}</td>
-      <td class="mnt">{{ pg_tot.fp    | milliers }}</td>
+    <tr style="background:#AED6F1; font-weight:700;">
+      <td colspan="8" class="text-end">Total Programme {{ pg.numero }}</td>
+      <td class="text-end">{{ pg_tot.fp    | fcfa }}</td>
       <td></td>
-      <td class="mnt">{{ pg_tot.fadec | milliers }}</td>
-      <td class="mnt">{{ pg_tot.ptfs  | milliers }}</td>
-      <td class="mnt">{{ pg_tot.total | milliers }}</td>
+      <td class="text-end">{{ pg_tot.fadec | fcfa }}</td>
+      <td class="text-end">{{ pg_tot.ptfs  | fcfa }}</td>
+      <td class="text-end">{{ pg_tot.total | fcfa }}</td>
       <td></td>
+      {% if can_edit %}<td></td>{% endif %}
     </tr>
   {% endfor %}
 
   {# ── Total PAI ── #}
-  <tr class="grand">
-    <td colspan="8" style="text-align:right;">TOTAL PAI {{ annee.annee if annee }}</td>
-    <td class="mnt">{{ total_fp     | milliers }}</td>
+  <tr style="background:#1a3a5c; color:#fff; font-weight:700;">
+    <td colspan="8" class="text-end">TOTAL PAI {{ annee.annee }}</td>
+    <td class="text-end" style="color:#fff;">{{ total_fp     | fcfa }}</td>
     <td></td>
-    <td class="mnt">{{ total_fadec  | milliers }}</td>
-    <td class="mnt">{{ total_ptfs   | milliers }}</td>
-    <td class="mnt">{{ total_global | milliers }}</td>
+    <td class="text-end" style="color:#fff;">{{ total_fadec  | fcfa }}</td>
+    <td class="text-end" style="color:#fff;">{{ total_ptfs   | fcfa }}</td>
+    <td class="text-end" style="color:#fff;">{{ total_global | fcfa }}</td>
     <td></td>
+    {% if can_edit %}<td></td>{% endif %}
   </tr>
   </tbody>
 </table>
+</div><!-- /paiContainer -->
+{% endif %}
 
-<div class="legende">
-  FP = Fonds Propres &nbsp;|&nbsp; FADeC = Fonds d'Appui au Développement des Communes &nbsp;|&nbsp; PTFs = Partenaires Techniques et Financiers
-  &nbsp;&nbsp;—&nbsp;&nbsp; Montants en milliers de F CFA
-</div>
-
+{# ═══ Modal d'édition PAI (admin éditeur seulement) ═══ #}
 {% if can_edit %}
-<!-- ═══════════════════════ Modal d'édition ═══════════════════════ -->
-<div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+<div class="modal fade" id="editPaiModal" tabindex="-1" aria-labelledby="editPaiLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg">
-    <div class="modal-content" style="font-size:14px;">
-      <div class="modal-header" style="background:#1a3a5c; color:#fff; padding:12px 16px;">
-        <h5 class="modal-title" id="editModalLabel" style="font-size:15px;">
-          Modifier les champs PAI — <span id="modal-act-code" style="font-family:monospace;"></span>
+    <div class="modal-content">
+      <div class="modal-header" style="background:#1a3a5c; color:#fff;">
+        <h5 class="modal-title" id="editPaiLabel">
+          <i class="fas fa-edit me-2"></i>Modifier champs PAI —
+          <span id="modal-act-code" class="font-monospace"></span>
         </h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
-      <form id="editForm" onsubmit="saveEdit(event)">
-        <div class="modal-body" style="background:#f8f9fa;">
-          <input type="hidden" id="edit-id" name="activite_id">
+      <form id="editPaiForm" onsubmit="savePaiEdit(event)">
+        <div class="modal-body bg-light">
+          <input type="hidden" id="edit-pai-id" name="activite_id">
           <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
 
-          <div class="alert alert-info py-2" style="font-size:12px; margin-bottom:14px;">
-            Les colonnes <strong>Localisation, Poids, Indicateurs, FADeC (libellé) et Observations</strong>
-            sont modifiables ici. Les autres champs (montants, structures, période) viennent du PTA.
+          <div class="alert alert-info py-2 small mb-3">
+            <i class="fas fa-info-circle me-1"></i>
+            Les montants et structures viennent automatiquement du PTA.
+            Vous pouvez saisir ici : <strong>Localisation, Poids, Indicateurs, FADeC (libellé) et Observations</strong>.
           </div>
 
           <div class="row g-3">
             <div class="col-md-8">
               <label class="form-label fw-bold mb-1">Localisation</label>
-              <input type="text" class="form-control form-control-sm" id="edit-localisation"
+              <input type="text" class="form-control form-control-sm" id="ep-localisation"
                      name="localisation" placeholder="Village, quartier, zone d'intervention…">
             </div>
             <div class="col-md-4">
               <label class="form-label fw-bold mb-1">Poids (%)</label>
               <div class="input-group input-group-sm">
-                <input type="number" class="form-control" id="edit-poids"
-                       name="poids_pai" step="0.01" min="0" max="100" placeholder="0.00">
+                <input type="number" class="form-control" id="ep-poids"
+                       name="poids_pai" step="0.01" min="0" max="100" placeholder="0,00">
                 <span class="input-group-text">%</span>
               </div>
             </div>
             <div class="col-12">
               <label class="form-label fw-bold mb-1">Indicateurs</label>
-              <textarea class="form-control form-control-sm" id="edit-indicateurs"
+              <textarea class="form-control form-control-sm" id="ep-indicateurs"
                         name="indicateurs" rows="3"
                         placeholder="Indicateurs de résultat ou de produit…"></textarea>
             </div>
             <div class="col-12">
               <label class="form-label fw-bold mb-1">FADeC — libellé de la ligne</label>
-              <input type="text" class="form-control form-control-sm" id="edit-fadec-type"
+              <input type="text" class="form-control form-control-sm" id="ep-fadec-type"
                      name="fadec_type" placeholder="ex : FADeC Affecté Investissement…">
             </div>
             <div class="col-12">
               <label class="form-label fw-bold mb-1">Observations</label>
-              <textarea class="form-control form-control-sm" id="edit-observations"
+              <textarea class="form-control form-control-sm" id="ep-observations"
                         name="observations_pai" rows="3"
                         placeholder="Observations spécifiques au PAI…"></textarea>
             </div>
           </div>
-          <div id="edit-status" class="text-danger small mt-2" hidden></div>
+          <div id="ep-status" class="text-danger small mt-2" hidden></div>
         </div>
-        <div class="modal-footer" style="background:#f8f9fa;">
+        <div class="modal-footer bg-light">
           <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Annuler</button>
-          <button type="submit" class="btn btn-sm btn-success" id="btn-save">
-            Enregistrer
+          <button type="submit" class="btn btn-sm btn-success" id="ep-save-btn">
+            <i class="fas fa-save me-1"></i>Enregistrer
           </button>
         </div>
       </form>
     </div>
   </div>
 </div>
+{% endif %}
+{% endblock %}
 
-<!-- Données PAI courantes pour pré-remplissage du modal -->
+{% block scripts %}
+{% if can_edit %}
 <script>
+/* Données PAI actuelles pour pré-remplissage du modal */
 const PAI_EXTRA = {
 {% for pg_d in pai_data %}{% for pj_d in pg_d.projets %}{% for act in pj_d.activites %}
   {{ act.id }}: {
@@ -389,50 +299,50 @@ const PAI_EXTRA = {
     poids_pai:       {{ act.pai_extra.poids_pai                          if act.pai_extra else 0    }},
     indicateurs:     {{ (act.pai_extra.indicateurs or '')      | tojson if act.pai_extra else '""' }},
     fadec_type:      {{ (act.pai_extra.fadec_type or '')       | tojson if act.pai_extra else '""' }},
-    observations_pai:{{ (act.pai_extra.observations_pai or '') | tojson if act.pai_extra else '""' }}
+    observations_pai:{{ (act.pai_extra.observations_pai or '') | tojson if act.pai_extra else '""' }},
   },
 {% endfor %}{% endfor %}{% endfor %}
 };
 
-function openEdit(actId) {
+function openEditPai(actId) {
   const d = PAI_EXTRA[actId] || {};
-  document.getElementById('modal-act-code').textContent  = d.code || actId;
-  document.getElementById('edit-id').value               = actId;
-  document.getElementById('edit-localisation').value     = d.localisation || '';
-  document.getElementById('edit-poids').value            = d.poids_pai    || '';
-  document.getElementById('edit-indicateurs').value      = d.indicateurs  || '';
-  document.getElementById('edit-fadec-type').value       = d.fadec_type   || '';
-  document.getElementById('edit-observations').value     = d.observations_pai || '';
-  document.getElementById('edit-status').hidden          = true;
-  new bootstrap.Modal(document.getElementById('editModal')).show();
+  document.getElementById('modal-act-code').textContent = d.code || actId;
+  document.getElementById('edit-pai-id').value          = actId;
+  document.getElementById('ep-localisation').value      = d.localisation    || '';
+  document.getElementById('ep-poids').value             = d.poids_pai       || '';
+  document.getElementById('ep-indicateurs').value       = d.indicateurs     || '';
+  document.getElementById('ep-fadec-type').value        = d.fadec_type      || '';
+  document.getElementById('ep-observations').value      = d.observations_pai || '';
+  document.getElementById('ep-status').hidden           = true;
+  new bootstrap.Modal(document.getElementById('editPaiModal')).show();
 }
 
-async function saveEdit(e) {
+async function savePaiEdit(e) {
   e.preventDefault();
-  const form   = document.getElementById('editForm');
-  const btn    = document.getElementById('btn-save');
-  const status = document.getElementById('edit-status');
+  const form   = document.getElementById('editPaiForm');
+  const btn    = document.getElementById('ep-save-btn');
+  const status = document.getElementById('ep-status');
   const fd     = new FormData(form);
   const actId  = fd.get('activite_id');
 
   btn.disabled    = true;
-  btn.textContent = 'Enregistrement…';
+  btn.innerHTML   = '<i class="fas fa-spinner fa-spin me-1"></i>Enregistrement…';
   status.hidden   = true;
 
   try {
     const resp = await fetch(`/pai/edit/${actId}`, { method: 'POST', body: fd });
     const data = await resp.json();
     if (data.ok) {
-      // Mettre à jour le cache local
+      /* Mettre à jour le cache local */
       PAI_EXTRA[actId] = {
-        code:            PAI_EXTRA[actId] ? PAI_EXTRA[actId].code : actId,
+        code:            PAI_EXTRA[actId]?.code || actId,
         localisation:    fd.get('localisation'),
         poids_pai:       parseFloat(fd.get('poids_pai') || 0),
         indicateurs:     fd.get('indicateurs'),
         fadec_type:      fd.get('fadec_type'),
         observations_pai:fd.get('observations_pai'),
       };
-      // Mettre à jour les cellules de la ligne
+      /* Mettre à jour les cellules de la ligne */
       const row = document.querySelector(`tr[data-act-id="${actId}"]`);
       if (row) {
         row.querySelector('.act-loc').textContent   = fd.get('localisation')  || '';
@@ -442,22 +352,19 @@ async function saveEdit(e) {
         row.querySelector('.act-fadec').textContent = fd.get('fadec_type')    || '—';
         row.querySelector('.act-obs').textContent   = fd.get('observations_pai') || '';
       }
-      bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
+      bootstrap.Modal.getInstance(document.getElementById('editPaiModal')).hide();
     } else {
-      status.textContent = 'Erreur lors de l\'enregistrement.';
+      status.textContent = "Erreur lors de l'enregistrement.";
       status.hidden = false;
     }
   } catch (err) {
     status.textContent = 'Erreur réseau : ' + err.message;
     status.hidden = false;
   } finally {
-    btn.disabled    = false;
-    btn.textContent = 'Enregistrer';
+    btn.disabled  = false;
+    btn.innerHTML = '<i class="fas fa-save me-1"></i>Enregistrer';
   }
 }
 </script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 {% endif %}
-
-</body>
-</html>
+{% endblock %}

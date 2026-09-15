@@ -42,6 +42,17 @@ def create_app(test_config=None):
             val = 0.0
         return '{:,.0f}'.format(val).replace(',', ' ')
 
+    @app.template_filter('fcfa')
+    def fcfa_filter(v):
+        """Format F CFA : séparateur milliers = espace, décimales conservées si présentes."""
+        try:
+            val = float(v or 0)
+            if val == int(val):
+                return '{:,.0f}'.format(val).replace(',', ' ')
+            return '{:,.2f}'.format(val).replace(',', ' ').replace('.', ',')
+        except (TypeError, ValueError):
+            return '0'
+
     @app.template_filter('pct')
     def pct_filter(v):
         try:

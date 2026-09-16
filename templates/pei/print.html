@@ -32,16 +32,16 @@
   .titre-pei h2 { font-size:8pt; font-weight:bold; color:#1a3a5c; margin-top:2px; }
 
   table { width:100%; border-collapse:collapse; table-layout:fixed; }
-  th, td { border:0.5pt solid #aaa; padding:1.5pt 2pt; vertical-align:middle; overflow:hidden; }
-  thead th { background:#1e3a5f !important; color:#fcd116 !important; font-size:6pt; text-align:center; font-weight:bold; line-height:1.3; }
-  thead th.fin { background:#7b3f00 !important; }
-  thead th.phys { background:#0f6f3a !important; }
-  thead th.obs { background:#333 !important; }
+  th, td { border:0.5pt solid #aaa; padding:1.5pt 2pt; vertical-align:middle; overflow-wrap:break-word; word-break:break-word; }
+  thead th { background:#2C3E50 !important; color:#fff !important; font-size:6pt; text-align:center; font-weight:bold; line-height:1.3; }
+  thead th.fin  { background:#4A6FA5 !important; }
+  thead th.phys { background:#2D7A4F !important; }
+  thead th.obs  { background:#505050 !important; }
 
-  tr.prog { background:#F4B183 !important; font-weight:bold; font-size:6.5pt; }
-  tr.proj { background:#FFFF99 !important; font-weight:bold; font-size:6.5pt; }
-  tr.act  { background:#EAF5D0 !important; font-size:6pt; }
-  tr.total { background:#111 !important; color:#fcd116 !important; font-weight:bold; font-size:6.5pt; }
+  tr.prog  { background:#C8DCEA !important; font-weight:bold; font-size:6.5pt; }
+  tr.proj  { background:#D4E6D4 !important; font-weight:bold; font-size:6.5pt; }
+  tr.act   { background:#FFFFFF !important; font-size:6pt; }
+  tr.total { background:#1E3A5F !important; color:#fff !important; font-weight:bold; font-size:6.5pt; }
 
   .tc { text-align:center; }
   .tr { text-align:right; }
@@ -134,13 +134,13 @@
     <td></td>
     <td class="tc">{{ pd.poids }} %</td>
     <td></td><td></td><td></td>
-    <td class="tr">{{ pd.budget | fcfa }}</td>
+    <td class="tc">{{ pd.budget | fcfa }}</td>
     <td class="tc">{{ pd.taux_phys }} %</td>
-    <td class="tr">{{ pd.engage | fcfa }}</td>
+    <td class="tc">{{ pd.engage | fcfa }}</td>
     <td class="tc">{{ pd.taux_eng }} %</td>
-    <td class="tr">{{ pd.mandate | fcfa }}</td>
+    <td class="tc">{{ pd.mandate | fcfa }}</td>
     <td class="tc">{{ pd.taux_mand }} %</td>
-    <td class="tr">{{ pd.paye | fcfa }}</td>
+    <td class="tc">{{ pd.paye | fcfa }}</td>
     <td class="tc">{{ pd.taux_pay }} %</td>
     <td></td>
   </tr>
@@ -152,13 +152,13 @@
     <td></td>
     <td class="tc">{{ pjd.poids }} %</td>
     <td></td><td></td><td></td>
-    <td class="tr">{{ pjd.budget | fcfa }}</td>
+    <td class="tc">{{ pjd.budget | fcfa }}</td>
     <td class="tc">{{ pjd.taux_phys }} %</td>
-    <td class="tr">{{ pjd.engage | fcfa }}</td>
+    <td class="tc">{{ pjd.engage | fcfa }}</td>
     <td class="tc">{{ pjd.taux_eng }} %</td>
-    <td class="tr">{{ pjd.mandate | fcfa }}</td>
+    <td class="tc">{{ pjd.mandate | fcfa }}</td>
     <td class="tc">{{ pjd.taux_mand }} %</td>
-    <td class="tr">{{ pjd.paye | fcfa }}</td>
+    <td class="tc">{{ pjd.paye | fcfa }}</td>
     <td class="tc">{{ pjd.taux_pay }} %</td>
     <td></td>
   </tr>
@@ -169,38 +169,38 @@
     <td class="tl">&nbsp;&nbsp;{{ ad.activite.nom }}</td>
     <td class="tc">{{ ad.activite.pai_extra.localisation if ad.activite.pai_extra and ad.activite.pai_extra.localisation else '—' }}</td>
     <td class="tc">{{ ad.poids }} %</td>
-    <td>{{ ad.activite.pai_extra.indicateurs if ad.activite.pai_extra and ad.activite.pai_extra.indicateurs else '—' }}</td>
+    <td class="tc">{{ ad.activite.pai_extra.indicateurs if ad.activite.pai_extra and ad.activite.pai_extra.indicateurs else '—' }}</td>
     <td class="tc">
       {% if ad.activite.periode_debut or ad.activite.periode_fin %}
         {{ ad.activite.periode_debut or '' }}{% if ad.activite.periode_debut and ad.activite.periode_fin %} – {% endif %}{{ ad.activite.periode_fin or '' }}
       {% else %}—{% endif %}
     </td>
     <td class="tc">{{ ad.activite.direction_responsable.code if ad.activite.direction_responsable else '—' }}</td>
-    <td class="tr">{{ ad.budget | fcfa }}</td>
+    <td class="tc">{{ ad.budget | fcfa }}</td>
     <td class="tc">
       {% if ad.taux_phys >= 75 %}<span class="badge-v">{{ ad.taux_phys }} %</span>
       {% elif ad.taux_phys >= 50 %}<span class="badge-o">{{ ad.taux_phys }} %</span>
       {% else %}<span class="badge-r">{{ ad.taux_phys }} %</span>{% endif %}
     </td>
-    <td class="tr">{{ ad.engage | fcfa }}</td>
+    <td class="tc">{{ ad.engage | fcfa }}</td>
     <td class="tc">
       {% if ad.taux_eng >= 75 %}<span class="badge-v">{{ ad.taux_eng }} %</span>
       {% elif ad.taux_eng >= 50 %}<span class="badge-o">{{ ad.taux_eng }} %</span>
       {% else %}<span class="badge-r">{{ ad.taux_eng }} %</span>{% endif %}
     </td>
-    <td class="tr">{{ ad.mandate | fcfa }}</td>
+    <td class="tc">{{ ad.mandate | fcfa }}</td>
     <td class="tc">
       {% if ad.taux_mand >= 75 %}<span class="badge-v">{{ ad.taux_mand }} %</span>
       {% elif ad.taux_mand >= 50 %}<span class="badge-o">{{ ad.taux_mand }} %</span>
       {% else %}<span class="badge-r">{{ ad.taux_mand }} %</span>{% endif %}
     </td>
-    <td class="tr">{{ ad.paye | fcfa }}</td>
+    <td class="tc">{{ ad.paye | fcfa }}</td>
     <td class="tc">
       {% if ad.taux_pay >= 75 %}<span class="badge-v">{{ ad.taux_pay }} %</span>
       {% elif ad.taux_pay >= 50 %}<span class="badge-o">{{ ad.taux_pay }} %</span>
       {% else %}<span class="badge-r">{{ ad.taux_pay }} %</span>{% endif %}
     </td>
-    <td>{{ ad.obs or '—' }}</td>
+    <td class="tc">{{ ad.obs or '—' }}</td>
   </tr>
   {% endfor %}
   {% endfor %}
@@ -211,25 +211,25 @@
   <td colspan="3" class="tc">TOTAL GÉNÉRAL</td>
   <td class="tc">100 %</td>
   <td colspan="3"></td>
-  <td class="tr">{{ totaux.budget | fcfa }}</td>
+  <td class="tc">{{ totaux.budget | fcfa }}</td>
   <td class="tc">
     {% if totaux.taux_phys >= 75 %}<span class="badge-v">{{ totaux.taux_phys }} %</span>
     {% elif totaux.taux_phys >= 50 %}<span class="badge-o">{{ totaux.taux_phys }} %</span>
     {% else %}<span class="badge-r">{{ totaux.taux_phys }} %</span>{% endif %}
   </td>
-  <td class="tr">{{ totaux.engage | fcfa }}</td>
+  <td class="tc">{{ totaux.engage | fcfa }}</td>
   <td class="tc">
     {% if totaux.taux_eng >= 75 %}<span class="badge-v">{{ totaux.taux_eng }} %</span>
     {% elif totaux.taux_eng >= 50 %}<span class="badge-o">{{ totaux.taux_eng }} %</span>
     {% else %}<span class="badge-r">{{ totaux.taux_eng }} %</span>{% endif %}
   </td>
-  <td class="tr">{{ totaux.mandate | fcfa }}</td>
+  <td class="tc">{{ totaux.mandate | fcfa }}</td>
   <td class="tc">
     {% if totaux.taux_mand >= 75 %}<span class="badge-v">{{ totaux.taux_mand }} %</span>
     {% elif totaux.taux_mand >= 50 %}<span class="badge-o">{{ totaux.taux_mand }} %</span>
     {% else %}<span class="badge-r">{{ totaux.taux_mand }} %</span>{% endif %}
   </td>
-  <td class="tr">{{ totaux.paye | fcfa }}</td>
+  <td class="tc">{{ totaux.paye | fcfa }}</td>
   <td class="tc">
     {% if totaux.taux_pay >= 75 %}<span class="badge-v">{{ totaux.taux_pay }} %</span>
     {% elif totaux.taux_pay >= 50 %}<span class="badge-o">{{ totaux.taux_pay }} %</span>

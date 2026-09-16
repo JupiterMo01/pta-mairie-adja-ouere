@@ -135,13 +135,11 @@
         </button>
         {% endif %}
       </td>
-      <td class="text-center" style="padding:2px;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
-          title="{{ ad.activite.pai_extra.localisation if ad.activite.pai_extra and ad.activite.pai_extra.localisation else '' }}">
+      <td class="text-center" style="padding:2px;">
         {{ ad.activite.pai_extra.localisation if ad.activite.pai_extra and ad.activite.pai_extra.localisation else '—' }}
       </td>
       <td class="text-center" style="padding:2px;">{{ ad.poids }} %</td>
-      <td style="padding:2px;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.65rem;"
-          title="{{ ad.activite.pai_extra.indicateurs if ad.activite.pai_extra and ad.activite.pai_extra.indicateurs else '' }}">
+      <td class="text-center" style="padding:2px;font-size:.65rem;">
         {{ ad.activite.pai_extra.indicateurs if ad.activite.pai_extra and ad.activite.pai_extra.indicateurs else '—' }}
       </td>
       <td class="text-center" style="padding:2px;">
@@ -170,8 +168,7 @@
         <span class="badge {{ 'bg-success' if ad.taux_pay >= 75 else ('bg-warning text-dark' if ad.taux_pay >= 50 else 'bg-danger') }}"
               style="font-size:.62rem;">{{ ad.taux_pay }} %</span>
       </td>
-      <td style="padding:2px;font-size:.62rem;color:#444;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
-          title="{{ ad.obs }}">{{ ad.obs or '—' }}</td>
+      <td class="text-center" style="padding:2px;font-size:.62rem;color:#444;">{{ ad.obs or '—' }}</td>
     </tr>
     {% endfor %}
 

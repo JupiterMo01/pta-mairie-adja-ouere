@@ -1,0 +1,393 @@
+{% extends "base.html" %}
+{% block title %}Point d'exécution PAI — {{ annee.annee }}{% endblock %}
+{% block page_title %}<i class="fas fa-chart-bar me-2"></i>Point d'exécution du PAI {{ annee.annee }}{% endblock %}
+
+{% block content %}
+<div class="pt-3">
+
+{# ── Barre de recherche ────────────────────────────────────────────────── #}
+<div class="d-flex align-items-center gap-2 mb-2 px-1 py-2 bg-light border rounded flex-wrap">
+  <i class="fas fa-search text-muted"></i>
+  <input type="text" id="peiSearch" class="form-control form-control-sm"
+         placeholder="Rechercher (code, activité, localisation, indicateur…)"
+         style="max-width:320px;" autocomplete="off">
+  <span id="peiSearchCount" class="small fw-semibold ms-1 text-muted"></span>
+  <button class="btn btn-sm btn-outline-secondary" id="peiPrevMatch" title="Précédent">&#8679;</button>
+  <button class="btn btn-sm btn-outline-secondary" id="peiNextMatch" title="Suivant">&#8681;</button>
+  <button class="btn btn-sm btn-outline-danger" id="peiClearSearch" title="Effacer">&#x2715;</button>
+</div>
+
+{# ── Tableau ──────────────────────────────────────────────────────────── #}
+<div id="peiContainer" style="overflow-x:auto;max-height:78vh;overflow-y:auto;">
+<table class="table table-bordered table-sm align-middle mb-0" id="tablePEI"
+       style="font-size:.78rem;min-width:1700px;border-collapse:collapse;">
+<thead class="sticky-top" style="top:0;z-index:10;">
+  <tr style="background:#1e3a5f;color:#fcd116;text-align:center;vertical-align:middle;">
+    <th rowspan="2" style="min-width:60px;">Code PAI</th>
+    <th rowspan="2" style="min-width:200px;text-align:left;">Programmes / Projets / Activités</th>
+    <th rowspan="2" style="min-width:110px;">Localisation</th>
+    <th rowspan="2" style="min-width:55px;">Poids<br>(%)</th>
+    <th rowspan="2" style="min-width:140px;">Indicateurs</th>
+    <th rowspan="2" style="min-width:90px;">Période<br>d'exéc.</th>
+    <th rowspan="2" style="min-width:70px;">Struct.<br>Resp.</th>
+    <th rowspan="2" style="min-width:110px;">Coût total<br>(F CFA)</th>
+    <th rowspan="2" style="min-width:75px;background:#0f6f3a;">Taux exéc.<br>physique (%)</th>
+    <th colspan="6" style="background:#7b3f00;">EXÉCUTION FINANCIÈRE (F CFA)</th>
+    <th rowspan="2" style="min-width:170px;background:#333;">Observations</th>
+  </tr>
+  <tr style="background:#1e3a5f;color:#fcd116;text-align:center;vertical-align:middle;">
+    <th style="min-width:115px;background:#7b3f00;">Montant engagé</th>
+    <th style="min-width:65px;background:#7b3f00;">Taux eng.<br>(%)</th>
+    <th style="min-width:115px;background:#7b3f00;">Montant mandaté</th>
+    <th style="min-width:65px;background:#7b3f00;">Taux mand.<br>(%)</th>
+    <th style="min-width:115px;background:#7b3f00;">Montant payé</th>
+    <th style="min-width:65px;background:#7b3f00;">Taux paiem.<br>(%)</th>
+  </tr>
+</thead>
+<tbody>
+
+{% set prog_num = namespace(v=0) %}
+{% for pd in data %}
+  {% set prog_num.v = prog_num.v + 1 %}
+
+  {# ── Ligne programme ───────────────────────────────── #}
+  <tr class="pei-prog-row" id="row-prog-{{ pd.programme.id }}"
+      style="background:#1e3a5f;color:#fff;font-weight:700;">
+    <td class="text-center">Prog. {{ pd.prog_num }}</td>
+    <td>{{ pd.programme.nom }}</td>
+    <td></td>
+    <td class="text-center">{{ pd.poids }} %</td>
+    <td></td><td></td><td></td>
+    <td class="text-end">{{ pd.budget | fcfa }}</td>
+    <td class="text-center">{% include 'pei/_badge_taux.html' ignore missing %}{{ pd.taux_phys }} %</td>
+    <td class="text-end">{{ pd.engage | fcfa }}</td>
+    <td class="text-center">{{ pd.taux_eng }} %</td>
+    <td class="text-end">{{ pd.mandate | fcfa }}</td>
+    <td class="text-center">{{ pd.taux_mand }} %</td>
+    <td class="text-end">{{ pd.paye | fcfa }}</td>
+    <td class="text-center">{{ pd.taux_pay }} %</td>
+    <td></td>
+  </tr>
+
+  {% set proj_num = namespace(v=0) %}
+  {% for pjd in pd.projets %}
+    {% set proj_num.v = proj_num.v + 1 %}
+
+    {# ── Ligne projet ──────────────────────────────────── #}
+    <tr class="pei-proj-row" id="row-proj-{{ pjd.projet.id }}"
+        style="background:#2d5a8e;color:#fff;font-weight:600;">
+      <td class="text-center">{{ pd.prog_num }}.{{ pjd.proj_num }}</td>
+      <td>&nbsp;&nbsp;{{ pjd.projet.nom }}</td>
+      <td></td>
+      <td class="text-center">{{ pjd.poids }} %</td>
+      <td></td><td></td><td></td>
+      <td class="text-end">{{ pjd.budget | fcfa }}</td>
+      <td class="text-center">{{ pjd.taux_phys }} %</td>
+      <td class="text-end">{{ pjd.engage | fcfa }}</td>
+      <td class="text-center">{{ pjd.taux_eng }} %</td>
+      <td class="text-end">{{ pjd.mandate | fcfa }}</td>
+      <td class="text-center">{{ pjd.taux_mand }} %</td>
+      <td class="text-end">{{ pjd.paye | fcfa }}</td>
+      <td class="text-center">{{ pjd.taux_pay }} %</td>
+      <td></td>
+    </tr>
+
+    {% for ad in pjd.activites %}
+    {# ── Ligne activité ────────────────────────────────── #}
+    <tr class="pei-act-row" id="row-act-{{ ad.activite.id }}">
+      <td class="text-center fw-semibold">{{ pd.prog_num }}.{{ pjd.proj_num }}.{{ ad.act_num }}</td>
+      <td>
+        &nbsp;&nbsp;&nbsp;&nbsp;{{ ad.activite.nom }}
+        {% if peut_editer %}
+        <button class="btn btn-xs btn-outline-warning py-0 px-1 ms-1 float-end"
+                style="font-size:.7rem;"
+                title="Modifier les montants d'exécution financière"
+                onclick="_openPeiEdit({{ ad.activite.id }},
+                  {{ ad.budget }},
+                  {{ ad.engage }},
+                  {{ ad.mandate }},
+                  {{ ad.paye }})">
+          <i class="fas fa-pencil-alt"></i>
+        </button>
+        {% endif %}
+      </td>
+      <td class="text-center">{{ ad.activite.pai_extra.localisation if ad.activite.pai_extra and ad.activite.pai_extra.localisation else '—' }}</td>
+      <td class="text-center">{{ ad.poids }} %</td>
+      <td style="font-size:.72rem;">{{ ad.activite.pai_extra.indicateurs if ad.activite.pai_extra and ad.activite.pai_extra.indicateurs else '—' }}</td>
+      <td class="text-center">
+        {% if ad.activite.periode_debut or ad.activite.periode_fin %}
+          {{ ad.activite.periode_debut or '' }}{% if ad.activite.periode_debut and ad.activite.periode_fin %} – {% endif %}{{ ad.activite.periode_fin or '' }}
+        {% else %}—{% endif %}
+      </td>
+      <td class="text-center">{{ ad.activite.direction_responsable.code if ad.activite.direction_responsable else '—' }}</td>
+      <td class="text-end fw-semibold">{{ ad.budget | fcfa }}</td>
+      <td class="text-center">
+        <span class="badge {{ 'bg-success' if ad.taux_phys >= 75 else ('bg-warning text-dark' if ad.taux_phys >= 50 else 'bg-danger') }}">
+          {{ ad.taux_phys }} %
+        </span>
+      </td>
+      <td class="text-end {% if ad.engage > 0 %}fw-semibold{% endif %}">{{ ad.engage | fcfa if ad.engage else '—' }}</td>
+      <td class="text-center">
+        {% if ad.taux_eng > 0 %}
+        <span class="badge {{ 'bg-success' if ad.taux_eng >= 75 else ('bg-warning text-dark' if ad.taux_eng >= 50 else 'bg-danger') }}">
+          {{ ad.taux_eng }} %
+        </span>
+        {% else %}—{% endif %}
+      </td>
+      <td class="text-end {% if ad.mandate > 0 %}fw-semibold{% endif %}">{{ ad.mandate | fcfa if ad.mandate else '—' }}</td>
+      <td class="text-center">
+        {% if ad.taux_mand > 0 %}
+        <span class="badge {{ 'bg-success' if ad.taux_mand >= 75 else ('bg-warning text-dark' if ad.taux_mand >= 50 else 'bg-danger') }}">
+          {{ ad.taux_mand }} %
+        </span>
+        {% else %}—{% endif %}
+      </td>
+      <td class="text-end {% if ad.paye > 0 %}fw-semibold{% endif %}">{{ ad.paye | fcfa if ad.paye else '—' }}</td>
+      <td class="text-center">
+        {% if ad.taux_pay > 0 %}
+        <span class="badge {{ 'bg-success' if ad.taux_pay >= 75 else ('bg-warning text-dark' if ad.taux_pay >= 50 else 'bg-danger') }}">
+          {{ ad.taux_pay }} %
+        </span>
+        {% else %}—{% endif %}
+      </td>
+      <td style="font-size:.7rem;color:#555;max-width:200px;word-break:break-word;">{{ ad.obs or '—' }}</td>
+    </tr>
+    {% endfor %}{# activités #}
+
+  {% endfor %}{# projets #}
+{% endfor %}{# programmes #}
+
+{# ── Ligne totaux globaux ──────────────────────────────────────────────── #}
+{% if data %}
+<tr style="background:#111;color:#fcd116;font-weight:700;font-size:.82rem;">
+  <td colspan="3" class="text-center">TOTAL GÉNÉRAL</td>
+  <td class="text-center">100 %</td>
+  <td colspan="3"></td>
+  <td class="text-end">{{ totaux.budget | fcfa }}</td>
+  <td class="text-center">
+    <span class="badge {{ 'bg-success' if totaux.taux_phys >= 75 else ('bg-warning text-dark' if totaux.taux_phys >= 50 else 'bg-danger') }}">
+      {{ totaux.taux_phys }} %
+    </span>
+  </td>
+  <td class="text-end">{{ totaux.engage | fcfa }}</td>
+  <td class="text-center">
+    <span class="badge {{ 'bg-success' if totaux.taux_eng >= 75 else ('bg-warning text-dark' if totaux.taux_eng >= 50 else 'bg-danger') }}">
+      {{ totaux.taux_eng }} %
+    </span>
+  </td>
+  <td class="text-end">{{ totaux.mandate | fcfa }}</td>
+  <td class="text-center">
+    <span class="badge {{ 'bg-success' if totaux.taux_mand >= 75 else ('bg-warning text-dark' if totaux.taux_mand >= 50 else 'bg-danger') }}">
+      {{ totaux.taux_mand }} %
+    </span>
+  </td>
+  <td class="text-end">{{ totaux.paye | fcfa }}</td>
+  <td class="text-center">
+    <span class="badge {{ 'bg-success' if totaux.taux_pay >= 75 else ('bg-warning text-dark' if totaux.taux_pay >= 50 else 'bg-danger') }}">
+      {{ totaux.taux_pay }} %
+    </span>
+  </td>
+  <td></td>
+</tr>
+{% endif %}
+
+</tbody>
+</table>
+</div>{# /peiContainer #}
+
+{% if not data %}
+<div class="alert alert-info mt-3">
+  <i class="fas fa-info-circle me-2"></i>
+  Aucune activité d'investissement dans le PAI pour l'année {{ annee.annee }}.
+</div>
+{% endif %}
+
+</div>{# /pt-3 #}
+
+{# ── Modal édition montants ────────────────────────────────────────────── #}
+{% if peut_editer %}
+<div class="modal fade" id="modalPeiEdit" tabindex="-1">
+  <div class="modal-dialog modal-md">
+    <div class="modal-content">
+      <div class="modal-header" style="background:#1e3a5f;color:#fcd116;">
+        <h5 class="modal-title"><i class="fas fa-coins me-2"></i>Exécution financière</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="formPeiEdit" method="POST">
+        <div class="modal-body">
+          <p class="small text-muted mb-3" id="peiEditActNom"></p>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Montant engagé (F CFA)</label>
+            <input type="number" name="montant_engage" id="peiEngage"
+                   class="form-control" min="0" step="1" placeholder="0">
+            <div class="form-text text-muted">Max : <span id="peiEditBudget"></span> F CFA (coût total)</div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Montant mandaté (F CFA)</label>
+            <input type="number" name="montant_mandate" id="peiMandate"
+                   class="form-control" min="0" step="1" placeholder="0">
+            <div class="form-text text-muted">Max : montant engagé</div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Montant payé (F CFA)</label>
+            <input type="number" name="montant_paye" id="peiPaye"
+                   class="form-control" min="0" step="1" placeholder="0">
+            <div class="form-text text-muted">Max : montant engagé</div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-warning">
+            <i class="fas fa-save me-1"></i>Enregistrer
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+/* ── Scroll utilitaire ── */
+function _peiScrollTo(target) {
+  var c = document.getElementById('peiContainer');
+  if (!target) return;
+  if (c) {
+    var top = c.scrollTop + target.getBoundingClientRect().top - c.getBoundingClientRect().top - 80;
+    c.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+  } else {
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+  /* ── Scroll retour après action ── */
+  var goParam = new URLSearchParams(window.location.search).get('go');
+  if (goParam) {
+    var target = document.getElementById('row-' + goParam);
+    if (target) {
+      setTimeout(function () { _peiScrollTo(target); }, 150);
+      history.replaceState(null, '', window.location.pathname);
+    }
+  }
+
+  /* ── Recherche ── */
+  var searchInput = document.getElementById('peiSearch');
+  var countEl     = document.getElementById('peiSearchCount');
+  var prevBtn     = document.getElementById('peiPrevMatch');
+  var nextBtn     = document.getElementById('peiNextMatch');
+  var clearBtn    = document.getElementById('peiClearSearch');
+  var matches     = [];
+  var matchIdx    = -1;
+
+  function doSearch(q) {
+    matches = [];
+    matchIdx = -1;
+    var rows = document.querySelectorAll('#tablePEI tbody tr.pei-act-row');
+    rows.forEach(function (row) {
+      var txt = row.textContent.toLowerCase();
+      var hit = q.length >= 2 && txt.includes(q.toLowerCase());
+      row.style.display = (q === '' || hit) ? '' : 'none';
+      if (hit) matches.push(row);
+    });
+    // Afficher les lignes programme/projet parentes des activités visibles
+    document.querySelectorAll('#tablePEI tbody tr.pei-prog-row, #tablePEI tbody tr.pei-proj-row').forEach(function (r) {
+      if (q === '') { r.style.display = ''; return; }
+      // Affiche si au moins une activité sœur visible
+      var next = r.nextElementSibling;
+      var visible = false;
+      while (next && !next.classList.contains('pei-prog-row')) {
+        if (next.classList.contains('pei-act-row') && next.style.display !== 'none') visible = true;
+        next = next.nextElementSibling;
+      }
+      r.style.display = visible ? '' : 'none';
+    });
+    updateCount();
+  }
+
+  function updateCount() {
+    if (matches.length === 0) {
+      countEl.textContent = searchInput.value.length >= 2 ? '0 résultat' : '';
+    } else {
+      countEl.textContent = (matchIdx + 1) + ' / ' + matches.length;
+    }
+  }
+
+  function goTo(idx) {
+    if (!matches.length) return;
+    matchIdx = (idx + matches.length) % matches.length;
+    matches.forEach(function (r) { r.style.background = ''; });
+    var row = matches[matchIdx];
+    row.style.background = '#fff3cd';
+    _peiScrollTo(row);
+    updateCount();
+  }
+
+  searchInput.addEventListener('input', function () { doSearch(this.value.trim()); });
+  nextBtn.addEventListener('click', function () { goTo(matchIdx + 1); });
+  prevBtn.addEventListener('click', function () { goTo(matchIdx - 1); });
+  clearBtn.addEventListener('click', function () {
+    searchInput.value = '';
+    doSearch('');
+    matches.forEach(function (r) { r.style.background = ''; });
+  });
+});
+
+{% if peut_editer %}
+/* ── Modal édition montants ── */
+var _peiEditActId = null;
+var _peiBudget    = 0;
+
+function _openPeiEdit(actId, budget, engage, mandate, paye) {
+  _peiEditActId = actId;
+  _peiBudget    = budget;
+  document.getElementById('peiEditBudget').textContent = budget.toLocaleString('fr-FR');
+  document.getElementById('peiEngage').value  = engage  || '';
+  document.getElementById('peiEngage').max    = budget;
+  document.getElementById('peiMandate').value = mandate || '';
+  document.getElementById('peiPaye').value    = paye    || '';
+  var form = document.getElementById('formPeiEdit');
+  form.action = '{{ url_for("pei.edit_montants", activite_id=0) }}'.replace('/0', '/' + actId);
+  // Nom de l'activité
+  var row = document.getElementById('row-act-' + actId);
+  if (row) {
+    var cells = row.querySelectorAll('td');
+    var nom = cells[1] ? cells[1].textContent.trim().replace(/\s+/g, ' ') : '';
+    document.getElementById('peiEditActNom').textContent = nom;
+  }
+  var modal = new bootstrap.Modal(document.getElementById('modalPeiEdit'));
+  modal.show();
+}
+
+/* Validation client : mandate et paye ≤ engage */
+document.getElementById('formPeiEdit').addEventListener('submit', function (e) {
+  var eng  = parseFloat(document.getElementById('peiEngage').value  || 0);
+  var mand = parseFloat(document.getElementById('peiMandate').value || 0);
+  var pay  = parseFloat(document.getElementById('peiPaye').value    || 0);
+  if (eng > _peiBudget) {
+    alert('Le montant engagé ne peut pas dépasser le coût total (' + _peiBudget.toLocaleString('fr-FR') + ' F CFA).');
+    e.preventDefault(); return;
+  }
+  if (mand > eng) {
+    alert('Le montant mandaté ne peut pas dépasser le montant engagé (' + eng.toLocaleString('fr-FR') + ' F CFA).');
+    e.preventDefault(); return;
+  }
+  if (pay > eng) {
+    alert('Le montant payé ne peut pas dépasser le montant engagé (' + eng.toLocaleString('fr-FR') + ' F CFA).');
+    e.preventDefault(); return;
+  }
+  /* mettre à jour max dynamiquement */
+  document.getElementById('peiMandate').max = eng;
+  document.getElementById('peiPaye').max    = eng;
+});
+
+document.getElementById('peiEngage').addEventListener('input', function () {
+  var eng = parseFloat(this.value || 0);
+  document.getElementById('peiMandate').max = eng;
+  document.getElementById('peiPaye').max    = eng;
+});
+{% endif %}
+</script>
+{% endblock %}

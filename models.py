@@ -545,3 +545,15 @@ class PaiProjet(db.Model):
     poids_pai = db.Column(db.Float, default=0.0)
 
     projet = db.relationship('Projet', backref=db.backref('pai_extra_proj', uselist=False))
+
+
+class PeiActivite(db.Model):
+    """Données d'exécution financière du PAI saisies par admin/DAAF/SBFC."""
+    __tablename__ = 'pei_activites'
+    id             = db.Column(db.Integer, primary_key=True)
+    activite_id    = db.Column(db.Integer, db.ForeignKey('activites.id'), nullable=False, unique=True)
+    montant_engage = db.Column(db.Float, default=0.0)
+    montant_mandate = db.Column(db.Float, default=0.0)
+    montant_paye   = db.Column(db.Float, default=0.0)
+
+    activite = db.relationship('Activite', backref=db.backref('pei_extra', uselist=False))

@@ -60,13 +60,19 @@
       </li>
       {% endif %}
 
-      {# ── PAI : tous les utilisateurs, uniquement quand une année active existe ── #}
-      {# (pour les admins, le lien est aussi présent dans leur section ci-dessous) #}
+      {# ── PAI + PEI : tous les utilisateurs, uniquement quand une année active existe ── #}
+      {# (pour les admins, les liens sont aussi présents dans leur section ci-dessous) #}
       {% if annee_active_id and current_user.role not in ('admin_editeur', 'admin_lecteur') %}
       <li class="nav-item">
         <a class="nav-link text-white py-2 px-3 {% if request.blueprint == 'pai' %}active-link{% endif %}"
            href="{{ url_for('pai.index') }}">
           <i class="fas fa-file-invoice me-2 fa-fw"></i>PAI
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link text-white py-2 px-3 {% if request.blueprint == 'pei' %}active-link{% endif %}"
+           href="{{ url_for('pei.index') }}">
+          <i class="fas fa-chart-bar me-2 fa-fw"></i>Point d'exécution PAI
         </a>
       </li>
       {% endif %}
@@ -108,6 +114,12 @@
         <a class="nav-link text-white py-2 px-3 {% if request.blueprint == 'pai' %}active-link{% endif %}"
            href="{{ url_for('pai.index') }}">
           <i class="fas fa-file-invoice me-2 fa-fw"></i>PAI
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link text-white py-2 px-3 {% if request.blueprint == 'pei' %}active-link{% endif %}"
+           href="{{ url_for('pei.index') }}">
+          <i class="fas fa-chart-bar me-2 fa-fw"></i>Point d'exécution PAI
         </a>
       </li>
       <li><hr class="border-secondary my-1"></li>

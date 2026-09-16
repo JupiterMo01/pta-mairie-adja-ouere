@@ -373,7 +373,7 @@ def export_excel():
     # Groupe "Exécution financière" cols 10-15 ligne 5
     ws.merge_cells(start_row=5, start_column=10, end_row=5, end_column=15)
     c = ws.cell(row=5, column=10, value='EXÉCUTION FINANCIÈRE (F CFA)')
-    c.font = Font(bold=True, size=9); c.fill = fill('F4CCCC')
+    c.font = Font(bold=True, size=9); c.fill = fill('C9DAF8')
     c.alignment = center; c.border = bord
 
     fin_sub = [
@@ -386,7 +386,7 @@ def export_excel():
     ]
     for col, h in fin_sub:
         c = ws.cell(row=6, column=col, value=h)
-        c.font = Font(bold=True, size=9); c.fill = fill('F4CCCC')
+        c.font = Font(bold=True, size=9); c.fill = fill('C9DAF8')
         c.alignment = center; c.border = bord
 
     r = 7
@@ -420,13 +420,13 @@ def export_excel():
         ws.merge_cells(start_row=r, start_column=16, end_row=r, end_column=16)
         for col in range(1, 17):
             c = ws.cell(row=r, column=col)
-            c.fill = fill('F4B183'); c.font = Font(bold=True, size=9); c.border = bord
+            c.fill = fill('C8DCEA'); c.font = Font(bold=True, size=9); c.border = bord
         ws.cell(row=r, column=1).alignment = center
         ws.cell(row=r, column=2).alignment = left
-        ws.cell(row=r, column=4).alignment = center
+        for col in [4, 8, 9, 10, 11, 12, 13, 14, 15]:
+            ws.cell(row=r, column=col).alignment = center
         for col in [8, 10, 12, 14]:
             ws.cell(row=r, column=col).number_format = '#,##0'
-            ws.cell(row=r, column=col).alignment = Alignment(horizontal='right', vertical='center')
         r += 1
 
         for pjd in pd['projets']:
@@ -447,13 +447,13 @@ def export_excel():
             ws.merge_cells(start_row=r, start_column=5, end_row=r, end_column=7)
             for col in range(1, 17):
                 c = ws.cell(row=r, column=col)
-                c.fill = fill('FFFF99'); c.font = Font(bold=True, size=9); c.border = bord
+                c.fill = fill('D4E6D4'); c.font = Font(bold=True, size=9); c.border = bord
             ws.cell(row=r, column=1).alignment = center
             ws.cell(row=r, column=2).alignment = left
-            ws.cell(row=r, column=4).alignment = center
+            for col in [4, 8, 9, 10, 11, 12, 13, 14, 15]:
+                ws.cell(row=r, column=col).alignment = center
             for col in [8, 10, 12, 14]:
                 ws.cell(row=r, column=col).number_format = '#,##0'
-                ws.cell(row=r, column=col).alignment = Alignment(horizontal='right', vertical='center')
             r += 1
 
             for act_i, ad in enumerate(pjd['activites'], 1):
@@ -479,11 +479,10 @@ def export_excel():
                 ]
                 for col, val in enumerate(row_data, 1):
                     c = ws.cell(row=r, column=col, value=val)
-                    c.fill = fill('EAF5D0'); c.font = Font(size=9); c.border = bord
-                    c.alignment = left if col in (2, 5, 16) else center
+                    c.fill = fill('FFFFFF'); c.font = Font(size=9); c.border = bord
+                    c.alignment = left if col == 2 else center
                     if col in (8, 10, 12, 14):
                         c.number_format = '#,##0'
-                        c.alignment = Alignment(horizontal='right', vertical='center')
                     if col in (9, 11, 13, 15):
                         c.number_format = '0.0"%"'
                 r += 1
@@ -504,11 +503,10 @@ def export_excel():
     ws.merge_cells(start_row=r, start_column=5, end_row=r, end_column=7)
     for col in range(1, 17):
         c = ws.cell(row=r, column=col)
-        c.fill = fill('1E3A5F'); c.font = Font(bold=True, size=9, color='FCD116'); c.border = bord
+        c.fill = fill('1E3A5F'); c.font = Font(bold=True, size=9, color='FFFFFF'); c.border = bord
         c.alignment = center
     for col in [8, 10, 12, 14]:
         ws.cell(row=r, column=col).number_format = '#,##0'
-        ws.cell(row=r, column=col).alignment = Alignment(horizontal='right', vertical='center')
 
     # Largeurs colonnes
     col_widths = [8, 34, 14, 7, 22, 12, 10, 16, 10, 16, 10, 16, 10, 16, 10, 28]

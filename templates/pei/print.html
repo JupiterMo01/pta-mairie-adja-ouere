@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Point d'exécution PAI {{ annee.annee }} — Mairie d'Adja-Ouèrè</title>
+<style>
+  @page {
+    size: A4 landscape;
+    margin: 1.2cm 0.8cm 1.8cm 0.8cm;
+    @bottom-left  { content: "Mairie d'Adja-Ouèrè — Point d'exécution du PAI {{ annee.annee }}"; font-size:6pt; color:#444; font-weight:bold; }
+    @bottom-right { content: "Page " counter(page) " / " counter(pages); font-size:6pt; color:#444; font-weight:bold; }
+  }
+  *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
+  body { font-family:Arial,Helvetica,sans-serif; font-size:6.5pt; color:#000; background:#fff; }
+
+  .screen-bar { background:#1a3a5c; color:#fff; padding:8px 16px; display:flex; align-items:center; gap:10px; }
+  .screen-bar span { font-size:13px; font-weight:bold; flex:1; }
+  .screen-bar button { padding:6px 16px; border:none; border-radius:4px; cursor:pointer; font-size:12px; font-weight:bold; }
+  .btn-p { background:#27ae60; color:#fff; }
+  .btn-c { background:#6c757d; color:#fff; }
+  @media print { .screen-bar { display:none !important; } }
+
+  .entete { display:flex; justify-content:space-between; align-items:center; margin-bottom:5px; border-bottom:2px solid #1a3a5c; padding-bottom:4px; }
+  .entete-gauche { width:38%; }
+  .entete-gauche img { height:60px; width:auto; }
+  .entete-centre { text-align:center; width:24%; font-size:7pt; line-height:1.9; }
+  .entete-droite { text-align:right; width:38%; }
+  .entete-droite img { height:60px; width:auto; }
+
+  .titre-pei { text-align:center; margin:5px 0 4px; border:2px solid #1a3a5c; border-radius:4px; padding:5px 0; background:#dbeeff; }
+  .titre-pei h1 { font-size:10pt; font-weight:bold; letter-spacing:1px; text-transform:uppercase; color:#1a3a5c; }
+  .titre-pei h2 { font-size:8pt; font-weight:bold; color:#1a3a5c; margin-top:2px; }
+
+  table { width:100%; border-collapse:collapse; table-layout:fixed; }
+  th, td { border:0.5pt solid #aaa; padding:1.5pt 2pt; vertical-align:middle; overflow:hidden; }
+  thead th { background:#1e3a5f !important; color:#fcd116 !important; font-size:6pt; text-align:center; font-weight:bold; line-height:1.3; }
+  thead th.fin { background:#7b3f00 !important; }
+  thead th.phys { background:#0f6f3a !important; }
+  thead th.obs { background:#333 !important; }
+
+  tr.prog { background:#F4B183 !important; font-weight:bold; font-size:6.5pt; }
+  tr.proj { background:#FFFF99 !important; font-weight:bold; font-size:6.5pt; }
+  tr.act  { background:#EAF5D0 !important; font-size:6pt; }
+  tr.total { background:#111 !important; color:#fcd116 !important; font-weight:bold; font-size:6.5pt; }
+
+  .tc { text-align:center; }
+  .tr { text-align:right; }
+  .tl { text-align:left; }
+  .badge-v  { background:#198754; color:#fff; border-radius:3pt; padding:0.5pt 2pt; }
+  .badge-o  { background:#ffc107; color:#000; border-radius:3pt; padding:0.5pt 2pt; }
+  .badge-r  { background:#dc3545; color:#fff; border-radius:3pt; padding:0.5pt 2pt; }
+
+  col.c1  { width:36pt; }
+  col.c2  { width:14%; }
+  col.c3  { width:7%;  }
+  col.c4  { width:28pt;}
+  col.c5  { width:9%;  }
+  col.c6  { width:44pt;}
+  col.c7  { width:36pt;}
+  col.c8  { width:7%;  }
+  col.c9  { width:36pt;}
+  col.c10 { width:7%;  }
+  col.c11 { width:36pt;}
+  col.c12 { width:7%;  }
+  col.c13 { width:36pt;}
+  col.c14 { width:7%;  }
+  col.c15 { width:36pt;}
+  col.c16 { width:10%; }
+</style>
+</head>
+<body>
+
+<div class="screen-bar">
+  <span>Point d'exécution du PAI {{ annee.annee }} — Mairie d'Adja-Ouèrè</span>
+  <button class="btn-p" onclick="window.print()">🖨 Imprimer</button>
+  <button class="btn-c" onclick="window.close()">✕ Fermer</button>
+</div>
+
+<div class="entete">
+  <div class="entete-gauche">
+    <img src="{{ url_for('static', filename='img/bandeau.png') }}" alt="Bandeau" onerror="this.style.display='none'">
+  </div>
+  <div class="entete-centre">
+    BP 02 Adja-Ouèrè<br>
+    Tél : +229 01 61 91 96 12<br>
+    Email : contact.adjaouere@mairie.bj
+  </div>
+  <div class="entete-droite">
+    <img src="{{ url_for('static', filename='img/logo_commune.png') }}" alt="Logo" onerror="this.style.display='none'">
+  </div>
+</div>
+
+<div class="titre-pei">
+  <h1>Point d'exécution du Plan Annuel d'Investissement (PAI)</h1>
+  <h2>Exercice {{ annee.annee }} &nbsp;—&nbsp; Mairie d'Adja-Ouèrè</h2>
+</div>
+
+<table>
+<colgroup>
+  <col class="c1"><col class="c2"><col class="c3"><col class="c4">
+  <col class="c5"><col class="c6"><col class="c7"><col class="c8">
+  <col class="c9"><col class="c10"><col class="c11"><col class="c12">
+  <col class="c13"><col class="c14"><col class="c15"><col class="c16">
+</colgroup>
+<thead>
+  <tr>
+    <th rowspan="2">Code PAI</th>
+    <th rowspan="2" class="tl">Programmes / Projets / Activités</th>
+    <th rowspan="2">Localisation</th>
+    <th rowspan="2">Poids (%)</th>
+    <th rowspan="2">Indicateurs</th>
+    <th rowspan="2">Période d'exéc.</th>
+    <th rowspan="2">Struct. Resp.</th>
+    <th rowspan="2">Coût total (F CFA)</th>
+    <th rowspan="2" class="phys">Taux phys. (%)</th>
+    <th colspan="6" class="fin">EXÉCUTION FINANCIÈRE (F CFA)</th>
+    <th rowspan="2" class="obs">Observations</th>
+  </tr>
+  <tr>
+    <th class="fin">Engagé</th>
+    <th class="fin">Taux eng. (%)</th>
+    <th class="fin">Mandaté</th>
+    <th class="fin">Taux mand. (%)</th>
+    <th class="fin">Payé</th>
+    <th class="fin">Taux pay. (%)</th>
+  </tr>
+</thead>
+<tbody>
+
+{% for pd in data %}
+  <tr class="prog">
+    <td class="tc">{{ pd.prog_num }}</td>
+    <td class="tl">Programme {{ pd.prog_num }} : {{ pd.programme.nom }}</td>
+    <td></td>
+    <td class="tc">{{ pd.poids }} %</td>
+    <td></td><td></td><td></td>
+    <td class="tr">{{ pd.budget | fcfa }}</td>
+    <td class="tc">{{ pd.taux_phys }} %</td>
+    <td class="tr">{{ pd.engage | fcfa }}</td>
+    <td class="tc">{{ pd.taux_eng }} %</td>
+    <td class="tr">{{ pd.mandate | fcfa }}</td>
+    <td class="tc">{{ pd.taux_mand }} %</td>
+    <td class="tr">{{ pd.paye | fcfa }}</td>
+    <td class="tc">{{ pd.taux_pay }} %</td>
+    <td></td>
+  </tr>
+
+  {% for pjd in pd.projets %}
+  <tr class="proj">
+    <td class="tc">{{ pd.prog_num }}.{{ pjd.proj_num }}</td>
+    <td class="tl">&nbsp;Projet {{ pd.prog_num }}.{{ pjd.proj_num }} : {{ pjd.projet.nom }}</td>
+    <td></td>
+    <td class="tc">{{ pjd.poids }} %</td>
+    <td></td><td></td><td></td>
+    <td class="tr">{{ pjd.budget | fcfa }}</td>
+    <td class="tc">{{ pjd.taux_phys }} %</td>
+    <td class="tr">{{ pjd.engage | fcfa }}</td>
+    <td class="tc">{{ pjd.taux_eng }} %</td>
+    <td class="tr">{{ pjd.mandate | fcfa }}</td>
+    <td class="tc">{{ pjd.taux_mand }} %</td>
+    <td class="tr">{{ pjd.paye | fcfa }}</td>
+    <td class="tc">{{ pjd.taux_pay }} %</td>
+    <td></td>
+  </tr>
+
+  {% for ad in pjd.activites %}
+  <tr class="act">
+    <td class="tc">{{ pd.prog_num }}.{{ pjd.proj_num }}.{{ ad.act_num }}</td>
+    <td class="tl">&nbsp;&nbsp;{{ ad.activite.nom }}</td>
+    <td class="tc">{{ ad.activite.pai_extra.localisation if ad.activite.pai_extra and ad.activite.pai_extra.localisation else '—' }}</td>
+    <td class="tc">{{ ad.poids }} %</td>
+    <td>{{ ad.activite.pai_extra.indicateurs if ad.activite.pai_extra and ad.activite.pai_extra.indicateurs else '—' }}</td>
+    <td class="tc">
+      {% if ad.activite.periode_debut or ad.activite.periode_fin %}
+        {{ ad.activite.periode_debut or '' }}{% if ad.activite.periode_debut and ad.activite.periode_fin %} – {% endif %}{{ ad.activite.periode_fin or '' }}
+      {% else %}—{% endif %}
+    </td>
+    <td class="tc">{{ ad.activite.direction_responsable.code if ad.activite.direction_responsable else '—' }}</td>
+    <td class="tr">{{ ad.budget | fcfa }}</td>
+    <td class="tc">
+      {% if ad.taux_phys >= 75 %}<span class="badge-v">{{ ad.taux_phys }} %</span>
+      {% elif ad.taux_phys >= 50 %}<span class="badge-o">{{ ad.taux_phys }} %</span>
+      {% else %}<span class="badge-r">{{ ad.taux_phys }} %</span>{% endif %}
+    </td>
+    <td class="tr">{{ ad.engage | fcfa }}</td>
+    <td class="tc">
+      {% if ad.taux_eng >= 75 %}<span class="badge-v">{{ ad.taux_eng }} %</span>
+      {% elif ad.taux_eng >= 50 %}<span class="badge-o">{{ ad.taux_eng }} %</span>
+      {% else %}<span class="badge-r">{{ ad.taux_eng }} %</span>{% endif %}
+    </td>
+    <td class="tr">{{ ad.mandate | fcfa }}</td>
+    <td class="tc">
+      {% if ad.taux_mand >= 75 %}<span class="badge-v">{{ ad.taux_mand }} %</span>
+      {% elif ad.taux_mand >= 50 %}<span class="badge-o">{{ ad.taux_mand }} %</span>
+      {% else %}<span class="badge-r">{{ ad.taux_mand }} %</span>{% endif %}
+    </td>
+    <td class="tr">{{ ad.paye | fcfa }}</td>
+    <td class="tc">
+      {% if ad.taux_pay >= 75 %}<span class="badge-v">{{ ad.taux_pay }} %</span>
+      {% elif ad.taux_pay >= 50 %}<span class="badge-o">{{ ad.taux_pay }} %</span>
+      {% else %}<span class="badge-r">{{ ad.taux_pay }} %</span>{% endif %}
+    </td>
+    <td>{{ ad.obs or '—' }}</td>
+  </tr>
+  {% endfor %}
+  {% endfor %}
+{% endfor %}
+
+{% if data %}
+<tr class="total">
+  <td colspan="3" class="tc">TOTAL GÉNÉRAL</td>
+  <td class="tc">100 %</td>
+  <td colspan="3"></td>
+  <td class="tr">{{ totaux.budget | fcfa }}</td>
+  <td class="tc">
+    {% if totaux.taux_phys >= 75 %}<span class="badge-v">{{ totaux.taux_phys }} %</span>
+    {% elif totaux.taux_phys >= 50 %}<span class="badge-o">{{ totaux.taux_phys }} %</span>
+    {% else %}<span class="badge-r">{{ totaux.taux_phys }} %</span>{% endif %}
+  </td>
+  <td class="tr">{{ totaux.engage | fcfa }}</td>
+  <td class="tc">
+    {% if totaux.taux_eng >= 75 %}<span class="badge-v">{{ totaux.taux_eng }} %</span>
+    {% elif totaux.taux_eng >= 50 %}<span class="badge-o">{{ totaux.taux_eng }} %</span>
+    {% else %}<span class="badge-r">{{ totaux.taux_eng }} %</span>{% endif %}
+  </td>
+  <td class="tr">{{ totaux.mandate | fcfa }}</td>
+  <td class="tc">
+    {% if totaux.taux_mand >= 75 %}<span class="badge-v">{{ totaux.taux_mand }} %</span>
+    {% elif totaux.taux_mand >= 50 %}<span class="badge-o">{{ totaux.taux_mand }} %</span>
+    {% else %}<span class="badge-r">{{ totaux.taux_mand }} %</span>{% endif %}
+  </td>
+  <td class="tr">{{ totaux.paye | fcfa }}</td>
+  <td class="tc">
+    {% if totaux.taux_pay >= 75 %}<span class="badge-v">{{ totaux.taux_pay }} %</span>
+    {% elif totaux.taux_pay >= 50 %}<span class="badge-o">{{ totaux.taux_pay }} %</span>
+    {% else %}<span class="badge-r">{{ totaux.taux_pay }} %</span>{% endif %}
+  </td>
+  <td></td>
+</tr>
+{% endif %}
+</tbody>
+</table>
+</body>
+</html>

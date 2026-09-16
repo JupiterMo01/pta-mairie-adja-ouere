@@ -3,189 +3,202 @@
 {% block page_title %}<i class="fas fa-chart-bar me-2"></i>Point d'exécution du PAI {{ annee.annee }}{% endblock %}
 
 {% block content %}
-<div class="pt-3">
+<div class="pt-2">
 
-{# ── Barre de recherche ────────────────────────────────────────────────── #}
-<div class="d-flex align-items-center gap-2 mb-2 px-1 py-2 bg-light border rounded flex-wrap">
-  <i class="fas fa-search text-muted"></i>
+{# ── Barre d'outils ────────────────────────────────────────────────────── #}
+<div class="d-flex flex-wrap gap-2 align-items-center mb-2">
+  <span class="badge bg-primary fs-6 px-3">{{ annee.annee }}</span>
+  <span class="text-muted small">
+    Coût total PAI : <strong>{{ totaux.budget | fcfa }} F CFA</strong>
+  </span>
+  <div class="ms-auto d-flex gap-2 flex-wrap">
+    <a href="{{ url_for('pei.print_view') }}" target="_blank" class="btn btn-outline-secondary btn-sm">
+      <i class="fas fa-print me-1"></i>Imprimer
+    </a>
+    <a href="{{ url_for('pei.export_excel') }}" class="btn btn-success btn-sm">
+      <i class="fas fa-file-excel me-1"></i>Exporter Excel
+    </a>
+  </div>
+</div>
+
+{# ── Recherche ─────────────────────────────────────────────────────────── #}
+<div class="d-flex align-items-center gap-2 mb-2 px-2 py-1 bg-light border rounded flex-wrap">
+  <i class="fas fa-search text-muted small"></i>
   <input type="text" id="peiSearch" class="form-control form-control-sm"
-         placeholder="Rechercher (code, activité, localisation, indicateur…)"
-         style="max-width:320px;" autocomplete="off">
+         placeholder="Rechercher (code, activité, localisation…)"
+         style="max-width:280px;" autocomplete="off">
   <span id="peiSearchCount" class="small fw-semibold ms-1 text-muted"></span>
-  <button class="btn btn-sm btn-outline-secondary" id="peiPrevMatch" title="Précédent">&#8679;</button>
-  <button class="btn btn-sm btn-outline-secondary" id="peiNextMatch" title="Suivant">&#8681;</button>
-  <button class="btn btn-sm btn-outline-danger" id="peiClearSearch" title="Effacer">&#x2715;</button>
+  <button class="btn btn-sm btn-outline-secondary py-0" id="peiPrevMatch">&#8679;</button>
+  <button class="btn btn-sm btn-outline-secondary py-0" id="peiNextMatch">&#8681;</button>
+  <button class="btn btn-sm btn-outline-danger py-0" id="peiClearSearch">&#x2715;</button>
 </div>
 
 {# ── Tableau ──────────────────────────────────────────────────────────── #}
-<div id="peiContainer" style="overflow-x:auto;max-height:78vh;overflow-y:auto;">
+<div id="peiContainer" style="overflow-x:auto;max-height:75vh;overflow-y:auto;">
 <table class="table table-bordered table-sm align-middle mb-0" id="tablePEI"
-       style="font-size:.78rem;min-width:1700px;border-collapse:collapse;">
+       style="font-size:.68rem;border-collapse:collapse;width:100%;">
+<colgroup>
+  <col style="width:52px;">   {# Code PAI #}
+  <col style="width:17%;">    {# Libellé #}
+  <col style="width:7%;">     {# Localisation #}
+  <col style="width:40px;">   {# Poids #}
+  <col style="width:9%;">     {# Indicateurs #}
+  <col style="width:62px;">   {# Période #}
+  <col style="width:48px;">   {# Struct. #}
+  <col style="width:7%;">     {# Coût total #}
+  <col style="width:48px;">   {# Taux phys #}
+  <col style="width:7%;">     {# Engagé #}
+  <col style="width:44px;">   {# Taux eng #}
+  <col style="width:7%;">     {# Mandaté #}
+  <col style="width:44px;">   {# Taux mand #}
+  <col style="width:7%;">     {# Payé #}
+  <col style="width:44px;">   {# Taux pay #}
+  <col style="width:10%;">    {# Observations #}
+</colgroup>
 <thead class="sticky-top" style="top:0;z-index:10;">
-  <tr style="background:#1e3a5f;color:#fcd116;text-align:center;vertical-align:middle;">
-    <th rowspan="2" style="min-width:60px;">Code PAI</th>
-    <th rowspan="2" style="min-width:200px;text-align:left;">Programmes / Projets / Activités</th>
-    <th rowspan="2" style="min-width:110px;">Localisation</th>
-    <th rowspan="2" style="min-width:55px;">Poids<br>(%)</th>
-    <th rowspan="2" style="min-width:140px;">Indicateurs</th>
-    <th rowspan="2" style="min-width:90px;">Période<br>d'exéc.</th>
-    <th rowspan="2" style="min-width:70px;">Struct.<br>Resp.</th>
-    <th rowspan="2" style="min-width:110px;">Coût total<br>(F CFA)</th>
-    <th rowspan="2" style="min-width:75px;background:#0f6f3a;">Taux exéc.<br>physique (%)</th>
-    <th colspan="6" style="background:#7b3f00;">EXÉCUTION FINANCIÈRE (F CFA)</th>
-    <th rowspan="2" style="min-width:170px;background:#333;">Observations</th>
+  <tr style="background:#1e3a5f;color:#fcd116;text-align:center;vertical-align:middle;line-height:1.2;">
+    <th rowspan="2" style="padding:3px 2px;">Code<br>PAI</th>
+    <th rowspan="2" style="text-align:left;padding:3px 4px;">Programmes / Projets / Activités</th>
+    <th rowspan="2" style="padding:3px 2px;">Localisa-<br>tion</th>
+    <th rowspan="2" style="padding:3px 2px;">Poids<br>(%)</th>
+    <th rowspan="2" style="padding:3px 2px;">Indicateurs</th>
+    <th rowspan="2" style="padding:3px 2px;">Période<br>d'exéc.</th>
+    <th rowspan="2" style="padding:3px 2px;">Struct.<br>Resp.</th>
+    <th rowspan="2" style="padding:3px 2px;">Coût total<br>(F CFA)</th>
+    <th rowspan="2" style="padding:3px 2px;background:#0f6f3a;">Taux<br>phys. (%)</th>
+    <th colspan="6" style="padding:3px 2px;background:#7b3f00;">EXÉCUTION FINANCIÈRE (F CFA)</th>
+    <th rowspan="2" style="padding:3px 2px;background:#333;">Observations</th>
   </tr>
-  <tr style="background:#1e3a5f;color:#fcd116;text-align:center;vertical-align:middle;">
-    <th style="min-width:115px;background:#7b3f00;">Montant engagé</th>
-    <th style="min-width:65px;background:#7b3f00;">Taux eng.<br>(%)</th>
-    <th style="min-width:115px;background:#7b3f00;">Montant mandaté</th>
-    <th style="min-width:65px;background:#7b3f00;">Taux mand.<br>(%)</th>
-    <th style="min-width:115px;background:#7b3f00;">Montant payé</th>
-    <th style="min-width:65px;background:#7b3f00;">Taux paiem.<br>(%)</th>
+  <tr style="background:#1e3a5f;color:#fcd116;text-align:center;vertical-align:middle;line-height:1.2;">
+    <th style="padding:3px 2px;background:#7b3f00;">Engagé</th>
+    <th style="padding:3px 2px;background:#7b3f00;">Taux<br>eng. (%)</th>
+    <th style="padding:3px 2px;background:#7b3f00;">Mandaté</th>
+    <th style="padding:3px 2px;background:#7b3f00;">Taux<br>mand. (%)</th>
+    <th style="padding:3px 2px;background:#7b3f00;">Payé</th>
+    <th style="padding:3px 2px;background:#7b3f00;">Taux<br>pay. (%)</th>
   </tr>
 </thead>
 <tbody>
 
-{% set prog_num = namespace(v=0) %}
 {% for pd in data %}
-  {% set prog_num.v = prog_num.v + 1 %}
-
-  {# ── Ligne programme ───────────────────────────────── #}
+  {# ── Ligne programme ──────────────────────────────── #}
   <tr class="pei-prog-row" id="row-prog-{{ pd.programme.id }}"
       style="background:#1e3a5f;color:#fff;font-weight:700;">
-    <td class="text-center">Prog. {{ pd.prog_num }}</td>
-    <td>{{ pd.programme.nom }}</td>
+    <td class="text-center" style="padding:2px;">{{ pd.prog_num }}</td>
+    <td style="padding:2px 4px;">Programme {{ pd.prog_num }} : {{ pd.programme.nom }}</td>
     <td></td>
-    <td class="text-center">{{ pd.poids }} %</td>
+    <td class="text-center" style="padding:2px;">{{ pd.poids }} %</td>
     <td></td><td></td><td></td>
-    <td class="text-end">{{ pd.budget | fcfa }}</td>
-    <td class="text-center">{% include 'pei/_badge_taux.html' ignore missing %}{{ pd.taux_phys }} %</td>
-    <td class="text-end">{{ pd.engage | fcfa }}</td>
-    <td class="text-center">{{ pd.taux_eng }} %</td>
-    <td class="text-end">{{ pd.mandate | fcfa }}</td>
-    <td class="text-center">{{ pd.taux_mand }} %</td>
-    <td class="text-end">{{ pd.paye | fcfa }}</td>
-    <td class="text-center">{{ pd.taux_pay }} %</td>
+    <td class="text-end" style="padding:2px 4px;">{{ pd.budget | fcfa }}</td>
+    <td class="text-center" style="padding:2px;">{{ pd.taux_phys }} %</td>
+    <td class="text-end" style="padding:2px 4px;">{{ pd.engage | fcfa }}</td>
+    <td class="text-center" style="padding:2px;">{{ pd.taux_eng }} %</td>
+    <td class="text-end" style="padding:2px 4px;">{{ pd.mandate | fcfa }}</td>
+    <td class="text-center" style="padding:2px;">{{ pd.taux_mand }} %</td>
+    <td class="text-end" style="padding:2px 4px;">{{ pd.paye | fcfa }}</td>
+    <td class="text-center" style="padding:2px;">{{ pd.taux_pay }} %</td>
     <td></td>
   </tr>
 
-  {% set proj_num = namespace(v=0) %}
   {% for pjd in pd.projets %}
-    {% set proj_num.v = proj_num.v + 1 %}
-
-    {# ── Ligne projet ──────────────────────────────────── #}
+    {# ── Ligne projet ─────────────────────────────── #}
     <tr class="pei-proj-row" id="row-proj-{{ pjd.projet.id }}"
         style="background:#2d5a8e;color:#fff;font-weight:600;">
-      <td class="text-center">{{ pd.prog_num }}.{{ pjd.proj_num }}</td>
-      <td>&nbsp;&nbsp;{{ pjd.projet.nom }}</td>
+      <td class="text-center" style="padding:2px;">{{ pd.prog_num }}.{{ pjd.proj_num }}</td>
+      <td style="padding:2px 4px;">&nbsp;Projet {{ pd.prog_num }}.{{ pjd.proj_num }} : {{ pjd.projet.nom }}</td>
       <td></td>
-      <td class="text-center">{{ pjd.poids }} %</td>
+      <td class="text-center" style="padding:2px;">{{ pjd.poids }} %</td>
       <td></td><td></td><td></td>
-      <td class="text-end">{{ pjd.budget | fcfa }}</td>
-      <td class="text-center">{{ pjd.taux_phys }} %</td>
-      <td class="text-end">{{ pjd.engage | fcfa }}</td>
-      <td class="text-center">{{ pjd.taux_eng }} %</td>
-      <td class="text-end">{{ pjd.mandate | fcfa }}</td>
-      <td class="text-center">{{ pjd.taux_mand }} %</td>
-      <td class="text-end">{{ pjd.paye | fcfa }}</td>
-      <td class="text-center">{{ pjd.taux_pay }} %</td>
+      <td class="text-end" style="padding:2px 4px;">{{ pjd.budget | fcfa }}</td>
+      <td class="text-center" style="padding:2px;">{{ pjd.taux_phys }} %</td>
+      <td class="text-end" style="padding:2px 4px;">{{ pjd.engage | fcfa }}</td>
+      <td class="text-center" style="padding:2px;">{{ pjd.taux_eng }} %</td>
+      <td class="text-end" style="padding:2px 4px;">{{ pjd.mandate | fcfa }}</td>
+      <td class="text-center" style="padding:2px;">{{ pjd.taux_mand }} %</td>
+      <td class="text-end" style="padding:2px 4px;">{{ pjd.paye | fcfa }}</td>
+      <td class="text-center" style="padding:2px;">{{ pjd.taux_pay }} %</td>
       <td></td>
     </tr>
 
     {% for ad in pjd.activites %}
-    {# ── Ligne activité ────────────────────────────────── #}
+    {# ── Ligne activité ───────────────────────────── #}
     <tr class="pei-act-row" id="row-act-{{ ad.activite.id }}">
-      <td class="text-center fw-semibold">{{ pd.prog_num }}.{{ pjd.proj_num }}.{{ ad.act_num }}</td>
-      <td>
-        &nbsp;&nbsp;&nbsp;&nbsp;{{ ad.activite.nom }}
+      <td class="text-center fw-semibold" style="padding:2px;">{{ pd.prog_num }}.{{ pjd.proj_num }}.{{ ad.act_num }}</td>
+      <td style="padding:2px 4px;">
+        &nbsp;&nbsp;{{ ad.activite.nom }}
         {% if peut_editer %}
-        <button class="btn btn-xs btn-outline-warning py-0 px-1 ms-1 float-end"
-                style="font-size:.7rem;"
-                title="Modifier les montants d'exécution financière"
-                onclick="_openPeiEdit({{ ad.activite.id }},
-                  {{ ad.budget }},
-                  {{ ad.engage }},
-                  {{ ad.mandate }},
-                  {{ ad.paye }})">
+        <button class="btn btn-outline-warning py-0 px-1 float-end"
+                style="font-size:.62rem;line-height:1.3;"
+                title="Modifier les montants financiers"
+                onclick="_openPeiEdit({{ ad.activite.id }},{{ ad.budget }},{{ ad.engage }},{{ ad.mandate }},{{ ad.paye }})">
           <i class="fas fa-pencil-alt"></i>
         </button>
         {% endif %}
       </td>
-      <td class="text-center">{{ ad.activite.pai_extra.localisation if ad.activite.pai_extra and ad.activite.pai_extra.localisation else '—' }}</td>
-      <td class="text-center">{{ ad.poids }} %</td>
-      <td style="font-size:.72rem;">{{ ad.activite.pai_extra.indicateurs if ad.activite.pai_extra and ad.activite.pai_extra.indicateurs else '—' }}</td>
-      <td class="text-center">
+      <td class="text-center" style="padding:2px;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+          title="{{ ad.activite.pai_extra.localisation if ad.activite.pai_extra and ad.activite.pai_extra.localisation else '' }}">
+        {{ ad.activite.pai_extra.localisation if ad.activite.pai_extra and ad.activite.pai_extra.localisation else '—' }}
+      </td>
+      <td class="text-center" style="padding:2px;">{{ ad.poids }} %</td>
+      <td style="padding:2px;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.65rem;"
+          title="{{ ad.activite.pai_extra.indicateurs if ad.activite.pai_extra and ad.activite.pai_extra.indicateurs else '' }}">
+        {{ ad.activite.pai_extra.indicateurs if ad.activite.pai_extra and ad.activite.pai_extra.indicateurs else '—' }}
+      </td>
+      <td class="text-center" style="padding:2px;">
         {% if ad.activite.periode_debut or ad.activite.periode_fin %}
-          {{ ad.activite.periode_debut or '' }}{% if ad.activite.periode_debut and ad.activite.periode_fin %} – {% endif %}{{ ad.activite.periode_fin or '' }}
+          {{ ad.activite.periode_debut or '' }}{% if ad.activite.periode_debut and ad.activite.periode_fin %}<br>{% endif %}{{ ad.activite.periode_fin or '' }}
         {% else %}—{% endif %}
       </td>
-      <td class="text-center">{{ ad.activite.direction_responsable.code if ad.activite.direction_responsable else '—' }}</td>
-      <td class="text-end fw-semibold">{{ ad.budget | fcfa }}</td>
-      <td class="text-center">
-        <span class="badge {{ 'bg-success' if ad.taux_phys >= 75 else ('bg-warning text-dark' if ad.taux_phys >= 50 else 'bg-danger') }}">
-          {{ ad.taux_phys }} %
-        </span>
+      <td class="text-center" style="padding:2px;">{{ ad.activite.direction_responsable.code if ad.activite.direction_responsable else '—' }}</td>
+      <td class="text-end fw-semibold" style="padding:2px 4px;">{{ ad.budget | fcfa }}</td>
+      <td class="text-center" style="padding:2px;">
+        <span class="badge {{ 'bg-success' if ad.taux_phys >= 75 else ('bg-warning text-dark' if ad.taux_phys >= 50 else 'bg-danger') }}"
+              style="font-size:.62rem;">{{ ad.taux_phys }} %</span>
       </td>
-      <td class="text-end {% if ad.engage > 0 %}fw-semibold{% endif %}">{{ ad.engage | fcfa if ad.engage else '—' }}</td>
-      <td class="text-center">
-        {% if ad.taux_eng > 0 %}
-        <span class="badge {{ 'bg-success' if ad.taux_eng >= 75 else ('bg-warning text-dark' if ad.taux_eng >= 50 else 'bg-danger') }}">
-          {{ ad.taux_eng }} %
-        </span>
-        {% else %}—{% endif %}
+      <td class="text-end" style="padding:2px 4px;">{{ ad.engage | fcfa }}</td>
+      <td class="text-center" style="padding:2px;">
+        <span class="badge {{ 'bg-success' if ad.taux_eng >= 75 else ('bg-warning text-dark' if ad.taux_eng >= 50 else 'bg-danger') }}"
+              style="font-size:.62rem;">{{ ad.taux_eng }} %</span>
       </td>
-      <td class="text-end {% if ad.mandate > 0 %}fw-semibold{% endif %}">{{ ad.mandate | fcfa if ad.mandate else '—' }}</td>
-      <td class="text-center">
-        {% if ad.taux_mand > 0 %}
-        <span class="badge {{ 'bg-success' if ad.taux_mand >= 75 else ('bg-warning text-dark' if ad.taux_mand >= 50 else 'bg-danger') }}">
-          {{ ad.taux_mand }} %
-        </span>
-        {% else %}—{% endif %}
+      <td class="text-end" style="padding:2px 4px;">{{ ad.mandate | fcfa }}</td>
+      <td class="text-center" style="padding:2px;">
+        <span class="badge {{ 'bg-success' if ad.taux_mand >= 75 else ('bg-warning text-dark' if ad.taux_mand >= 50 else 'bg-danger') }}"
+              style="font-size:.62rem;">{{ ad.taux_mand }} %</span>
       </td>
-      <td class="text-end {% if ad.paye > 0 %}fw-semibold{% endif %}">{{ ad.paye | fcfa if ad.paye else '—' }}</td>
-      <td class="text-center">
-        {% if ad.taux_pay > 0 %}
-        <span class="badge {{ 'bg-success' if ad.taux_pay >= 75 else ('bg-warning text-dark' if ad.taux_pay >= 50 else 'bg-danger') }}">
-          {{ ad.taux_pay }} %
-        </span>
-        {% else %}—{% endif %}
+      <td class="text-end" style="padding:2px 4px;">{{ ad.paye | fcfa }}</td>
+      <td class="text-center" style="padding:2px;">
+        <span class="badge {{ 'bg-success' if ad.taux_pay >= 75 else ('bg-warning text-dark' if ad.taux_pay >= 50 else 'bg-danger') }}"
+              style="font-size:.62rem;">{{ ad.taux_pay }} %</span>
       </td>
-      <td style="font-size:.7rem;color:#555;max-width:200px;word-break:break-word;">{{ ad.obs or '—' }}</td>
+      <td style="padding:2px;font-size:.62rem;color:#444;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+          title="{{ ad.obs }}">{{ ad.obs or '—' }}</td>
     </tr>
-    {% endfor %}{# activités #}
+    {% endfor %}
 
-  {% endfor %}{# projets #}
-{% endfor %}{# programmes #}
+  {% endfor %}
+{% endfor %}
 
-{# ── Ligne totaux globaux ──────────────────────────────────────────────── #}
+{# ── Ligne totaux globaux ─────────────────────────────────────────────── #}
 {% if data %}
-<tr style="background:#111;color:#fcd116;font-weight:700;font-size:.82rem;">
-  <td colspan="3" class="text-center">TOTAL GÉNÉRAL</td>
-  <td class="text-center">100 %</td>
+<tr style="background:#111;color:#fcd116;font-weight:700;font-size:.72rem;">
+  <td colspan="3" class="text-center" style="padding:3px;">TOTAL GÉNÉRAL</td>
+  <td class="text-center" style="padding:3px;">100 %</td>
   <td colspan="3"></td>
-  <td class="text-end">{{ totaux.budget | fcfa }}</td>
-  <td class="text-center">
-    <span class="badge {{ 'bg-success' if totaux.taux_phys >= 75 else ('bg-warning text-dark' if totaux.taux_phys >= 50 else 'bg-danger') }}">
-      {{ totaux.taux_phys }} %
-    </span>
+  <td class="text-end" style="padding:3px 4px;">{{ totaux.budget | fcfa }}</td>
+  <td class="text-center" style="padding:3px;">
+    <span class="badge {{ 'bg-success' if totaux.taux_phys >= 75 else ('bg-warning text-dark' if totaux.taux_phys >= 50 else 'bg-danger') }}">{{ totaux.taux_phys }} %</span>
   </td>
-  <td class="text-end">{{ totaux.engage | fcfa }}</td>
-  <td class="text-center">
-    <span class="badge {{ 'bg-success' if totaux.taux_eng >= 75 else ('bg-warning text-dark' if totaux.taux_eng >= 50 else 'bg-danger') }}">
-      {{ totaux.taux_eng }} %
-    </span>
+  <td class="text-end" style="padding:3px 4px;">{{ totaux.engage | fcfa }}</td>
+  <td class="text-center" style="padding:3px;">
+    <span class="badge {{ 'bg-success' if totaux.taux_eng >= 75 else ('bg-warning text-dark' if totaux.taux_eng >= 50 else 'bg-danger') }}">{{ totaux.taux_eng }} %</span>
   </td>
-  <td class="text-end">{{ totaux.mandate | fcfa }}</td>
-  <td class="text-center">
-    <span class="badge {{ 'bg-success' if totaux.taux_mand >= 75 else ('bg-warning text-dark' if totaux.taux_mand >= 50 else 'bg-danger') }}">
-      {{ totaux.taux_mand }} %
-    </span>
+  <td class="text-end" style="padding:3px 4px;">{{ totaux.mandate | fcfa }}</td>
+  <td class="text-center" style="padding:3px;">
+    <span class="badge {{ 'bg-success' if totaux.taux_mand >= 75 else ('bg-warning text-dark' if totaux.taux_mand >= 50 else 'bg-danger') }}">{{ totaux.taux_mand }} %</span>
   </td>
-  <td class="text-end">{{ totaux.paye | fcfa }}</td>
-  <td class="text-center">
-    <span class="badge {{ 'bg-success' if totaux.taux_pay >= 75 else ('bg-warning text-dark' if totaux.taux_pay >= 50 else 'bg-danger') }}">
-      {{ totaux.taux_pay }} %
-    </span>
+  <td class="text-end" style="padding:3px 4px;">{{ totaux.paye | fcfa }}</td>
+  <td class="text-center" style="padding:3px;">
+    <span class="badge {{ 'bg-success' if totaux.taux_pay >= 75 else ('bg-warning text-dark' if totaux.taux_pay >= 50 else 'bg-danger') }}">{{ totaux.taux_pay }} %</span>
   </td>
   <td></td>
 </tr>
@@ -193,7 +206,7 @@
 
 </tbody>
 </table>
-</div>{# /peiContainer #}
+</div>
 
 {% if not data %}
 <div class="alert alert-info mt-3">
@@ -202,9 +215,9 @@
 </div>
 {% endif %}
 
-</div>{# /pt-3 #}
+</div>
 
-{# ── Modal édition montants ────────────────────────────────────────────── #}
+{# ── Modal édition montants ───────────────────────────────────────────── #}
 {% if peut_editer %}
 <div class="modal fade" id="modalPeiEdit" tabindex="-1">
   <div class="modal-dialog modal-md">
@@ -215,24 +228,24 @@
       </div>
       <form id="formPeiEdit" method="POST">
         <div class="modal-body">
-          <p class="small text-muted mb-3" id="peiEditActNom"></p>
+          <p class="small text-muted mb-3 fw-semibold" id="peiEditActNom"></p>
           <div class="mb-3">
             <label class="form-label fw-semibold">Montant engagé (F CFA)</label>
             <input type="number" name="montant_engage" id="peiEngage"
                    class="form-control" min="0" step="1" placeholder="0">
-            <div class="form-text text-muted">Max : <span id="peiEditBudget"></span> F CFA (coût total)</div>
+            <div class="form-text">Max : <span id="peiEditBudget" class="fw-semibold"></span> F CFA (coût total)</div>
           </div>
           <div class="mb-3">
             <label class="form-label fw-semibold">Montant mandaté (F CFA)</label>
             <input type="number" name="montant_mandate" id="peiMandate"
                    class="form-control" min="0" step="1" placeholder="0">
-            <div class="form-text text-muted">Max : montant engagé</div>
+            <div class="form-text">Ne peut pas dépasser le montant engagé</div>
           </div>
           <div class="mb-3">
             <label class="form-label fw-semibold">Montant payé (F CFA)</label>
             <input type="number" name="montant_paye" id="peiPaye"
                    class="form-control" min="0" step="1" placeholder="0">
-            <div class="form-text text-muted">Max : montant engagé</div>
+            <div class="form-text">Ne peut pas dépasser le montant engagé</div>
           </div>
         </div>
         <div class="modal-footer">
@@ -250,12 +263,11 @@
 
 {% block scripts %}
 <script>
-/* ── Scroll utilitaire ── */
 function _peiScrollTo(target) {
   var c = document.getElementById('peiContainer');
   if (!target) return;
   if (c) {
-    var top = c.scrollTop + target.getBoundingClientRect().top - c.getBoundingClientRect().top - 80;
+    var top = c.scrollTop + target.getBoundingClientRect().top - c.getBoundingClientRect().top - 60;
     c.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
   } else {
     target.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -263,7 +275,7 @@ function _peiScrollTo(target) {
 }
 
 document.addEventListener('DOMContentLoaded', function () {
-  /* ── Scroll retour après action ── */
+  /* Scroll retour après action */
   var goParam = new URLSearchParams(window.location.search).get('go');
   if (goParam) {
     var target = document.getElementById('row-' + goParam);
@@ -273,114 +285,87 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
-  /* ── Recherche ── */
+  /* Recherche */
   var searchInput = document.getElementById('peiSearch');
   var countEl     = document.getElementById('peiSearchCount');
   var prevBtn     = document.getElementById('peiPrevMatch');
   var nextBtn     = document.getElementById('peiNextMatch');
   var clearBtn    = document.getElementById('peiClearSearch');
-  var matches     = [];
-  var matchIdx    = -1;
+  var matches = [], matchIdx = -1;
 
   function doSearch(q) {
-    matches = [];
-    matchIdx = -1;
+    matches = []; matchIdx = -1;
     var rows = document.querySelectorAll('#tablePEI tbody tr.pei-act-row');
     rows.forEach(function (row) {
-      var txt = row.textContent.toLowerCase();
-      var hit = q.length >= 2 && txt.includes(q.toLowerCase());
+      var hit = q.length >= 2 && row.textContent.toLowerCase().includes(q.toLowerCase());
       row.style.display = (q === '' || hit) ? '' : 'none';
       if (hit) matches.push(row);
     });
-    // Afficher les lignes programme/projet parentes des activités visibles
     document.querySelectorAll('#tablePEI tbody tr.pei-prog-row, #tablePEI tbody tr.pei-proj-row').forEach(function (r) {
       if (q === '') { r.style.display = ''; return; }
-      // Affiche si au moins une activité sœur visible
-      var next = r.nextElementSibling;
-      var visible = false;
+      var next = r.nextElementSibling, visible = false;
       while (next && !next.classList.contains('pei-prog-row')) {
         if (next.classList.contains('pei-act-row') && next.style.display !== 'none') visible = true;
         next = next.nextElementSibling;
       }
       r.style.display = visible ? '' : 'none';
     });
-    updateCount();
-  }
-
-  function updateCount() {
-    if (matches.length === 0) {
-      countEl.textContent = searchInput.value.length >= 2 ? '0 résultat' : '';
-    } else {
-      countEl.textContent = (matchIdx + 1) + ' / ' + matches.length;
-    }
+    countEl.textContent = q.length >= 2 ? (matches.length + ' résultat' + (matches.length > 1 ? 's' : '')) : '';
   }
 
   function goTo(idx) {
     if (!matches.length) return;
     matchIdx = (idx + matches.length) % matches.length;
     matches.forEach(function (r) { r.style.background = ''; });
-    var row = matches[matchIdx];
-    row.style.background = '#fff3cd';
-    _peiScrollTo(row);
-    updateCount();
+    matches[matchIdx].style.background = '#fff3cd';
+    _peiScrollTo(matches[matchIdx]);
+    countEl.textContent = (matchIdx + 1) + ' / ' + matches.length;
   }
 
   searchInput.addEventListener('input', function () { doSearch(this.value.trim()); });
   nextBtn.addEventListener('click', function () { goTo(matchIdx + 1); });
   prevBtn.addEventListener('click', function () { goTo(matchIdx - 1); });
   clearBtn.addEventListener('click', function () {
-    searchInput.value = '';
-    doSearch('');
+    searchInput.value = ''; doSearch('');
     matches.forEach(function (r) { r.style.background = ''; });
   });
 });
 
 {% if peut_editer %}
-/* ── Modal édition montants ── */
-var _peiEditActId = null;
-var _peiBudget    = 0;
+var _peiEditActId = null, _peiBudget = 0;
 
 function _openPeiEdit(actId, budget, engage, mandate, paye) {
-  _peiEditActId = actId;
-  _peiBudget    = budget;
+  _peiEditActId = actId; _peiBudget = budget;
   document.getElementById('peiEditBudget').textContent = budget.toLocaleString('fr-FR');
   document.getElementById('peiEngage').value  = engage  || '';
   document.getElementById('peiEngage').max    = budget;
   document.getElementById('peiMandate').value = mandate || '';
+  document.getElementById('peiMandate').max   = engage  || budget;
   document.getElementById('peiPaye').value    = paye    || '';
-  var form = document.getElementById('formPeiEdit');
-  form.action = '{{ url_for("pei.edit_montants", activite_id=0) }}'.replace('/0', '/' + actId);
-  // Nom de l'activité
+  document.getElementById('peiPaye').max      = engage  || budget;
   var row = document.getElementById('row-act-' + actId);
   if (row) {
-    var cells = row.querySelectorAll('td');
-    var nom = cells[1] ? cells[1].textContent.trim().replace(/\s+/g, ' ') : '';
-    document.getElementById('peiEditActNom').textContent = nom;
+    var td = row.querySelectorAll('td')[1];
+    document.getElementById('peiEditActNom').textContent = td ? td.textContent.trim().replace(/\s+/g,' ') : '';
   }
-  var modal = new bootstrap.Modal(document.getElementById('modalPeiEdit'));
-  modal.show();
+  document.getElementById('formPeiEdit').action =
+    '{{ url_for("pei.edit_montants", activite_id=0) }}'.replace('/0', '/' + actId);
+  new bootstrap.Modal(document.getElementById('modalPeiEdit')).show();
 }
 
-/* Validation client : mandate et paye ≤ engage */
 document.getElementById('formPeiEdit').addEventListener('submit', function (e) {
   var eng  = parseFloat(document.getElementById('peiEngage').value  || 0);
   var mand = parseFloat(document.getElementById('peiMandate').value || 0);
   var pay  = parseFloat(document.getElementById('peiPaye').value    || 0);
   if (eng > _peiBudget) {
-    alert('Le montant engagé ne peut pas dépasser le coût total (' + _peiBudget.toLocaleString('fr-FR') + ' F CFA).');
-    e.preventDefault(); return;
+    alert('Montant engagé dépasse le coût total (' + _peiBudget.toLocaleString('fr-FR') + ' F CFA).'); e.preventDefault(); return;
   }
   if (mand > eng) {
-    alert('Le montant mandaté ne peut pas dépasser le montant engagé (' + eng.toLocaleString('fr-FR') + ' F CFA).');
-    e.preventDefault(); return;
+    alert('Montant mandaté dépasse le montant engagé (' + eng.toLocaleString('fr-FR') + ' F CFA).'); e.preventDefault(); return;
   }
   if (pay > eng) {
-    alert('Le montant payé ne peut pas dépasser le montant engagé (' + eng.toLocaleString('fr-FR') + ' F CFA).');
-    e.preventDefault(); return;
+    alert('Montant payé dépasse le montant engagé (' + eng.toLocaleString('fr-FR') + ' F CFA).'); e.preventDefault(); return;
   }
-  /* mettre à jour max dynamiquement */
-  document.getElementById('peiMandate').max = eng;
-  document.getElementById('peiPaye').max    = eng;
 });
 
 document.getElementById('peiEngage').addEventListener('input', function () {

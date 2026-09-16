@@ -248,6 +248,284 @@ def index():
     )
 
 
+@pei_bp.route('/print')
+@login_required
+def print_view():
+    annee = get_annee()
+    if not annee:
+        abort(404)
+    if not annee.actif and current_user.role not in ('admin_editeur', 'admin_lecteur'):
+        abort(403)
+    data, totaux = _build_pei_data(annee)
+    return render_template('pei/print.html', annee=annee, data=data, totaux=totaux)
+
+
+@pei_bp.route('/export')
+@login_required
+def export_excel():
+    annee = get_annee()
+    if not annee:
+        abort(404)
+    if not annee.actif and current_user.role not in ('admin_editeur', 'admin_lecteur'):
+        abort(403)
+
+    data, totaux = _build_pei_data(annee)
+
+    import io, openpyxl, os as _os
+    from flask import current_app, send_file
+    from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = f'PEI {annee.annee}'
+
+    def fill(hex_color):
+        return PatternFill('solid', fgColor=hex_color)
+
+    thin  = Side(style='thin')
+    bord  = Border(left=thin, right=thin, top=thin, bottom=thin)
+    center = Alignment(horizontal='center', vertical='center', wrap_text=True)
+    left   = Alignment(horizontal='left',   vertical='center', wrap_text=True)
+
+    # ── En-tête institutionnel (lignes 1-3) ──────────────────────────────────
+    ws.row_dimensions[1].height = 22
+    ws.row_dimensions[2].height = 8
+    ws.row_dimensions[3].height = 22
+    ws.merge_cells('A1:D3')
+    ws.merge_cells('E1:I3')
+    _cc = ws['E1']
+    _cc.value = "BP 02 Adja-Ouèrè\nTél : +229 01 61 91 96 12\nEmail : contact.adjaouere@mairie.bj"
+    _cc.font  = Font(bold=True, size=9)
+    _cc.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+    ws.merge_cells('J1:P3')
+    _static_img = _os.path.join(current_app.root_path, 'static', 'img')
+    try:
+        from openpyxl.drawing.image import Image as _XLImg
+        from PIL import Image as _PILImg
+        import io as _imgio
+        _H = 52
+        _band = _os.path.join(_static_img, 'bandeau.png')
+        _logo = _os.path.join(_static_img, 'logo_commune.png')
+        if _os.path.exists(_band):
+            _buf = _imgio.BytesIO()
+            with _PILImg.open(_band) as _p:
+                _ow, _oh = _p.size; _p.save(_buf, format='PNG')
+            _buf.seek(0); _i = _XLImg(_buf)
+            _i.height = _H; _i.width = int(_ow * _H / _oh)
+            ws.add_image(_i, 'A1')
+        if _os.path.exists(_logo):
+            _buf2 = _imgio.BytesIO()
+            with _PILImg.open(_logo) as _p2:
+                _ow2, _oh2 = _p2.size; _p2.save(_buf2, format='PNG')
+            _buf2.seek(0); _i2 = _XLImg(_buf2)
+            _lw = int(_ow2 * _H / _oh2); _i2.height = _H; _i2.width = _lw
+            try:
+                from openpyxl.drawing.spreadsheet_drawing import OneCellAnchor, AnchorMarker
+                from openpyxl.drawing.xdr import XDRPositiveSize2D
+                _anch = OneCellAnchor()
+                _anch._from = AnchorMarker(col=15, colOff=-int(_lw*9525), row=0, rowOff=0)
+                _anch.ext  = XDRPositiveSize2D(int(_lw*9525), int(_H*9525))
+                _i2.anchor = _anch; ws.add_image(_i2)
+            except Exception:
+                ws.add_image(_i2, 'O1')
+    except Exception:
+        pass
+
+    # ── Titre (ligne 4) ───────────────────────────────────────────────────────
+    ws.merge_cells('A4:P4')
+    ws['A4'].value = f"POINT D'EXÉCUTION DU PLAN ANNUEL D'INVESTISSEMENT (PAI) — Exercice {annee.annee}"
+    ws['A4'].font  = Font(bold=True, size=13)
+    ws['A4'].alignment = Alignment(horizontal='center', vertical='center')
+    ws['A4'].fill  = fill('D6EAF8')
+    _med = Side(style='medium')
+    for _c in range(1, 17):
+        ws.cell(row=4, column=_c).border = Border(
+            left=_med  if _c == 1  else Side(style=None),
+            right=_med if _c == 16 else Side(style=None),
+            top=_med, bottom=_med,
+        )
+    ws.row_dimensions[4].height = 28
+
+    # ── En-têtes colonnes 2 niveaux (lignes 5-6) ─────────────────────────────
+    ws.row_dimensions[5].height = 24
+    ws.row_dimensions[6].height = 22
+
+    simple_h = [
+        (1,  'Code PAI'),
+        (2,  'Programmes / Projets / Activités'),
+        (3,  'Localisation'),
+        (4,  'Poids (%)'),
+        (5,  'Indicateurs'),
+        (6,  "Période d'exécution"),
+        (7,  'Struct. Resp.'),
+        (8,  'Coût total (F CFA)'),
+        (9,  'Taux exéc. physique (%)'),
+        (16, 'Observations'),
+    ]
+    for col, h in simple_h:
+        ws.merge_cells(start_row=5, start_column=col, end_row=6, end_column=col)
+        c = ws.cell(row=5, column=col, value=h)
+        c.font = Font(bold=True, size=9); c.fill = fill('BDD7EE')
+        c.alignment = center; c.border = bord
+        ws.cell(row=6, column=col).border = bord
+
+    # Groupe "Exécution financière" cols 10-15 ligne 5
+    ws.merge_cells(start_row=5, start_column=10, end_row=5, end_column=15)
+    c = ws.cell(row=5, column=10, value='EXÉCUTION FINANCIÈRE (F CFA)')
+    c.font = Font(bold=True, size=9); c.fill = fill('F4CCCC')
+    c.alignment = center; c.border = bord
+
+    fin_sub = [
+        (10, 'Montant engagé'),
+        (11, 'Taux eng. (%)'),
+        (12, 'Montant mandaté'),
+        (13, 'Taux mand. (%)'),
+        (14, 'Montant payé'),
+        (15, 'Taux paiem. (%)'),
+    ]
+    for col, h in fin_sub:
+        c = ws.cell(row=6, column=col, value=h)
+        c.font = Font(bold=True, size=9); c.fill = fill('F4CCCC')
+        c.alignment = center; c.border = bord
+
+    r = 7
+
+    def _periode(act):
+        if act.periode_debut and act.periode_fin and act.periode_debut != act.periode_fin:
+            return f'{act.periode_debut} – {act.periode_fin}'
+        return act.periode_debut or act.periode_fin or ''
+
+    def _pct_cell(ws, r, col, val):
+        c = ws.cell(row=r, column=col, value=round(val, 1))
+        c.number_format = '0.0"%"'
+        return c
+
+    for pd in data:
+        pg = pd['programme']
+        pn = pd['prog_num']
+        ws.cell(row=r, column=1, value=str(pn))
+        ws.cell(row=r, column=2, value=f'Programme {pn} : {pg.nom}')
+        ws.cell(row=r, column=4, value=pd['poids'])
+        ws.cell(row=r, column=8, value=pd['budget'])
+        _pct_cell(ws, r, 9, pd['taux_phys'])
+        ws.cell(row=r, column=10, value=pd['engage'])
+        _pct_cell(ws, r, 11, pd['taux_eng'])
+        ws.cell(row=r, column=12, value=pd['mandate'])
+        _pct_cell(ws, r, 13, pd['taux_mand'])
+        ws.cell(row=r, column=14, value=pd['paye'])
+        _pct_cell(ws, r, 15, pd['taux_pay'])
+        ws.merge_cells(start_row=r, start_column=2, end_row=r, end_column=3)
+        ws.merge_cells(start_row=r, start_column=5, end_row=r, end_column=7)
+        ws.merge_cells(start_row=r, start_column=16, end_row=r, end_column=16)
+        for col in range(1, 17):
+            c = ws.cell(row=r, column=col)
+            c.fill = fill('F4B183'); c.font = Font(bold=True, size=9); c.border = bord
+        ws.cell(row=r, column=1).alignment = center
+        ws.cell(row=r, column=2).alignment = left
+        ws.cell(row=r, column=4).alignment = center
+        for col in [8, 10, 12, 14]:
+            ws.cell(row=r, column=col).number_format = '#,##0'
+            ws.cell(row=r, column=col).alignment = Alignment(horizontal='right', vertical='center')
+        r += 1
+
+        for pjd in pd['projets']:
+            pj  = pjd['projet']
+            pjn = pjd['proj_num']
+            ws.cell(row=r, column=1, value=f'{pn}.{pjn}')
+            ws.cell(row=r, column=2, value=f'Projet {pn}.{pjn} : {pj.nom}')
+            ws.cell(row=r, column=4, value=pjd['poids'])
+            ws.cell(row=r, column=8, value=pjd['budget'])
+            _pct_cell(ws, r, 9, pjd['taux_phys'])
+            ws.cell(row=r, column=10, value=pjd['engage'])
+            _pct_cell(ws, r, 11, pjd['taux_eng'])
+            ws.cell(row=r, column=12, value=pjd['mandate'])
+            _pct_cell(ws, r, 13, pjd['taux_mand'])
+            ws.cell(row=r, column=14, value=pjd['paye'])
+            _pct_cell(ws, r, 15, pjd['taux_pay'])
+            ws.merge_cells(start_row=r, start_column=2, end_row=r, end_column=3)
+            ws.merge_cells(start_row=r, start_column=5, end_row=r, end_column=7)
+            for col in range(1, 17):
+                c = ws.cell(row=r, column=col)
+                c.fill = fill('FFFF99'); c.font = Font(bold=True, size=9); c.border = bord
+            ws.cell(row=r, column=1).alignment = center
+            ws.cell(row=r, column=2).alignment = left
+            ws.cell(row=r, column=4).alignment = center
+            for col in [8, 10, 12, 14]:
+                ws.cell(row=r, column=col).number_format = '#,##0'
+                ws.cell(row=r, column=col).alignment = Alignment(horizontal='right', vertical='center')
+            r += 1
+
+            for act_i, ad in enumerate(pjd['activites'], 1):
+                act   = ad['activite']
+                extra = act.pai_extra
+                row_data = [
+                    f'{pn}.{pjn}.{act_i}',
+                    act.nom,
+                    extra.localisation if extra and extra.localisation else '',
+                    ad['poids'],
+                    extra.indicateurs if extra and extra.indicateurs else '',
+                    _periode(act),
+                    act.direction_responsable.code if act.direction_responsable else '',
+                    ad['budget'],
+                    round(ad['taux_phys'], 1),
+                    ad['engage'],
+                    round(ad['taux_eng'],  1),
+                    ad['mandate'],
+                    round(ad['taux_mand'], 1),
+                    ad['paye'],
+                    round(ad['taux_pay'],  1),
+                    ad['obs'],
+                ]
+                for col, val in enumerate(row_data, 1):
+                    c = ws.cell(row=r, column=col, value=val)
+                    c.fill = fill('EAF5D0'); c.font = Font(size=9); c.border = bord
+                    c.alignment = left if col in (2, 5, 16) else center
+                    if col in (8, 10, 12, 14):
+                        c.number_format = '#,##0'
+                        c.alignment = Alignment(horizontal='right', vertical='center')
+                    if col in (9, 11, 13, 15):
+                        c.number_format = '0.0"%"'
+                r += 1
+
+    # Ligne totaux
+    ws.cell(row=r, column=1, value='TOTAL')
+    ws.cell(row=r, column=2, value='TOTAL GÉNÉRAL')
+    ws.cell(row=r, column=4, value=100)
+    ws.cell(row=r, column=8, value=totaux['budget'])
+    _pct_cell(ws, r, 9, totaux['taux_phys'])
+    ws.cell(row=r, column=10, value=totaux['engage'])
+    _pct_cell(ws, r, 11, totaux['taux_eng'])
+    ws.cell(row=r, column=12, value=totaux['mandate'])
+    _pct_cell(ws, r, 13, totaux['taux_mand'])
+    ws.cell(row=r, column=14, value=totaux['paye'])
+    _pct_cell(ws, r, 15, totaux['taux_pay'])
+    ws.merge_cells(start_row=r, start_column=2, end_row=r, end_column=3)
+    ws.merge_cells(start_row=r, start_column=5, end_row=r, end_column=7)
+    for col in range(1, 17):
+        c = ws.cell(row=r, column=col)
+        c.fill = fill('1E3A5F'); c.font = Font(bold=True, size=9, color='FCD116'); c.border = bord
+        c.alignment = center
+    for col in [8, 10, 12, 14]:
+        ws.cell(row=r, column=col).number_format = '#,##0'
+        ws.cell(row=r, column=col).alignment = Alignment(horizontal='right', vertical='center')
+
+    # Largeurs colonnes
+    col_widths = [8, 34, 14, 7, 22, 12, 10, 16, 10, 16, 10, 16, 10, 16, 10, 28]
+    for i, w in enumerate(col_widths, 1):
+        ws.column_dimensions[get_column_letter(i)].width = w
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return send_file(
+        buf,
+        as_attachment=True,
+        download_name=f'PEI_{annee.annee}.xlsx',
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+
+
 @pei_bp.route('/edit/<int:activite_id>', methods=['POST'])
 @login_required
 def edit_montants(activite_id):

@@ -102,7 +102,7 @@ def _build_pei_data(annee):
                 obs_parts = []
                 for t in act.taches:
                     obs_parts.extend(obs_map.get(t.id, []))
-                obs_compiled = ', '.join(obs_parts)
+                obs_compiled = ' ; '.join(obs_parts)
 
                 # PeiActivite (crée si absent)
                 pei = PeiActivite.query.filter_by(activite_id=act.id).first()

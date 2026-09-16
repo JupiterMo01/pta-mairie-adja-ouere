@@ -92,7 +92,7 @@
 
 <div class="titre-pei">
   <h1>Point d'exécution du Plan Annuel d'Investissement (PAI)</h1>
-  <h2>Exercice {{ annee.annee }} &nbsp;—&nbsp; Mairie d'Adja-Ouèrè</h2>
+  <h2>Exercice {{ annee.annee }}</h2>
 </div>
 
 <table>
@@ -239,6 +239,24 @@
 </tr>
 {% endif %}
 </tbody>
+<tfoot>
+  <tr style="font-size:6pt;">
+    <td colspan="8" id="ft-date" style="padding:2pt 3pt;">Imprimé le —</td>
+    <td colspan="8" style="text-align:right; font-weight:bold; padding:2pt 3pt;">Direction du Développement Local et de la Planification (DDLP)</td>
+  </tr>
+</tfoot>
 </table>
+
+<script>
+(function() {
+  var now   = new Date();
+  var jours = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
+  var mois  = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+  var h = now.getHours().toString().padStart(2,'0');
+  var m = now.getMinutes().toString().padStart(2,'0');
+  var dateStr = jours[now.getDay()] + ' ' + now.getDate() + ' ' + mois[now.getMonth()] + ' ' + now.getFullYear() + ' à ' + h + 'h' + m;
+  document.getElementById('ft-date').textContent = 'Imprimé le ' + dateStr;
+})();
+</script>
 </body>
 </html>

@@ -89,13 +89,13 @@
     <td></td>
     <td class="text-center" style="padding:2px;">{{ pd.poids }} %</td>
     <td></td><td></td><td></td>
-    <td class="text-end" style="padding:2px 4px;">{{ pd.budget | fcfa }}</td>
+    <td class="text-center" style="padding:2px 4px;">{{ pd.budget | fcfa }}</td>
     <td class="text-center" style="padding:2px;">{{ pd.taux_phys }} %</td>
-    <td class="text-end" style="padding:2px 4px;">{{ pd.engage | fcfa }}</td>
+    <td class="text-center" style="padding:2px 4px;">{{ pd.engage | fcfa }}</td>
     <td class="text-center" style="padding:2px;">{{ pd.taux_eng }} %</td>
-    <td class="text-end" style="padding:2px 4px;">{{ pd.mandate | fcfa }}</td>
+    <td class="text-center" style="padding:2px 4px;">{{ pd.mandate | fcfa }}</td>
     <td class="text-center" style="padding:2px;">{{ pd.taux_mand }} %</td>
-    <td class="text-end" style="padding:2px 4px;">{{ pd.paye | fcfa }}</td>
+    <td class="text-center" style="padding:2px 4px;">{{ pd.paye | fcfa }}</td>
     <td class="text-center" style="padding:2px;">{{ pd.taux_pay }} %</td>
     <td></td>
   </tr>
@@ -109,13 +109,13 @@
       <td></td>
       <td class="text-center" style="padding:2px;">{{ pjd.poids }} %</td>
       <td></td><td></td><td></td>
-      <td class="text-end" style="padding:2px 4px;">{{ pjd.budget | fcfa }}</td>
+      <td class="text-center" style="padding:2px 4px;">{{ pjd.budget | fcfa }}</td>
       <td class="text-center" style="padding:2px;">{{ pjd.taux_phys }} %</td>
-      <td class="text-end" style="padding:2px 4px;">{{ pjd.engage | fcfa }}</td>
+      <td class="text-center" style="padding:2px 4px;">{{ pjd.engage | fcfa }}</td>
       <td class="text-center" style="padding:2px;">{{ pjd.taux_eng }} %</td>
-      <td class="text-end" style="padding:2px 4px;">{{ pjd.mandate | fcfa }}</td>
+      <td class="text-center" style="padding:2px 4px;">{{ pjd.mandate | fcfa }}</td>
       <td class="text-center" style="padding:2px;">{{ pjd.taux_mand }} %</td>
-      <td class="text-end" style="padding:2px 4px;">{{ pjd.paye | fcfa }}</td>
+      <td class="text-center" style="padding:2px 4px;">{{ pjd.paye | fcfa }}</td>
       <td class="text-center" style="padding:2px;">{{ pjd.taux_pay }} %</td>
       <td></td>
     </tr>
@@ -150,22 +150,22 @@
         {% else %}—{% endif %}
       </td>
       <td class="text-center" style="padding:2px;">{{ ad.activite.direction_responsable.code if ad.activite.direction_responsable else '—' }}</td>
-      <td class="text-end fw-semibold" style="padding:2px 4px;">{{ ad.budget | fcfa }}</td>
+      <td class="text-center fw-semibold" style="padding:2px 4px;">{{ ad.budget | fcfa }}</td>
       <td class="text-center" style="padding:2px;">
         <span class="badge {{ 'bg-success' if ad.taux_phys >= 75 else ('bg-warning text-dark' if ad.taux_phys >= 50 else 'bg-danger') }}"
               style="font-size:.62rem;">{{ ad.taux_phys }} %</span>
       </td>
-      <td class="text-end" style="padding:2px 4px;">{{ ad.engage | fcfa }}</td>
+      <td class="text-center" style="padding:2px 4px;">{{ ad.engage | fcfa }}</td>
       <td class="text-center" style="padding:2px;">
         <span class="badge {{ 'bg-success' if ad.taux_eng >= 75 else ('bg-warning text-dark' if ad.taux_eng >= 50 else 'bg-danger') }}"
               style="font-size:.62rem;">{{ ad.taux_eng }} %</span>
       </td>
-      <td class="text-end" style="padding:2px 4px;">{{ ad.mandate | fcfa }}</td>
+      <td class="text-center" style="padding:2px 4px;">{{ ad.mandate | fcfa }}</td>
       <td class="text-center" style="padding:2px;">
         <span class="badge {{ 'bg-success' if ad.taux_mand >= 75 else ('bg-warning text-dark' if ad.taux_mand >= 50 else 'bg-danger') }}"
               style="font-size:.62rem;">{{ ad.taux_mand }} %</span>
       </td>
-      <td class="text-end" style="padding:2px 4px;">{{ ad.paye | fcfa }}</td>
+      <td class="text-center" style="padding:2px 4px;">{{ ad.paye | fcfa }}</td>
       <td class="text-center" style="padding:2px;">
         <span class="badge {{ 'bg-success' if ad.taux_pay >= 75 else ('bg-warning text-dark' if ad.taux_pay >= 50 else 'bg-danger') }}"
               style="font-size:.62rem;">{{ ad.taux_pay }} %</span>
@@ -184,19 +184,19 @@
   <td colspan="3" class="text-center" style="padding:3px;">TOTAL GÉNÉRAL</td>
   <td class="text-center" style="padding:3px;">100 %</td>
   <td colspan="3"></td>
-  <td class="text-end" style="padding:3px 4px;">{{ totaux.budget | fcfa }}</td>
+  <td class="text-center" style="padding:3px 4px;">{{ totaux.budget | fcfa }}</td>
   <td class="text-center" style="padding:3px;">
     <span class="badge {{ 'bg-success' if totaux.taux_phys >= 75 else ('bg-warning text-dark' if totaux.taux_phys >= 50 else 'bg-danger') }}">{{ totaux.taux_phys }} %</span>
   </td>
-  <td class="text-end" style="padding:3px 4px;">{{ totaux.engage | fcfa }}</td>
+  <td class="text-center" style="padding:3px 4px;">{{ totaux.engage | fcfa }}</td>
   <td class="text-center" style="padding:3px;">
     <span class="badge {{ 'bg-success' if totaux.taux_eng >= 75 else ('bg-warning text-dark' if totaux.taux_eng >= 50 else 'bg-danger') }}">{{ totaux.taux_eng }} %</span>
   </td>
-  <td class="text-end" style="padding:3px 4px;">{{ totaux.mandate | fcfa }}</td>
+  <td class="text-center" style="padding:3px 4px;">{{ totaux.mandate | fcfa }}</td>
   <td class="text-center" style="padding:3px;">
     <span class="badge {{ 'bg-success' if totaux.taux_mand >= 75 else ('bg-warning text-dark' if totaux.taux_mand >= 50 else 'bg-danger') }}">{{ totaux.taux_mand }} %</span>
   </td>
-  <td class="text-end" style="padding:3px 4px;">{{ totaux.paye | fcfa }}</td>
+  <td class="text-center" style="padding:3px 4px;">{{ totaux.paye | fcfa }}</td>
   <td class="text-center" style="padding:3px;">
     <span class="badge {{ 'bg-success' if totaux.taux_pay >= 75 else ('bg-warning text-dark' if totaux.taux_pay >= 50 else 'bg-danger') }}">{{ totaux.taux_pay }} %</span>
   </td>

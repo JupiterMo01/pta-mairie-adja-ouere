@@ -508,6 +508,22 @@ def export_excel():
     for col in [8, 10, 12, 14]:
         ws.cell(row=r, column=col).number_format = '#,##0'
 
+    # Ligne pied : date impression + DDLP
+    r += 1
+    from datetime import datetime as _dt
+    _now = _dt.now()
+    _jours = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi']
+    _mois  = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre']
+    _date_str = f"{_jours[_now.weekday()]} {_now.day} {_mois[_now.month-1]} {_now.year} à {_now.strftime('%Hh%M')}"
+    _dc = ws.cell(row=r, column=1, value=f'Édité le {_date_str}')
+    _dc.font = Font(italic=True, size=8, color='444444')
+    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=8)
+    _dc.alignment = Alignment(horizontal='left', vertical='center')
+    _ddr = ws.cell(row=r, column=9, value='Direction du Développement Local et de la Planification (DDLP)')
+    _ddr.font = Font(bold=True, size=8)
+    ws.merge_cells(start_row=r, start_column=9, end_row=r, end_column=16)
+    _ddr.alignment = Alignment(horizontal='right', vertical='center')
+
     # Largeurs colonnes
     col_widths = [8, 34, 14, 7, 22, 12, 10, 16, 10, 16, 10, 16, 10, 16, 10, 28]
     for i, w in enumerate(col_widths, 1):

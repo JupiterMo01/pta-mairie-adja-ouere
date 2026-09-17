@@ -2,8 +2,6 @@
 {% block title %}Bibliothèque des activités{% endblock %}
 {% block page_title %}<i class="fas fa-book me-2"></i>Bibliothèque des activités{% endblock %}
 
-{% set mois = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'] %}
-
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mt-2 mb-3">
   <p class="text-muted mb-0 small">
@@ -12,7 +10,8 @@
   </p>
   {% if current_user.role == 'admin_editeur' %}
   <div class="d-flex gap-2">
-    <button class="btn btn-outline-success btn-sm" data-bs-toggle="modal" data-bs-target="#modalImportPTA">
+    <button class="btn btn-outline-success btn-sm"
+            onclick="openBiblioModal('{{ url_for('biblio.modal_import_pta_global') }}')">
       <i class="fas fa-file-import me-1"></i>Importer depuis PTA
     </button>
     <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalAddActivite">
@@ -22,7 +21,7 @@
   {% endif %}
 </div>
 
-{# ── Barre de recherche (client-side, même logique que PTA Global) ── #}
+{# ── Barre de recherche (client-side) ── #}
 {% if activites %}
 <div class="d-flex align-items-center gap-2 mb-2 px-1 py-2 bg-light border rounded">
   <i class="fas fa-search text-muted"></i>
@@ -103,11 +102,11 @@
     </div>
     {% if current_user.role == 'admin_editeur' %}
     <div class="d-flex gap-1 ms-2 flex-shrink-0 flex-wrap">
-      <button class="btn btn-xs btn-success" data-bs-toggle="modal"
-              data-bs-target="#addTacheBiblio{{ activite.id }}" title="Ajouter une tâche">
+      <button class="btn btn-xs btn-success"
+              onclick="openBiblioModal('{{ url_for('biblio.activite_modal_add_tache', act_id=activite.id) }}')"
+              title="Ajouter une tâche">
         <i class="fas fa-plus"></i> Tâche
       </button>
-      {# Importer tâches (dropdown) #}
       <div class="btn-group">
         <button type="button" class="btn btn-xs btn-outline-success dropdown-toggle"
                 data-bs-toggle="dropdown" title="Importer des tâches">
@@ -117,20 +116,21 @@
           <li><h6 class="dropdown-header">Importer des tâches dans cette activité</h6></li>
           <li>
             <button class="dropdown-item" type="button"
-                    data-bs-toggle="modal" data-bs-target="#importTachesPTA{{ activite.id }}">
+                    onclick="openBiblioModal('{{ url_for('biblio.activite_modal_import_pta', act_id=activite.id) }}')">
               <i class="fas fa-calendar-alt me-2 text-primary"></i>Depuis le PTA
             </button>
           </li>
           <li>
             <button class="dropdown-item" type="button"
-                    data-bs-toggle="modal" data-bs-target="#importTachesBiblio{{ activite.id }}">
+                    onclick="openBiblioModal('{{ url_for('biblio.activite_modal_import_biblio', act_id=activite.id) }}')">
               <i class="fas fa-book me-2 text-success"></i>Depuis la Bibliothèque
             </button>
           </li>
         </ul>
       </div>
-      <button class="btn btn-xs btn-warning" data-bs-toggle="modal"
-              data-bs-target="#editActivite{{ activite.id }}" title="Modifier l'activité">
+      <button class="btn btn-xs btn-warning"
+              onclick="openBiblioModal('{{ url_for('biblio.activite_modal_edit', act_id=activite.id) }}')"
+              title="Modifier l'activité">
         <i class="fas fa-edit"></i>
       </button>
       <form method="POST" action="{{ url_for('biblio.activite_duplicate', act_id=activite.id) }}"
@@ -267,8 +267,9 @@
           <form method="POST" action="{{ url_for('biblio.tache_move', tache_id=tache.id, direction='down') }}" class="d-inline">
             <button type="submit" class="btn btn-xs btn-light border" title="Descendre"><i class="fas fa-arrow-down"></i></button>
           </form>
-          <button class="btn btn-xs btn-warning" data-bs-toggle="modal"
-                  data-bs-target="#editTacheBiblio{{ tache.id }}" title="Modifier">
+          <button class="btn btn-xs btn-warning"
+                  onclick="openBiblioModal('{{ url_for('biblio.tache_modal_edit', tache_id=tache.id) }}')"
+                  title="Modifier">
             <i class="fas fa-edit"></i>
           </button>
           <form method="POST" action="{{ url_for('biblio.tache_duplicate', tache_id=tache.id) }}"
@@ -300,29 +301,6 @@
         </td>
         {% endif %}
       </tr>
-
-      {# ── Modal édition tâche ── #}
-      {% if current_user.role == 'admin_editeur' %}
-      <div class="modal fade" id="editTacheBiblio{{ tache.id }}" tabindex="-1">
-        <div class="modal-dialog modal-xl">
-          <div class="modal-content">
-            <div class="modal-header bg-warning">
-              <h5 class="modal-title fw-bold">Modifier tâche — {{ tache.nom[:50] }}</h5>
-              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <form method="POST" action="{{ url_for('biblio.tache_edit', tache_id=tache.id) }}">
-              <div class="modal-body row g-2">
-                {% include 'biblio/_tache_fields.html' with context %}
-              </div>
-              <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                <button type="submit" class="btn btn-warning fw-bold"><i class="fas fa-save me-1"></i>Enregistrer</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
-      {% endif %}
       {% endfor %}
 
       {# ── Ligne totaux ── #}
@@ -354,124 +332,9 @@
   </div>
   {% endif %}
 </div>
-
-{# ── Modal ajout tâche ── #}
-{% if current_user.role == 'admin_editeur' %}
-<div class="modal fade" id="addTacheBiblio{{ activite.id }}" tabindex="-1">
-  <div class="modal-dialog modal-xl">
-    <div class="modal-content">
-      <div class="modal-header bg-success text-white">
-        <h5 class="modal-title"><i class="fas fa-plus me-2"></i>Ajouter une tâche — {{ activite.nom[:50] }}</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-      </div>
-      <form method="POST" action="{{ url_for('biblio.tache_add', act_id=activite.id) }}">
-        <div class="modal-body row g-2">
-          {% set tache = none %}
-          {% set form_uid = 'act' ~ activite.id %}
-          {% include 'biblio/_tache_fields.html' with context %}
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-          <button type="submit" class="btn btn-success fw-bold"><i class="fas fa-plus me-1"></i>Ajouter</button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
-{% endif %}
-
-{# ── Modal édition activité ── #}
-{% if current_user.role == 'admin_editeur' %}
-<div class="modal fade" id="editActivite{{ activite.id }}" tabindex="-1">
-  <div class="modal-dialog modal-xl">
-    <div class="modal-content">
-      <div class="modal-header bg-warning">
-        <h5 class="modal-title fw-bold"><i class="fas fa-edit me-2"></i>Modifier — {{ activite.nom[:60] }}</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <form method="POST" action="{{ url_for('biblio.activite_edit', act_id=activite.id) }}">
-        <div class="modal-body row g-2">
-          {% set act = activite %}
-          {% include 'biblio/_activite_fields.html' with context %}
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-          <button type="submit" class="btn btn-warning fw-bold"><i class="fas fa-save me-1"></i>Enregistrer</button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
-{# ── Modal import tâches depuis PTA ── #}
-{% if current_user.role == 'admin_editeur' %}
-<div class="modal fade" id="importTachesPTA{{ activite.id }}" tabindex="-1">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header bg-primary text-white">
-        <h5 class="modal-title"><i class="fas fa-file-import me-2"></i>Importer tâches depuis PTA — {{ activite.nom[:40] }}</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-      </div>
-      <form method="POST" action="{{ url_for('biblio.import_taches_from_pta', act_id=activite.id) }}">
-        <div class="modal-body">
-          <p class="text-muted small">Toutes les tâches de l'activité PTA sélectionnée seront ajoutées à la fin de <strong>{{ activite.nom }}</strong>.</p>
-          <label class="form-label fw-semibold">Activité PTA source *</label>
-          <select name="pta_activite_id" class="form-select" required>
-            <option value="">— Choisir une activité —</option>
-            {% set current_year = namespace(val=none) %}
-            {% for ann, aid, anom in pta_acts %}
-              {% if ann != current_year.val %}
-                {% if current_year.val is not none %}</optgroup>{% endif %}
-                <optgroup label="PTA {{ ann }}">
-                {% set current_year.val = ann %}
-              {% endif %}
-              <option value="{{ aid }}">{{ anom }}</option>
-            {% endfor %}
-            {% if pta_acts %}</optgroup>{% endif %}
-          </select>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-          <button type="submit" class="btn btn-primary fw-bold"><i class="fas fa-file-import me-1"></i>Importer</button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
-
-{# ── Modal import tâches depuis Bibliothèque ── #}
-<div class="modal fade" id="importTachesBiblio{{ activite.id }}" tabindex="-1">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header bg-success text-white">
-        <h5 class="modal-title"><i class="fas fa-book me-2"></i>Importer tâches depuis Bibliothèque — {{ activite.nom[:40] }}</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-      </div>
-      <form method="POST" action="{{ url_for('biblio.import_taches_from_biblio', act_id=activite.id) }}">
-        <div class="modal-body">
-          <p class="text-muted small">Toutes les tâches de l'activité sélectionnée seront ajoutées à la fin de <strong>{{ activite.nom }}</strong>.</p>
-          <label class="form-label fw-semibold">Activité bibliothèque source *</label>
-          <select name="biblio_src_id" class="form-select" required>
-            <option value="">— Choisir une activité —</option>
-            {% for src_act in activites %}
-              {% if src_act.id != activite.id %}
-              <option value="{{ src_act.id }}">{{ src_act.nom }} ({{ src_act.taches|length }} tâche(s))</option>
-              {% endif %}
-            {% endfor %}
-          </select>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-          <button type="submit" class="btn btn-success fw-bold"><i class="fas fa-book me-1"></i>Importer</button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
-{% endif %}
-{% endif %}
 {% endfor %}
 
-{# ══ Modal nouvelle activité ══════════════════════════════════════════════ #}
+{# ══ Modal nouvelle activité (statique — un seul, pas de données lourdes) ══ #}
 {% if current_user.role == 'admin_editeur' %}
 <div class="modal fade" id="modalAddActivite" tabindex="-1">
   <div class="modal-dialog modal-xl">
@@ -495,62 +358,49 @@
 </div>
 {% endif %}
 
-{# ══ Modal import activité depuis PTA (global) ════════════════════════════ #}
-{% if current_user.role == 'admin_editeur' %}
-<div class="modal fade" id="modalImportPTA" tabindex="-1">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header bg-success text-white">
-        <h5 class="modal-title"><i class="fas fa-file-import me-2"></i>Importer une activité depuis le PTA</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-      </div>
-      <form method="POST" action="{{ url_for('biblio.import_activite_from_pta') }}">
-        <div class="modal-body">
-          <p class="text-muted small mb-3">
-            L'activité sélectionnée (avec toutes ses tâches) sera copiée dans la Bibliothèque.
-          </p>
-          {% if pta_acts %}
-          <label class="form-label fw-semibold">Activité PTA à importer *</label>
-          <select name="pta_activite_id" class="form-select" required>
-            <option value="">— Choisir une activité —</option>
-            {% set ns = namespace(current_year=none) %}
-            {% for ann, aid, anom in pta_acts %}
-              {% if ann != ns.current_year %}
-                {% if ns.current_year is not none %}</optgroup>{% endif %}
-                <optgroup label="PTA {{ ann }}">
-                {% set ns.current_year = ann %}
-              {% endif %}
-              <option value="{{ aid }}">{{ anom }}</option>
-            {% endfor %}
-            {% if ns.current_year is not none %}</optgroup>{% endif %}
-          </select>
-          {% else %}
-          <div class="alert alert-warning mb-0">
-            <i class="fas fa-exclamation-triangle me-2"></i>
-            Aucune activité PTA trouvée. Créez d'abord un PTA avec des activités.
-          </div>
-          {% endif %}
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-          {% if pta_acts %}
-          <button type="submit" class="btn btn-success fw-bold">
-            <i class="fas fa-file-import me-1"></i>Importer
-          </button>
-          {% endif %}
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
-{% endif %}
+{# Conteneur pour les modals AJAX #}
+<div id="biblioModalContainer"></div>
 
 {% endblock %}{# /content #}
 
 {% block scripts %}
 <script>
 (function () {
-  /* ── Recherche live (même logique que PTA Global) ── */
+  /* ── Chargement modal AJAX ── */
+  window.openBiblioModal = function(url) {
+    var container = document.getElementById('biblioModalContainer');
+    if (!container) return;
+    fetch(url)
+      .then(function(r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.text();
+      })
+      .then(function(html) {
+        container.innerHTML = html;
+        var el = container.querySelector('.modal');
+        if (el) {
+          var m = new bootstrap.Modal(el);
+          el.addEventListener('hidden.bs.modal', function() {
+            container.innerHTML = '';
+          }, {once: true});
+          m.show();
+        }
+      })
+      .catch(function(e) {
+        console.error('Erreur chargement modal:', e);
+        alert('Erreur lors du chargement du formulaire. Veuillez réessayer.');
+      });
+  };
+
+  /* ── Dupliquer tâche en bas ── */
+  window.setAndSubmit = function(inputId, val, formId) {
+    var inp = document.getElementById(inputId);
+    if (inp) inp.value = val;
+    var frm = document.getElementById(formId);
+    if (frm) frm.submit();
+  };
+
+  /* ── Recherche live ── */
   var inp      = document.getElementById('biblioSearch');
   var countEl  = document.getElementById('biblioSearchCount');
   var clearBtn = document.getElementById('biblioClear');
@@ -562,20 +412,12 @@
     var q     = inp.value.trim().toLowerCase();
     var cards = document.querySelectorAll('[id^="row-bact-"]');
     var found = 0;
-
-    cards.forEach(function (card) {
-      if (!q) {
-        card.style.display = '';
-        found++;
-        return;
-      }
-      var text = card.textContent.toLowerCase();
-      var show = text.includes(q);
+    cards.forEach(function(card) {
+      if (!q) { card.style.display = ''; found++; return; }
+      var show = card.textContent.toLowerCase().includes(q);
       card.style.display = show ? '' : 'none';
       if (show) found++;
     });
-
-    /* Compteur */
     if (countEl) {
       if (!q) {
         countEl.innerHTML = '';
@@ -585,22 +427,20 @@
         countEl.innerHTML = '<span class="text-success fw-bold">' + found + ' activité(s)</span>';
       }
     }
-
-    /* Bannière aucun résultat */
     if (noResult) noResult.classList.toggle('d-none', !q || found > 0);
   }
 
   if (inp) {
-    inp.addEventListener('keyup', function (e) {
+    inp.addEventListener('keyup', function(e) {
       if (e.key === 'Escape') { inp.value = ''; doSearch(); return; }
       clearTimeout(timer); timer = setTimeout(doSearch, 200);
     });
-    inp.addEventListener('input', function () {
+    inp.addEventListener('input', function() {
       clearTimeout(timer); timer = setTimeout(doSearch, 200);
     });
   }
   if (clearBtn) {
-    clearBtn.addEventListener('click', function () {
+    clearBtn.addEventListener('click', function() {
       if (inp) { inp.value = ''; inp.focus(); }
       doSearch();
     });
@@ -611,11 +451,11 @@
   if (goParam) {
     var target = document.getElementById('row-' + goParam);
     if (target) {
-      setTimeout(function () {
+      setTimeout(function() {
         target.scrollIntoView({ behavior: 'smooth', block: 'center' });
         target.style.transition = 'outline 0.3s';
         target.style.outline = '3px solid #0d6efd';
-        setTimeout(function () { target.style.outline = ''; }, 2000);
+        setTimeout(function() { target.style.outline = ''; }, 2000);
       }, 150);
     }
   }

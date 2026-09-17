@@ -1,0 +1,21 @@
+<div class="modal fade" id="biblioModal" tabindex="-1">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title"><i class="fas fa-plus me-2"></i>Ajouter une tâche — {{ activite.nom[:50] }}</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" action="{{ url_for('biblio.tache_add', act_id=activite.id) }}">
+        <div class="modal-body row g-2">
+          {% set tache = none %}
+          {% set form_uid = 'act' ~ activite.id %}
+          {% include 'biblio/_tache_fields.html' with context %}
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-success fw-bold"><i class="fas fa-plus me-1"></i>Ajouter</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

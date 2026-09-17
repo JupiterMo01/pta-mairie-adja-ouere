@@ -1,0 +1,28 @@
+<div class="modal fade" id="biblioModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title"><i class="fas fa-book me-2"></i>Importer tâches depuis Bibliothèque — {{ activite.nom[:40] }}</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" action="{{ url_for('biblio.import_taches_from_biblio', act_id=activite.id) }}">
+        <div class="modal-body">
+          <p class="text-muted small">Toutes les tâches de l'activité sélectionnée seront ajoutées à la fin de <strong>{{ activite.nom }}</strong>.</p>
+          <label class="form-label fw-semibold">Activité bibliothèque source *</label>
+          <select name="biblio_src_id" class="form-select" required>
+            <option value="">— Choisir une activité —</option>
+            {% for src_act in activites %}
+              {% if src_act.id != activite.id %}
+              <option value="{{ src_act.id }}">{{ src_act.nom }} ({{ src_act.taches|length }} tâche(s))</option>
+              {% endif %}
+            {% endfor %}
+          </select>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-success fw-bold"><i class="fas fa-book me-1"></i>Importer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

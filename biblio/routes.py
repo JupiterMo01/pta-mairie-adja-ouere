@@ -144,14 +144,20 @@ def _tache_from_form(t):
 @biblio_bp.route('/')
 @admin_ou_lecteur
 def index():
-    # Toutes les activités — la recherche est gérée côté client (JS)
     activites = BiblioActivite.query.order_by(BiblioActivite.nom).all()
-
     directions = Direction.query.order_by(Direction.nom).all()
     services = Service.query.order_by(Service.nom).all()
     structures_externes = StructureExterne.query.order_by(StructureExterne.nom).all()
-    # Activités PTA de toutes les années (pour import)
-    pta_acts = (
+    return render_template('biblio/index.html',
+                           activites=activites, directions=directions,
+                           services=services, modes_execution=MODES_EXECUTION,
+                           structures_externes=structures_externes)
+
+
+# ─── Routes AJAX modals ───────────────────────────────────────────────────────
+
+def _pta_acts():
+    return (
         db.session.query(Annee.annee, Activite.id, Activite.nom)
         .join(Programme, Programme.annee_id == Annee.id)
         .join(Projet,    Projet.programme_id == Programme.id)
@@ -159,11 +165,57 @@ def index():
         .order_by(Annee.annee.desc(), Activite.nom)
         .all()
     )
-    return render_template('biblio/index.html',
-                           activites=activites, directions=directions,
-                           services=services, modes_execution=MODES_EXECUTION,
-                           structures_externes=structures_externes,
-                           pta_acts=pta_acts)
+
+
+def _form_ctx():
+    return dict(
+        directions=Direction.query.order_by(Direction.nom).all(),
+        services=Service.query.order_by(Service.nom).all(),
+        structures_externes=StructureExterne.query.order_by(StructureExterne.nom).all(),
+        modes_execution=MODES_EXECUTION,
+    )
+
+
+@biblio_bp.route('/modal-import-pta-global')
+@admin_editeur_only
+def modal_import_pta_global():
+    return render_template('biblio/_modal_import_pta_global.html', pta_acts=_pta_acts())
+
+
+@biblio_bp.route('/activite/<int:act_id>/modal')
+@admin_editeur_only
+def activite_modal_edit(act_id):
+    a = db.get_or_404(BiblioActivite, act_id)
+    return render_template('biblio/_modal_edit_activite.html', activite=a, **_form_ctx())
+
+
+@biblio_bp.route('/activite/<int:act_id>/modal-add-tache')
+@admin_editeur_only
+def activite_modal_add_tache(act_id):
+    a = db.get_or_404(BiblioActivite, act_id)
+    return render_template('biblio/_modal_add_tache.html', activite=a, **_form_ctx())
+
+
+@biblio_bp.route('/activite/<int:act_id>/modal-import-pta')
+@admin_editeur_only
+def activite_modal_import_pta(act_id):
+    a = db.get_or_404(BiblioActivite, act_id)
+    return render_template('biblio/_modal_import_pta.html', activite=a, pta_acts=_pta_acts())
+
+
+@biblio_bp.route('/activite/<int:act_id>/modal-import-biblio')
+@admin_editeur_only
+def activite_modal_import_biblio(act_id):
+    a = db.get_or_404(BiblioActivite, act_id)
+    activites = BiblioActivite.query.order_by(BiblioActivite.nom).all()
+    return render_template('biblio/_modal_import_biblio.html', activite=a, activites=activites)
+
+
+@biblio_bp.route('/tache/<int:tache_id>/modal')
+@admin_editeur_only
+def tache_modal_edit(tache_id):
+    t = db.get_or_404(BiblioTache, tache_id)
+    return render_template('biblio/_modal_edit_tache.html', tache=t, **_form_ctx())
 
 
 # ─── Activités ────────────────────────────────────────────────────────────────

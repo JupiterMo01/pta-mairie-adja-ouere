@@ -1,0 +1,33 @@
+<div class="modal fade" id="biblioModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title"><i class="fas fa-file-import me-2"></i>Importer tâches depuis PTA — {{ activite.nom[:40] }}</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" action="{{ url_for('biblio.import_taches_from_pta', act_id=activite.id) }}">
+        <div class="modal-body">
+          <p class="text-muted small">Toutes les tâches de l'activité PTA sélectionnée seront ajoutées à la fin de <strong>{{ activite.nom }}</strong>.</p>
+          <label class="form-label fw-semibold">Activité PTA source *</label>
+          <select name="pta_activite_id" class="form-select" required>
+            <option value="">— Choisir une activité —</option>
+            {% set ns = namespace(current_year=none) %}
+            {% for ann, aid, anom in pta_acts %}
+              {% if ann != ns.current_year %}
+                {% if ns.current_year is not none %}</optgroup>{% endif %}
+                <optgroup label="PTA {{ ann }}">
+                {% set ns.current_year = ann %}
+              {% endif %}
+              <option value="{{ aid }}">{{ anom }}</option>
+            {% endfor %}
+            {% if ns.current_year is not none %}</optgroup>{% endif %}
+          </select>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-primary fw-bold"><i class="fas fa-file-import me-1"></i>Importer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

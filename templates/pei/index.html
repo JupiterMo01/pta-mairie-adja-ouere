@@ -130,8 +130,6 @@
         <button class="btn btn-outline-warning py-0 px-1 float-end"
                 style="font-size:.62rem;line-height:1.3;"
                 title="Modifier les montants financiers"
-                data-bs-toggle="modal"
-                data-bs-target="#modalPeiEdit"
                 data-id="{{ ad.activite.id }}"
                 data-budget="{{ ad.budget }}"
                 data-engage="{{ ad.engage }}"
@@ -167,8 +165,6 @@
                 class="btn btn-outline-success py-0 px-1 mt-1"
                 style="font-size:.58rem;line-height:1.2;"
                 title="Saisir le taux d'exécution physique et le niveau d'exécution"
-                data-bs-toggle="modal"
-                data-bs-target="#modalPeiTaux"
                 data-id="{{ ad.activite.id }}"
                 data-taux="{{ ad.taux_phys }}"
                 data-obs="{{ ad.pei.observations | e if ad.pei.observations else '' }}"
@@ -427,7 +423,7 @@ function _fillPeiTaux(btn) {
       td ? td.textContent.trim().replace(/\s+/g,' ') : '';
   }
 }
-function _prepPeiTaux(btn) { _peiTauxLastBtn = btn; _fillPeiTaux(btn); }
+function _prepPeiTaux(btn) { _peiTauxLastBtn = btn; _fillPeiTaux(btn); bootstrap.Modal.getOrCreateInstance(document.getElementById('modalPeiTaux')).show(); }
 
 document.getElementById('modalPeiTaux').addEventListener('shown.bs.modal', function () {
   if (_peiTauxLastBtn) _fillPeiTaux(_peiTauxLastBtn);
@@ -527,7 +523,7 @@ function _fillPeiEdit(btn) {
       td ? td.textContent.trim().replace(/\s+/g,' ') : '';
   }
 }
-function _prepPeiEdit(btn) { _peiEditLastBtn = btn; _fillPeiEdit(btn); }
+function _prepPeiEdit(btn) { _peiEditLastBtn = btn; _fillPeiEdit(btn); bootstrap.Modal.getOrCreateInstance(document.getElementById('modalPeiEdit')).show(); }
 
 document.getElementById('modalPeiEdit').addEventListener('shown.bs.modal', function () {
   if (_peiEditLastBtn) _fillPeiEdit(_peiEditLastBtn);
@@ -575,7 +571,7 @@ document.getElementById('formPeiEdit').addEventListener('submit', function (e) {
       if (tpEl)  { tpEl.textContent  = _fmtPct(data.taux_pay)  + ' %'; tpEl.className  = _pctClass(data.taux_pay);  tpEl.style.fontSize  = '.62rem'; }
 
       /* Mettre à jour les data-* du bouton pour la prochaine ouverture */
-      var editBtn = document.querySelector('button[data-bs-target="#modalPeiEdit"][data-id="' + _peiEditActId + '"]');
+      var editBtn = _peiEditLastBtn;
       if (editBtn) {
         editBtn.dataset.engage  = data.engage;
         editBtn.dataset.mandate = data.mandate;

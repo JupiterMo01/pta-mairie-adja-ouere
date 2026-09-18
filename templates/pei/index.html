@@ -138,7 +138,8 @@
                 data-mandate="{{ ad.mandate }}"
                 data-paye="{{ ad.paye }}"
                 data-locked="{{ 'true' if ad.engage_verrouille else 'false' }}"
-                data-admin="{{ 'true' if current_user.role == 'admin_editeur' else 'false' }}">
+                data-admin="{{ 'true' if current_user.role == 'admin_editeur' else 'false' }}"
+                onclick="_prepPeiEdit(this)">
           <i class="fas fa-pencil-alt"></i>
         </button>
         {% endif %}
@@ -170,7 +171,8 @@
                 data-bs-target="#modalPeiTaux"
                 data-id="{{ ad.activite.id }}"
                 data-taux="{{ ad.taux_phys }}"
-                data-obs="{{ ad.pei.observations | e if ad.pei.observations else '' }}">
+                data-obs="{{ ad.pei.observations | e if ad.pei.observations else '' }}"
+                onclick="_prepPeiTaux(this)">
           <i class="fas fa-pen"></i>
         </button>
         {% endif %}
@@ -409,8 +411,7 @@ function _fmtFcfa(v) {
 {% if peut_editer_taux %}
 var _peiTauxActId = null, _peiTauxMin = 0;
 
-document.getElementById('modalPeiTaux').addEventListener('show.bs.modal', function (e) {
-  var btn = e.relatedTarget;
+function _prepPeiTaux(btn) {
   _peiTauxActId = +btn.dataset.id;
   var tauxActuel = +btn.dataset.taux;
   _peiTauxMin   = tauxActuel;
@@ -425,7 +426,7 @@ document.getElementById('modalPeiTaux').addEventListener('show.bs.modal', functi
     document.getElementById('peiTauxActNom').textContent =
       td ? td.textContent.trim().replace(/\s+/g,' ') : '';
   }
-});
+}
 
 document.getElementById('formPeiTaux').addEventListener('submit', function (e) {
   e.preventDefault();
@@ -471,8 +472,7 @@ document.getElementById('formPeiTaux').addEventListener('submit', function (e) {
 {% if peut_editer %}
 var _peiEditActId = null, _peiBudget = 0, _peiEngageLocked = false, _peiIsAdmin = false;
 
-document.getElementById('modalPeiEdit').addEventListener('show.bs.modal', function (e) {
-  var btn     = e.relatedTarget;
+function _prepPeiEdit(btn) {
   var actId   = +btn.dataset.id;
   var budget  = +btn.dataset.budget;
   var engage  = +btn.dataset.engage;
@@ -521,7 +521,7 @@ document.getElementById('modalPeiEdit').addEventListener('show.bs.modal', functi
     document.getElementById('peiEditActNom').textContent =
       td ? td.textContent.trim().replace(/\s+/g,' ') : '';
   }
-});
+}
 
 document.getElementById('formPeiEdit').addEventListener('submit', function (e) {
   e.preventDefault();

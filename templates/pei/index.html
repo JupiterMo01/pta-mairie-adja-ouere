@@ -474,42 +474,61 @@ var _peiEditActId = null, _peiBudget = 0, _peiEngageLocked = false, _peiIsAdmin 
 function _prepPeiEdit(actId) {
   var d = PEI_DATA[actId];
   if (!d) return;
+
+  var modalEl = document.getElementById('modalPeiEdit');
+  if (!modalEl) return;
+
   _peiEditActId    = actId;
   _peiBudget       = d.budget;
   _peiEngageLocked = d.locked && !d.isAdmin;
   _peiIsAdmin      = d.isAdmin;
 
-  document.getElementById('peiEditBudget').textContent = d.budget.toLocaleString('fr-FR');
-  document.getElementById('peiEditErr').classList.add('d-none');
-  document.getElementById('peiEditTitre').textContent = d.nom || '';
+  function qm(sel) { return modalEl.querySelector(sel); }
 
-  var engInput = document.getElementById('peiEngage');
-  engInput.value    = d.engage || '';
-  engInput.max      = d.budget;
-  engInput.readOnly = _peiEngageLocked;
-  engInput.classList.toggle('bg-light', _peiEngageLocked);
-  var engHint = document.getElementById('peiEngageHint');
-  if (_peiEngageLocked) {
-    engHint.innerHTML = '<i class="fas fa-lock me-1 text-danger"></i><span class="text-danger fw-semibold">Verrouille — saisie unique deja effectuee</span>';
-  } else {
-    engHint.innerHTML = 'Max : <span class="fw-semibold">' + d.budget.toLocaleString('fr-FR') + '</span> F CFA (cout total)';
+  var titreEl = qm('#peiEditTitre');
+  if (titreEl) titreEl.textContent = d.nom || '';
+
+  var budgetEl = qm('#peiEditBudget');
+  if (budgetEl) budgetEl.textContent = d.budget.toLocaleString('fr-FR');
+
+  var errEl = qm('#peiEditErr');
+  if (errEl) errEl.classList.add('d-none');
+
+  var engInput = qm('#peiEngage');
+  if (engInput) {
+    engInput.value    = d.engage || '';
+    engInput.max      = d.budget;
+    engInput.readOnly = _peiEngageLocked;
+    engInput.classList.toggle('bg-light', _peiEngageLocked);
+  }
+  var engHint = qm('#peiEngageHint');
+  if (engHint) {
+    engHint.innerHTML = _peiEngageLocked
+      ? '<i class="fas fa-lock me-1 text-danger"></i><span class="text-danger fw-semibold">Verrouillé — saisie unique déjà effectuée</span>'
+      : 'Max : <span class="fw-semibold">' + d.budget.toLocaleString('fr-FR') + '</span> F CFA (coût total)';
   }
 
-  var mandInput = document.getElementById('peiMandate');
-  mandInput.value = d.mandate || '';
-  mandInput.max   = d.engage || d.budget;
-  mandInput.min   = d.isAdmin ? 0 : (d.mandate || 0);
-  var mandHint = document.getElementById('peiMandateHint');
-  mandHint.textContent = d.isAdmin
-    ? 'Ne peut pas depasser le montant engage'
-    : 'Doit etre >= ' + (d.mandate || 0).toLocaleString('fr-FR') + ' F et <= montant engage';
+  var mandInput = qm('#peiMandate');
+  if (mandInput) {
+    mandInput.value = d.mandate || '';
+    mandInput.max   = d.engage || d.budget;
+    mandInput.min   = d.isAdmin ? 0 : (d.mandate || 0);
+  }
+  var mandHint = qm('#peiMandateHint');
+  if (mandHint) {
+    mandHint.textContent = d.isAdmin
+      ? 'Ne peut pas dépasser le montant engagé'
+      : 'Doit être ≥ ' + (d.mandate || 0).toLocaleString('fr-FR') + ' F et ≤ montant engagé';
+  }
 
-  var payeInput = document.getElementById('peiPaye');
-  payeInput.value = d.paye || '';
-  payeInput.max   = d.mandate || 0;
-  payeInput.min   = d.isAdmin ? 0 : (d.paye || 0);
+  var payeInput = qm('#peiPaye');
+  if (payeInput) {
+    payeInput.value = d.paye || '';
+    payeInput.max   = d.mandate || 0;
+    payeInput.min   = d.isAdmin ? 0 : (d.paye || 0);
+  }
 
-  bootstrap.Modal.getOrCreateInstance(document.getElementById('modalPeiEdit')).show();
+  bootstrap.Modal.getOrCreateInstance(modalEl).show();
 }
 
 document.getElementById('formPeiEdit').addEventListener('submit', function (e) {

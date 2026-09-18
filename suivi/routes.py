@@ -706,9 +706,17 @@ def export_excel():
     f_tot  = PatternFill("solid", fgColor="1F6B35")   # vert foncé
     f_obj  = PatternFill("solid", fgColor="FFFACD")
     f_tit  = PatternFill("solid", fgColor="D1F0DA")   # vert clair
-    NCOLS  = 7   # A–G (sans Responsable)
 
     STATUTS = {'execute': 'Exécutée', 'en_cours': 'En cours', 'non_execute': 'Non exécutée'}
+    show_dir_col = role in ('admin_editeur', 'admin_lecteur')
+    NCOLS = 8 if show_dir_col else 7
+
+    def _dir_unit(t):
+        if t.service_responsable:
+            return f"{t.service_responsable.code} — {t.service_responsable.nom}"
+        if t.direction_responsable:
+            return f"{t.direction_responsable.code} — {t.direction_responsable.nom}"
+        return ''
 
     def wr(vals, fill, bold, rn, aligns=None):
         for col, v in enumerate(vals, 1):
@@ -725,8 +733,12 @@ def export_excel():
     ws.row_dimensions[2].height = 8
     ws.row_dimensions[3].height = 22
     ws.merge_cells('A1:B3')
-    ws.merge_cells('C1:E3')
-    ws.merge_cells('F1:G3')
+    if show_dir_col:
+        ws.merge_cells('C1:F3')
+        ws.merge_cells('G1:H3')
+    else:
+        ws.merge_cells('C1:E3')
+        ws.merge_cells('F1:G3')
     c = ws['C1']
     c.value = "BP 02 Adja-Ouèrè\nTél : +229 01 61 91 96 12\nEmail : contact.adjaouere@mairie.bj"
     c.font = Font(bold=True, size=9)
@@ -768,7 +780,8 @@ def export_excel():
         pass
 
     # ── Ligne 4 : Titre ───────────────────────────────────────────────────────
-    ws.merge_cells('A4:G4')
+    _last_col = get_column_letter(NCOLS)
+    ws.merge_cells(f'A4:{_last_col}4')
     _tri_lbl = f"Trimestre {trimestre}" if trimestre else "Tous trimestres"
     ws['A4'].value = (f"SUIVI D'EXÉCUTION DU PTA — Exercice {annee.annee}"
                       f"   |   {titre}   |   {_tri_lbl}{nature_lbl}"
@@ -785,7 +798,7 @@ def export_excel():
 
     # ── Ligne 5 : Objectif général ────────────────────────────────────────────
     if annee.objectif_general:
-        ws.merge_cells('A5:G5')
+        ws.merge_cells(f'A5:{_last_col}5')
         c = ws['A5']
         c.value = f"Objectif général / Résultat général : {annee.objectif_general}"
         c.font = Font(bold=True, italic=True, size=9); c.alignment = lft
@@ -794,8 +807,12 @@ def export_excel():
         start_row = 5
 
     # ── En-têtes tableau ──────────────────────────────────────────────────────
-    hdrs = ['Code', 'Libellé / Activité / Tâche', 'Période',
-            'Poids (%)', 'Statut', 'Taux (%)', 'Observations / Difficultés']
+    if show_dir_col:
+        hdrs = ['Code', 'Libellé / Activité / Tâche', 'Dir./Unité Resp.', 'Période',
+                'Poids (%)', 'Statut', 'Taux (%)', 'Observations / Difficultés']
+    else:
+        hdrs = ['Code', 'Libellé / Activité / Tâche', 'Période',
+                'Poids (%)', 'Statut', 'Taux (%)', 'Observations / Difficultés']
     for ci, h in enumerate(hdrs, 1):
         c = ws.cell(row=start_row, column=ci, value=h)
         c.fill = f_hdr; c.font = Font(bold=True, size=9, color="000000")
@@ -808,32 +825,35 @@ def export_excel():
     for pd in data:
         prog = pd['programme']
         if prog.objectif_specifique:
-            ws.merge_cells(f'A{row}:G{row}')
+            ws.merge_cells(f'A{row}:{_last_col}{row}')
             c = ws.cell(row=row, column=1,
                 value=f"Objectif {pd['code']}/Résultat {pd['code']} : {prog.objectif_specifique}")
             c.font = Font(bold=True, italic=True, size=9)
             c.fill = f_obj; c.alignment = lft; c.border = brd
             row += 1
 
-        wr([pd['code'], f"Programme {pd['code']} : {prog.nom}", '',
-            f"{pd['new_poids']:.2f}%", '', f"{pd['taux']:.2f}%", ''],
-           f_prog, True, row)
+        _prog_row = [pd['code'], f"Programme {pd['code']} : {prog.nom}"]
+        if show_dir_col: _prog_row.append('')
+        _prog_row += ['', f"{pd['new_poids']:.2f}%", '', f"{pd['taux']:.2f}%", '']
+        wr(_prog_row, f_prog, True, row)
         row += 1
 
         for pjd in pd['projets']:
             proj = pjd['projet']
-            wr([pjd['code'], f"Projet {pjd['code']} : {proj.nom}", '',
-                f"{pjd['new_poids']:.2f}%", '', f"{pjd['taux']:.2f}%", ''],
-               f_proj, True, row)
+            _proj_row = [pjd['code'], f"Projet {pjd['code']} : {proj.nom}"]
+            if show_dir_col: _proj_row.append('')
+            _proj_row += ['', f"{pjd['new_poids']:.2f}%", '', f"{pjd['taux']:.2f}%", '']
+            wr(_proj_row, f_proj, True, row)
             row += 1
 
             for ad in pjd['activites']:
                 act    = ad['activite']
                 per_a  = _fmt_periode(act.periode_debut, act.periode_fin)
                 st_lbl = STATUTS.get(ad['statut'] or 'non_execute', '—')
-                wr([ad['code'], act.nom, per_a,
-                    f"{ad['new_poids']:.2f}%", st_lbl, f"{ad['taux']:.2f}%", ''],
-                   f_act, True, row)
+                _act_row = [ad['code'], act.nom]
+                if show_dir_col: _act_row.append('')
+                _act_row += [per_a, f"{ad['new_poids']:.2f}%", st_lbl, f"{ad['taux']:.2f}%", '']
+                wr(_act_row, f_act, True, row)
                 row += 1
 
                 for td in ad['taches']:
@@ -841,19 +861,23 @@ def export_excel():
                     per_t  = _fmt_periode(t.periode_debut, t.periode_fin)
                     st_lbl = STATUTS.get(td['statut'] or 'non_execute', '—')
                     obs    = td['suivi'].observation if td['suivi'] and td['suivi'].observation else ''
-                    # Code service en préfixe du libellé si vue direction/global
                     nom_t  = f"  {t.nom}"
                     if show_service_badge and t.service_responsable:
                         nom_t = f"  [{t.service_responsable.code}] {t.nom}"
-                    wr([td['num'], nom_t, per_t,
-                        f"{td['new_poids']:.2f}%", st_lbl, f"{td['taux']:.2f}%", obs],
-                       f_tch, False, row,
-                       aligns=[ctr, lft, ctr, ctr, ctr, ctr, lft])
+                    _tch_row = [td['num'], nom_t]
+                    if show_dir_col: _tch_row.append(_dir_unit(t))
+                    _tch_row += [per_t, f"{td['new_poids']:.2f}%", st_lbl, f"{td['taux']:.2f}%", obs]
+                    _al_tch = [ctr, lft]
+                    if show_dir_col: _al_tch.append(ctr)
+                    _al_tch += [ctr, ctr, ctr, ctr, lft]
+                    wr(_tch_row, f_tch, False, row, aligns=_al_tch)
                     row += 1
 
     # ── Total général ─────────────────────────────────────────────────────────
-    for ci, val in enumerate(['', 'TOTAL GÉNÉRAL', '', '100%', '',
-                               f"{taux_gl:.2f}%", ''], 1):
+    _tot_vals = ['', 'TOTAL GÉNÉRAL']
+    if show_dir_col: _tot_vals.append('')
+    _tot_vals += ['', '100%', '', f"{taux_gl:.2f}%", '']
+    for ci, val in enumerate(_tot_vals, 1):
         c = ws.cell(row=row, column=ci, value=val)
         c.fill = f_tot
         c.font = Font(bold=True, size=9, color="FFFFFF")
@@ -865,13 +889,17 @@ def export_excel():
     ws.merge_cells(f'A{row}:C{row}')
     c = ws.cell(row=row, column=1, value=f"Exporté le {_date_str}")
     c.font = Font(bold=True, size=8); c.alignment = lft
-    ws.merge_cells(f'D{row}:G{row}')
+    ws.merge_cells(f'D{row}:{_last_col}{row}')
     c = ws.cell(row=row, column=4,
                 value="Direction du Développement Local et de la Planification (DDLP)")
     c.font = Font(bold=True, size=8); c.alignment = rgt
 
-    # ── Largeurs colonnes (A–G) ───────────────────────────────────────────────
-    for ci, w in enumerate([8, 46, 12, 9, 16, 9, 42], 1):
+    # ── Largeurs colonnes ─────────────────────────────────────────────────────
+    if show_dir_col:
+        col_widths = [8, 38, 20, 12, 9, 16, 9, 38]
+    else:
+        col_widths = [8, 46, 12, 9, 16, 9, 42]
+    for ci, w in enumerate(col_widths, 1):
         ws.column_dimensions[get_column_letter(ci)].width = w
 
     ws.freeze_panes = f'A{start_row + 1}'
@@ -953,4 +981,5 @@ def print_view():
         show_service_badge=show_service_badge,
         fmt_periode=_fmt_periode,
         now_str=datetime.now().strftime('%d/%m/%Y %H:%M'),
+        role=role,
     )

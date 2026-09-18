@@ -278,13 +278,17 @@
 <table class="table table-bordered table-sm mb-0" id="tblSuivi"
        style="width:100%;table-layout:fixed;">
   <colgroup>
-    <col style="width:5%"><col style="width:26%"><col style="width:7%">
-    <col style="width:5%"><col style="width:16%"><col style="width:9%"><col style="width:32%">
+    <col style="width:5%">
+    {% if role in ('admin_editeur','admin_lecteur') %}<col style="width:19%"><col style="width:9%">{% else %}<col style="width:26%">{% endif %}
+    <col style="width:7%">
+    <col style="width:5%"><col style="width:16%"><col style="width:9%">
+    {% if role in ('admin_editeur','admin_lecteur') %}<col style="width:30%">{% else %}<col style="width:32%">{% endif %}
   </colgroup>
   <thead>
     <tr>
       <th style="position:sticky;top:0;z-index:3;">Code</th>
       <th style="position:sticky;top:0;z-index:3;">Libellé / Tâche</th>
+      {% if role in ('admin_editeur','admin_lecteur') %}<th style="position:sticky;top:0;z-index:3;">Dir./Unité Resp.</th>{% endif %}
       <th style="position:sticky;top:0;z-index:3;">Période</th>
       <th style="position:sticky;top:0;z-index:3;">Poids&nbsp;%</th>
       <th style="position:sticky;top:0;z-index:3;">Statut</th>
@@ -298,7 +302,7 @@
 
   {% if prog.objectif_specifique %}
   <tr class="bg-os">
-    <td colspan="7" class="px-2">
+    <td colspan="{{ 8 if role in ('admin_editeur','admin_lecteur') else 7 }}" class="px-2">
       <i class="fas fa-crosshairs text-warning me-2"></i>
       Objectif {{ pd['code'] }}/Résultat {{ pd['code'] }} : {{ prog.objectif_specifique }}
     </td>
@@ -309,6 +313,7 @@
   <tr class="bg-prog" style="border-top:2px solid #aaa;">
     <td class="text-center">{{ pd['code'] }}</td>
     <td>Programme {{ pd['code'] }} : {{ prog.nom }}</td>
+    {% if role in ('admin_editeur','admin_lecteur') %}<td></td>{% endif %}
     <td></td>
     <td class="text-center">{{ pd['new_poids']|pct }}%</td>
     <td></td>
@@ -320,7 +325,7 @@
   {# ── PROJET ── #}
   <tr class="bg-proj">
     <td class="text-center">{{ pjd['code'] }}</td>
-    <td colspan="2">Projet {{ pjd['code'] }} : {{ proj.nom }}</td>
+    <td colspan="{{ 3 if role in ('admin_editeur','admin_lecteur') else 2 }}">Projet {{ pjd['code'] }} : {{ proj.nom }}</td>
     <td class="text-center">{{ pjd['new_poids']|pct }}%</td>
     <td></td>
     <td class="text-center" id="taux-proj-{{ proj.id }}">{{ '%.2f'|format(pjd['taux']) }}&thinsp;%</td>
@@ -338,6 +343,7 @@
   <tr class="bg-act">
     <td class="text-center">{{ ad['code'] }}</td>
     <td>{{ act.nom }}</td>
+    {% if role in ('admin_editeur','admin_lecteur') %}<td></td>{% endif %}
     <td class="text-center">{{ per_a }}</td>
     <td class="text-center">{{ ad['new_poids']|pct }}%</td>
     <td class="text-center" id="statut-act-{{ act.id }}">
@@ -368,6 +374,17 @@
             title="{{ t.service_responsable.nom }}">{{ t.service_responsable.code }}</span>
       {% endif %}
     </td>
+    {% if role in ('admin_editeur','admin_lecteur') %}
+    <td class="text-center" style="font-size:.65rem;">
+      {% if t.service_responsable %}
+        <span class="badge bg-info bg-opacity-25 text-dark border" style="font-size:.6rem;"
+              title="{{ t.service_responsable.nom }}">{{ t.service_responsable.code }}</span>
+      {% elif t.direction_responsable %}
+        <span class="badge bg-secondary bg-opacity-25 text-dark border" style="font-size:.6rem;"
+              title="{{ t.direction_responsable.nom }}">{{ t.direction_responsable.code }}</span>
+      {% else %}—{% endif %}
+    </td>
+    {% endif %}
     <td class="text-center">{{ per_t }}</td>
     <td class="text-center">{{ td['new_poids']|pct }}%</td>
 

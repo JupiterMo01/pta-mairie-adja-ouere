@@ -61,8 +61,18 @@
     margin-bottom:6px; font-size:7.5pt; background:#f8f9fa; font-weight:bold;
   }
 
-  /* ─ Tableau (7 colonnes) ─ */
+  /* ─ Tableau ─ */
   table { width:100%; border-collapse:collapse; font-size:7pt; table-layout:fixed; }
+  {% if role in ('admin_editeur','admin_lecteur') %}
+  col.c-code { width:4%; }
+  col.c-nom  { width:25%; }
+  col.c-dir  { width:9%; }
+  col.c-per  { width:7%; }
+  col.c-pds  { width:5%; }
+  col.c-stat { width:12%; }
+  col.c-taux { width:7%; }
+  col.c-obs  { width:31%; }
+  {% else %}
   col.c-code { width:4.5%; }
   col.c-nom  { width:33%; }
   col.c-per  { width:8%; }
@@ -70,6 +80,7 @@
   col.c-stat { width:12%; }
   col.c-taux { width:7%; }
   col.c-obs  { width:30.5%; }
+  {% endif %}
 
   thead { display:table-header-group; }
   tfoot { display:table-footer-group; }
@@ -163,7 +174,7 @@
 {% endif %}
 {% endmacro %}
 
-{# ── Tableau (7 colonnes — sans Responsable) ── #}
+{# ── Tableau ── #}
 {% if not data %}
 <p style="margin-top:20px;text-align:center;color:#777;font-style:italic;">
   Aucune tâche à afficher pour cette sélection.
@@ -171,7 +182,9 @@
 {% else %}
 <table>
   <colgroup>
-    <col class="c-code"><col class="c-nom"><col class="c-per">
+    <col class="c-code"><col class="c-nom">
+    {% if role in ('admin_editeur','admin_lecteur') %}<col class="c-dir">{% endif %}
+    <col class="c-per">
     <col class="c-pds"><col class="c-stat"><col class="c-taux">
     <col class="c-obs">
   </colgroup>
@@ -180,6 +193,7 @@
     <tr>
       <th>Code</th>
       <th>Libellé / Activité / Tâche</th>
+      {% if role in ('admin_editeur','admin_lecteur') %}<th>Dir./Unité Resp.</th>{% endif %}
       <th>Période</th>
       <th>Poids&nbsp;%</th>
       <th>Statut</th>
@@ -191,7 +205,7 @@
   <tfoot>
     <tr>
       <td colspan="3" id="ft-date">Imprimé le …</td>
-      <td colspan="4" style="text-align:right;">
+      <td colspan="{{ 5 if role in ('admin_editeur','admin_lecteur') else 4 }}" style="text-align:right;">
         Direction du Développement Local et de la Planification (DDLP)
       </td>
     </tr>
@@ -202,7 +216,7 @@
 
   {% if prog.objectif_specifique %}
   <tr class="os">
-    <td colspan="7">
+    <td colspan="{{ 8 if role in ('admin_editeur','admin_lecteur') else 7 }}">
       Objectif {{ pd['code'] }}/Résultat {{ pd['code'] }} : {{ prog.objectif_specifique }}
     </td>
   </tr>
@@ -212,6 +226,7 @@
   <tr class="prog" style="border-top:2px solid #777;">
     <td class="c">{{ pd['code'] }}</td>
     <td>Programme {{ pd['code'] }} : {{ prog.nom }}</td>
+    {% if role in ('admin_editeur','admin_lecteur') %}<td></td>{% endif %}
     <td></td>
     <td class="c">{{ pd['new_poids']|pct }}%</td>
     <td></td>
@@ -223,7 +238,7 @@
   {# ── Projet ── #}
   <tr class="proj">
     <td class="c">{{ pjd['code'] }}</td>
-    <td colspan="2">Projet {{ pjd['code'] }} : {{ proj.nom }}</td>
+    <td colspan="{{ 3 if role in ('admin_editeur','admin_lecteur') else 2 }}">Projet {{ pjd['code'] }} : {{ proj.nom }}</td>
     <td class="c">{{ pjd['new_poids']|pct }}%</td>
     <td></td>
     <td class="c"><strong>{{ '%.2f'|format(pjd['taux']) }}%</strong></td>
@@ -241,6 +256,7 @@
   <tr class="act">
     <td class="c">{{ ad['code'] }}</td>
     <td>{{ act.nom }}</td>
+    {% if role in ('admin_editeur','admin_lecteur') %}<td></td>{% endif %}
     <td class="c">{{ per_a }}</td>
     <td class="c">{{ ad['new_poids']|pct }}%</td>
     <td class="c">{{ badge_statut(ad['statut']) }}</td>
@@ -265,6 +281,15 @@
       <span class="b-svc">{{ t.service_responsable.code }}</span>
       {% endif %}
     </td>
+    {% if role in ('admin_editeur','admin_lecteur') %}
+    <td class="c" style="font-size:6pt;">
+      {% if t.service_responsable %}
+        <span class="b-svc" title="{{ t.service_responsable.nom }}">{{ t.service_responsable.code }}</span>
+      {% elif t.direction_responsable %}
+        <span class="b-svc" title="{{ t.direction_responsable.nom }}">{{ t.direction_responsable.code }}</span>
+      {% else %}—{% endif %}
+    </td>
+    {% endif %}
     <td class="c">{{ per_t }}</td>
     <td class="c">{{ td['new_poids']|pct }}%</td>
     <td class="c">{{ badge_statut(td['statut']) }}</td>
@@ -281,6 +306,7 @@
   <tr class="tot">
     <td></td>
     <td>TOTAL GÉNÉRAL</td>
+    {% if role in ('admin_editeur','admin_lecteur') %}<td></td>{% endif %}
     <td></td>
     <td>100%</td>
     <td></td>

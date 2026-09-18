@@ -269,7 +269,6 @@
 {% endif %}
 
 {# ── Modal édition montants ───────────────────────────────────────────── #}
-{% if peut_editer %}
 <div class="modal fade" id="modalPeiEdit" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-md">
     <div class="modal-content">
@@ -310,7 +309,6 @@
     </div>
   </div>
 </div>
-{% endif %}
 {% endblock %}
 
 {% block scripts %}
@@ -469,7 +467,6 @@ document.getElementById('formPeiTaux').addEventListener('submit', function (e) {
 });
 {% endif %}
 
-{% if peut_editer %}
 var _peiEditActId = null, _peiBudget = 0, _peiEngageLocked = false, _peiIsAdmin = false;
 
 function _prepPeiEdit(actId) {
@@ -570,6 +567,5 @@ document.getElementById('peiEngage').addEventListener('input', function () {
   document.getElementById('peiMandate').max = eng;
   document.getElementById('peiPaye').max    = mand || eng;
 });
-{% endif %}
 </script>
 {% endblock %}

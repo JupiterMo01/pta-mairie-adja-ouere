@@ -229,7 +229,7 @@
 
 {# ── Modal saisie taux physique + observations ─────────────────────── #}
 {% if peut_editer_taux %}
-<div class="modal" id="modalPeiTaux" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="modalPeiTaux" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-md">
     <div class="modal-content">
       <div class="modal-header" style="background:#0f6f3a;color:#fff;">
@@ -270,7 +270,7 @@
 
 {# ── Modal édition montants ───────────────────────────────────────────── #}
 {% if peut_editer %}
-<div class="modal" id="modalPeiEdit" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="modalPeiEdit" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-md">
     <div class="modal-content">
       <div class="modal-header" style="background:#1e3a5f;color:#fcd116;">
@@ -414,13 +414,6 @@ var PEI_DATA = {
 {% if peut_editer_taux %}
 var _peiTauxActId = null, _peiTauxMin = 0;
 
-document.getElementById('modalPeiTaux').addEventListener('hidden.bs.modal', function () {
-  document.body.classList.remove('modal-open');
-  document.body.style.removeProperty('overflow');
-  document.body.style.removeProperty('padding-right');
-  document.querySelectorAll('.modal-backdrop').forEach(function(b) { b.remove(); });
-});
-
 function _prepPeiTaux(actId) {
   var d = PEI_DATA[actId];
   if (!d) return;
@@ -478,13 +471,6 @@ document.getElementById('formPeiTaux').addEventListener('submit', function (e) {
 
 {% if peut_editer %}
 var _peiEditActId = null, _peiBudget = 0, _peiEngageLocked = false, _peiIsAdmin = false;
-
-document.getElementById('modalPeiEdit').addEventListener('hidden.bs.modal', function () {
-  document.body.classList.remove('modal-open');
-  document.body.style.removeProperty('overflow');
-  document.body.style.removeProperty('padding-right');
-  document.querySelectorAll('.modal-backdrop').forEach(function(b) { b.remove(); });
-});
 
 function _prepPeiEdit(actId) {
   var d = PEI_DATA[actId];

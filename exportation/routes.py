@@ -1,6 +1,6 @@
 ﻿import io
 from flask import render_template, request, redirect, url_for, flash, session, send_file, abort
-from flask_login import login_required
+from flask_login import login_required, current_user
 from models import db, Programme, Direction, Service, Annee
 from exportation import exportation_bp
 from utils import get_annee
@@ -728,3 +728,190 @@ def excel_par_programme():
 
     noms_fichier = '_'.join(str(p.numero) for p in programmes)
     return _send_wb(wb, f"PTA_{annee.annee}_Prog_{noms_fichier}.xlsx")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  SUIVI & ÉVALUATION — helper multi-feuilles
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _build_suivi_workbook(annee, trimestre=0, dirs=None, svcs=None, include_global=False):
+    """
+    Construit un classeur Excel multi-feuilles pour le suivi.
+    Ordre : [Suivi Global ?] [Direction A, ses services…] …
+    """
+    from openpyxl import Workbook
+    from suivi.routes import (_fill_suivi_sheet, _compute_pta_global,
+                               _compute_pta_direction, _compute_pta_service,
+                               _load_suivis_global, _filter_and_renorm, _enrich)
+
+    suivi_map = _load_suivis_global(annee.id)
+    wb  = Workbook()
+    wb.remove(wb.active)
+    used = set()
+
+    sorted_dirs = sorted(dirs or [], key=lambda d: d.nom)
+    sorted_svcs = svcs or []
+
+    def _add_sheet(titre, data_brut, show_service_badge):
+        data     = _filter_and_renorm(data_brut, trimestre)
+        taux_gl, _ = _enrich(data, suivi_map, None)
+        lbl_tri  = f"T{trimestre}" if trimestre else "Global"
+        ws = wb.create_sheet(_sheet_name(titre[:31], used))
+        _fill_suivi_sheet(ws, annee, data, taux_gl, titre,
+                          trimestre=trimestre, show_dir_col=True,
+                          show_service_badge=show_service_badge)
+
+    if include_global:
+        _add_sheet("Vue globale", _compute_pta_global(annee), show_service_badge=True)
+
+    for direction in sorted_dirs:
+        _add_sheet(f"{direction.code}", _compute_pta_direction(annee, direction),
+                   show_service_badge=True)
+        dir_svcs = sorted(
+            [s for s in sorted_svcs if s.direction_id == direction.id],
+            key=lambda s: s.nom
+        )
+        for service in dir_svcs:
+            _add_sheet(f"{service.code}", _compute_pta_service(annee, service),
+                       show_service_badge=False)
+
+    return wb
+
+
+# ── Suivi : routes ────────────────────────────────────────────────────────────
+
+@exportation_bp.route('/suivi-print-global')
+@login_required
+def suivi_print_global():
+    tri = request.args.get('trimestre', 0, type=int)
+    return redirect(url_for('suivi.print_view', trimestre=tri))
+
+
+@exportation_bp.route('/suivi-excel-global')
+@login_required
+def suivi_excel_global():
+    tri = request.args.get('trimestre', 0, type=int)
+    return redirect(url_for('suivi.export_excel', trimestre=tri))
+
+
+@exportation_bp.route('/suivi-action-entite', methods=['POST'])
+@login_required
+def suivi_action_entite():
+    """Redirige vers impression ou export Excel suivi d'une direction ou d'un service."""
+    etype     = request.form.get('etype')
+    eid       = request.form.get('eid', type=int)
+    action    = request.form.get('action')
+    trimestre = request.form.get('trimestre', 0, type=int)
+
+    if not eid:
+        flash('Veuillez sélectionner une direction ou un service.', 'warning')
+        return redirect(url_for('exportation.index'))
+
+    if etype == 'direction':
+        if action == 'print':
+            return redirect(url_for('suivi.print_view', direction_id=eid, trimestre=trimestre))
+        return redirect(url_for('suivi.export_excel', direction_id=eid, trimestre=trimestre))
+    else:
+        if action == 'print':
+            return redirect(url_for('suivi.print_view', service_id=eid, trimestre=trimestre))
+        return redirect(url_for('suivi.export_excel', service_id=eid, trimestre=trimestre))
+
+
+@exportation_bp.route('/suivi-excel-direction-et-services/<int:direction_id>')
+@login_required
+def suivi_excel_direction_et_services(direction_id):
+    annee     = get_annee()
+    direction = db.get_or_404(Direction, direction_id)
+    if current_user.role == 'direction' and current_user.direction_id != direction_id:
+        abort(403)
+    if current_user.role == 'service' and (
+            not current_user.service or
+            current_user.service.direction_id != direction_id):
+        abort(403)
+    if not annee:
+        flash('Aucune année active.', 'danger')
+        return redirect(url_for('exportation.index'))
+
+    trimestre = request.args.get('trimestre', 0, type=int)
+    services  = Service.query.filter_by(direction_id=direction.id).order_by(Service.nom).all()
+    wb = _build_suivi_workbook(annee, trimestre=trimestre,
+                               dirs=[direction], svcs=services)
+    if not wb.worksheets:
+        flash(f'Aucune donnée suivi pour {direction.code}.', 'warning')
+        return redirect(url_for('exportation.index'))
+
+    lbl = f"T{trimestre}" if trimestre else "Global"
+    return _send_wb(wb, f"Suivi_{lbl}_{direction.code}_et_services_{annee.annee}.xlsx")
+
+
+@exportation_bp.route('/suivi-excel-selection', methods=['POST'])
+@login_required
+def suivi_excel_selection():
+    annee = get_annee()
+    if not annee:
+        flash('Aucune année active.', 'danger')
+        return redirect(url_for('exportation.index'))
+
+    dir_ids   = request.form.getlist('suivi_dir_ids', type=int)
+    svc_ids   = request.form.getlist('suivi_svc_ids', type=int)
+    trimestre = request.form.get('trimestre', 0, type=int)
+
+    if not dir_ids and not svc_ids:
+        flash('Sélectionnez au moins une direction ou un service.', 'warning')
+        return redirect(url_for('exportation.index'))
+
+    dirs = Direction.query.filter(Direction.id.in_(dir_ids)).all() if dir_ids else []
+    svcs = Service.query.filter(Service.id.in_(svc_ids)).all() if svc_ids else []
+
+    dir_ids_set     = set(dir_ids)
+    dirs_de_svcs    = {s.direction for s in svcs if s.direction_id not in dir_ids_set}
+    all_dirs        = list(dirs) + list(dirs_de_svcs)
+
+    wb = _build_suivi_workbook(annee, trimestre=trimestre, dirs=all_dirs, svcs=svcs)
+
+    dirs_non_sel = {d.code for d in dirs_de_svcs}
+    for ws in [w for w in wb.worksheets if w.title in dirs_non_sel]:
+        del wb[ws.title]
+
+    if not wb.worksheets:
+        flash('Aucune donnée pour les entités sélectionnées.', 'warning')
+        return redirect(url_for('exportation.index'))
+
+    lbl = f"T{trimestre}" if trimestre else "Global"
+    return _send_wb(wb, f"Suivi_{lbl}_Selection_{annee.annee}.xlsx")
+
+
+@exportation_bp.route('/suivi-excel-toutes-dirs-services')
+@login_required
+def suivi_excel_toutes_dirs_services():
+    annee = get_annee()
+    if not annee:
+        flash('Aucune année active.', 'danger')
+        return redirect(url_for('exportation.index'))
+
+    trimestre  = request.args.get('trimestre', 0, type=int)
+    directions = Direction.query.order_by(Direction.nom).all()
+    services   = Service.query.order_by(Service.nom).all()
+
+    wb = _build_suivi_workbook(annee, trimestre=trimestre,
+                               dirs=directions, svcs=services)
+    lbl = f"T{trimestre}" if trimestre else "Global"
+    return _send_wb(wb, f"Suivi_{lbl}_Toutes_Directions_et_Services_{annee.annee}.xlsx")
+
+
+@exportation_bp.route('/suivi-excel-complet')
+@login_required
+def suivi_excel_complet():
+    annee = get_annee()
+    if not annee:
+        flash('Aucune année active.', 'danger')
+        return redirect(url_for('exportation.index'))
+
+    trimestre  = request.args.get('trimestre', 0, type=int)
+    directions = Direction.query.order_by(Direction.nom).all()
+    services   = Service.query.order_by(Service.nom).all()
+
+    wb = _build_suivi_workbook(annee, trimestre=trimestre, include_global=True,
+                               dirs=directions, svcs=services)
+    lbl = f"T{trimestre}" if trimestre else "Global"
+    return _send_wb(wb, f"Suivi_{lbl}_Complet_{annee.annee}.xlsx")

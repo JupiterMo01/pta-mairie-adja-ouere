@@ -617,18 +617,212 @@ def save():
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  Export Excel
+#  Export Excel — helper partagé
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _fill_suivi_sheet(ws, annee, data, taux_gl, titre, trimestre=0,
+                      show_dir_col=True, show_service_badge=True, nature_lbl=''):
+    """Remplit une feuille openpyxl avec le suivi PTA (réutilisable par exportation/)."""
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+    import os as _os
+    from flask import current_app
+
+    STATUTS  = {'execute': 'Exécutée', 'en_cours': 'En cours', 'non_execute': 'Non exécutée'}
+    NCOLS    = 8 if show_dir_col else 7
+    _last_col = get_column_letter(NCOLS)
+
+    def _dir_unit(t):
+        if t.service_responsable:
+            return f"{t.service_responsable.code} — {t.service_responsable.nom}"
+        if t.direction_responsable:
+            return f"{t.direction_responsable.code} — {t.direction_responsable.nom}"
+        return ''
+
+    thin = Side(style='thin'); med = Side(style='medium')
+    brd  = Border(left=thin, right=thin, top=thin, bottom=thin)
+    ctr  = Alignment(horizontal='center', vertical='center', wrap_text=True)
+    lft  = Alignment(horizontal='left',   vertical='center', wrap_text=True)
+    rgt  = Alignment(horizontal='right',  vertical='center', wrap_text=True)
+    f_prog = PatternFill("solid", fgColor="F4B183")
+    f_proj = PatternFill("solid", fgColor="FFFF00")
+    f_act  = PatternFill("solid", fgColor="C5DEB5")
+    f_tch  = PatternFill("solid", fgColor="FFFFFF")
+    f_hdr  = PatternFill("solid", fgColor="BDD7EE")
+    f_tot  = PatternFill("solid", fgColor="1F6B35")
+    f_obj  = PatternFill("solid", fgColor="FFFACD")
+    f_tit  = PatternFill("solid", fgColor="D1F0DA")
+
+    def wr(vals, fill, bold, rn, aligns=None):
+        for col, v in enumerate(vals, 1):
+            c = ws.cell(row=rn, column=col, value=v)
+            c.fill = fill; c.font = Font(bold=bold, size=9); c.border = brd
+            c.alignment = (aligns[col-1] if aligns else (lft if col == 2 else ctr))
+
+    # ── Lignes 1-3 : En-tête institutionnel ───────────────────────────────────
+    ws.row_dimensions[1].height = 22
+    ws.row_dimensions[2].height = 8
+    ws.row_dimensions[3].height = 22
+    ws.merge_cells('A1:B3')
+    if show_dir_col:
+        ws.merge_cells('C1:F3'); ws.merge_cells('G1:H3')
+    else:
+        ws.merge_cells('C1:E3'); ws.merge_cells('F1:G3')
+    c = ws['C1']
+    c.value = "BP 02 Adja-Ouèrè\nTél : +229 01 61 91 96 12\nEmail : contact.adjaouere@mairie.bj"
+    c.font = Font(bold=True, size=9)
+    c.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+    try:
+        from openpyxl.drawing.image import Image as _XLImg
+        from PIL import Image as _PILImg
+        import io as _imgio
+        _simg = _os.path.join(current_app.root_path, 'static', 'img')
+        _H = 52
+        _band = _os.path.join(_simg, 'bandeau.png')
+        _logo = _os.path.join(_simg, 'logo_commune.png')
+        if _os.path.exists(_band):
+            _buf = _imgio.BytesIO()
+            with _PILImg.open(_band) as _p: _ow, _oh = _p.size; _p.save(_buf, 'PNG')
+            _buf.seek(0); _i = _XLImg(_buf); _i.height = _H; _i.width = int(_ow * _H / _oh)
+            ws.add_image(_i, 'A1')
+        if _os.path.exists(_logo):
+            _buf2 = _imgio.BytesIO()
+            with _PILImg.open(_logo) as _p2: _ow2, _oh2 = _p2.size; _p2.save(_buf2, 'PNG')
+            _buf2.seek(0); _i2 = _XLImg(_buf2); _lw = int(_ow2 * _H / _oh2)
+            _i2.height = _H; _i2.width = _lw
+            try:
+                from openpyxl.drawing.spreadsheet_drawing import OneCellAnchor, AnchorMarker
+                from openpyxl.drawing.xdr import XDRPositiveSize2D
+                _a = OneCellAnchor()
+                _a._from = AnchorMarker(col=6, colOff=-int(_lw * 9525), row=0, rowOff=0)
+                _a.ext = XDRPositiveSize2D(int(_lw * 9525), int(_H * 9525))
+                _i2.anchor = _a; ws.add_image(_i2)
+            except Exception: ws.add_image(_i2, 'F1')
+    except Exception: pass
+
+    # ── Titre ─────────────────────────────────────────────────────────────────
+    ws.merge_cells(f'A4:{_last_col}4')
+    _tri_lbl = f"Trimestre {trimestre}" if trimestre else "Tous trimestres"
+    ws['A4'].value = (f"SUIVI D'EXÉCUTION DU PTA — Exercice {annee.annee}"
+                      f"   |   {titre}   |   {_tri_lbl}{nature_lbl}"
+                      f"   |   Taux : {taux_gl:.2f}%")
+    ws['A4'].font = Font(bold=True, size=12)
+    ws['A4'].alignment = Alignment(horizontal='center', vertical='center')
+    ws['A4'].fill = f_tit
+    for _tc in range(1, NCOLS+1):
+        ws.cell(row=4, column=_tc).border = Border(
+            left=med if _tc==1 else Side(style=None),
+            right=med if _tc==NCOLS else Side(style=None),
+            top=med, bottom=med)
+    ws.row_dimensions[4].height = 28
+
+    # ── Objectif général ──────────────────────────────────────────────────────
+    if annee.objectif_general:
+        ws.merge_cells(f'A5:{_last_col}5')
+        c = ws['A5']
+        c.value = f"Objectif général / Résultat général : {annee.objectif_general}"
+        c.font = Font(bold=True, italic=True, size=9); c.alignment = lft
+        start_row = 6
+    else:
+        start_row = 5
+
+    # ── En-têtes tableau ──────────────────────────────────────────────────────
+    if show_dir_col:
+        hdrs = ['Code', 'Libellé / Activité / Tâche', 'Dir./Unité Resp.', 'Période',
+                'Poids (%)', 'Statut', 'Taux (%)', 'Observations / Difficultés']
+    else:
+        hdrs = ['Code', 'Libellé / Activité / Tâche', 'Période',
+                'Poids (%)', 'Statut', 'Taux (%)', 'Observations / Difficultés']
+    for ci, h in enumerate(hdrs, 1):
+        c = ws.cell(row=start_row, column=ci, value=h)
+        c.fill = f_hdr; c.font = Font(bold=True, size=9, color="000000")
+        c.alignment = ctr; c.border = brd
+    ws.row_dimensions[start_row].height = 20
+    row = start_row + 1
+
+    # ── Données ───────────────────────────────────────────────────────────────
+    for pd in data:
+        prog = pd['programme']
+        if prog.objectif_specifique:
+            ws.merge_cells(f'A{row}:{_last_col}{row}')
+            c = ws.cell(row=row, column=1,
+                value=f"Objectif {pd['code']}/Résultat {pd['code']} : {prog.objectif_specifique}")
+            c.font = Font(bold=True, italic=True, size=9)
+            c.fill = f_obj; c.alignment = lft; c.border = brd; row += 1
+
+        _r = [pd['code'], f"Programme {pd['code']} : {prog.nom}"]
+        if show_dir_col: _r.append('')
+        _r += ['', f"{pd['new_poids']:.2f}%", '', f"{pd['taux']:.2f}%", '']
+        wr(_r, f_prog, True, row); row += 1
+
+        for pjd in pd['projets']:
+            proj = pjd['projet']
+            _r = [pjd['code'], f"Projet {pjd['code']} : {proj.nom}"]
+            if show_dir_col: _r.append('')
+            _r += ['', f"{pjd['new_poids']:.2f}%", '', f"{pjd['taux']:.2f}%", '']
+            wr(_r, f_proj, True, row); row += 1
+
+            for ad in pjd['activites']:
+                act   = ad['activite']
+                per_a = _fmt_periode(act.periode_debut, act.periode_fin)
+                s_lbl = STATUTS.get(ad['statut'] or 'non_execute', '—')
+                _r = [ad['code'], act.nom]
+                if show_dir_col:
+                    _r.append(act.direction_responsable.code if act.direction_responsable else '')
+                _r += [per_a, f"{ad['new_poids']:.2f}%", s_lbl, f"{ad['taux']:.2f}%", '']
+                wr(_r, f_act, True, row); row += 1
+
+                for td in ad['taches']:
+                    t     = td['tache']
+                    per_t = _fmt_periode(t.periode_debut, t.periode_fin)
+                    s_lbl = STATUTS.get(td['statut'] or 'non_execute', '—')
+                    obs   = td['suivi'].observation if td['suivi'] and td['suivi'].observation else ''
+                    nom_t = f"  {t.nom}"
+                    if show_service_badge and t.service_responsable:
+                        nom_t = f"  [{t.service_responsable.code}] {t.nom}"
+                    _r = [td['num'], nom_t]
+                    if show_dir_col: _r.append(_dir_unit(t))
+                    _r += [per_t, f"{td['new_poids']:.2f}%", s_lbl, f"{td['taux']:.2f}%", obs]
+                    _al = [ctr, lft]
+                    if show_dir_col: _al.append(ctr)
+                    _al += [ctr, ctr, ctr, ctr, lft]
+                    wr(_r, f_tch, False, row, aligns=_al); row += 1
+
+    # ── Total ─────────────────────────────────────────────────────────────────
+    _tv = ['', 'TOTAL GÉNÉRAL']
+    if show_dir_col: _tv.append('')
+    _tv += ['', '100%', '', f"{taux_gl:.2f}%", '']
+    for ci, val in enumerate(_tv, 1):
+        c = ws.cell(row=row, column=ci, value=val)
+        c.fill = f_tot; c.font = Font(bold=True, size=9, color="FFFFFF")
+        c.border = brd; c.alignment = ctr
+    row += 1
+
+    # ── Pied ──────────────────────────────────────────────────────────────────
+    _ds = datetime.now().strftime('%d/%m/%Y à %H:%M')
+    ws.merge_cells(f'A{row}:C{row}')
+    c = ws.cell(row=row, column=1, value=f"Exporté le {_ds}")
+    c.font = Font(bold=True, size=8); c.alignment = lft
+    ws.merge_cells(f'D{row}:{_last_col}{row}')
+    c = ws.cell(row=row, column=4,
+                value="Direction du Développement Local et de la Planification (DDLP)")
+    c.font = Font(bold=True, size=8); c.alignment = rgt
+
+    col_w = [8, 38, 20, 12, 9, 16, 9, 38] if show_dir_col else [8, 46, 12, 9, 16, 9, 42]
+    for ci, w in enumerate(col_w, 1):
+        ws.column_dimensions[get_column_letter(ci)].width = w
+    ws.freeze_panes = f'A{start_row + 1}'
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Export Excel (route)
 # ─────────────────────────────────────────────────────────────────────────────
 
 @suivi_bp.route('/export/excel')
 @login_required
 def export_excel():
-    """Exporte le suivi courant en Excel — même style que dirpta/svcpta."""
+    """Exporte le suivi courant en Excel."""
     from openpyxl import Workbook
-    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-    from openpyxl.utils import get_column_letter
-    import os as _os
-    from flask import current_app
 
     annee = _get_annee()
     if not annee:
@@ -641,11 +835,10 @@ def export_excel():
     nature     = request.args.get('nature', '')
     if nature not in ('', 'fct', 'inv'):
         nature = ''
-    role       = current_user.role
+    role = current_user.role
 
-    suivi_map = _load_suivis_global(annee.id)
-
-    show_service_badge = False   # badge code service dans libellé tâche
+    suivi_map          = _load_suivis_global(annee.id)
+    show_service_badge = False
 
     if role == 'service':
         service   = current_user.service
@@ -677,232 +870,19 @@ def export_excel():
             show_service_badge = True
 
     data_renorm = _filter_and_renorm(data_brut, trimestre)
-    if nature:
-        data = _filter_by_nature(data_renorm, nature)
-    else:
-        data = data_renorm
-    taux_gl, _ = _enrich(data, suivi_map, None)
+    data        = _filter_by_nature(data_renorm, nature) if nature else data_renorm
+    taux_gl, _  = _enrich(data, suivi_map, None)
 
-    nature_lbl = {'fct': ' — Fonctionnement', 'inv': ' — Investissement'}.get(nature, '')
-    lbl_tri = f"T{trimestre}" if trimestre else "Global"
+    nature_lbl   = {'fct': ' — Fonctionnement', 'inv': ' — Investissement'}.get(nature, '')
+    lbl_tri      = f"T{trimestre}" if trimestre else "Global"
+    show_dir_col = role in ('admin_editeur', 'admin_lecteur')
 
-    # ── Styles ────────────────────────────────────────────────────────────────
     wb = Workbook()
     ws = wb.active
     ws.title = f"Suivi {lbl_tri}"[:31]
-
-    thin  = Side(style='thin')
-    med   = Side(style='medium')
-    brd   = Border(left=thin, right=thin, top=thin, bottom=thin)
-    ctr   = Alignment(horizontal='center', vertical='center', wrap_text=True)
-    lft   = Alignment(horizontal='left',   vertical='center', wrap_text=True)
-    rgt   = Alignment(horizontal='right',  vertical='center', wrap_text=True)
-
-    f_prog = PatternFill("solid", fgColor="F4B183")
-    f_proj = PatternFill("solid", fgColor="FFFF00")
-    f_act  = PatternFill("solid", fgColor="C5DEB5")
-    f_tch  = PatternFill("solid", fgColor="FFFFFF")
-    f_hdr  = PatternFill("solid", fgColor="BDD7EE")
-    f_tot  = PatternFill("solid", fgColor="1F6B35")   # vert foncé
-    f_obj  = PatternFill("solid", fgColor="FFFACD")
-    f_tit  = PatternFill("solid", fgColor="D1F0DA")   # vert clair
-
-    STATUTS = {'execute': 'Exécutée', 'en_cours': 'En cours', 'non_execute': 'Non exécutée'}
-    show_dir_col = role in ('admin_editeur', 'admin_lecteur')
-    NCOLS = 8 if show_dir_col else 7
-
-    def _dir_unit(t):
-        if t.service_responsable:
-            return f"{t.service_responsable.code} — {t.service_responsable.nom}"
-        if t.direction_responsable:
-            return f"{t.direction_responsable.code} — {t.direction_responsable.nom}"
-        return ''
-
-    def wr(vals, fill, bold, rn, aligns=None):
-        for col, v in enumerate(vals, 1):
-            c = ws.cell(row=rn, column=col, value=v)
-            c.fill = fill
-            c.font = Font(bold=bold, size=9)
-            c.border = brd
-            al = aligns[col-1] if aligns else (lft if col == 2 else ctr)
-            c.alignment = al
-        return rn
-
-    # ── Lignes 1-3 : En-tête institutionnel ───────────────────────────────────
-    ws.row_dimensions[1].height = 22
-    ws.row_dimensions[2].height = 8
-    ws.row_dimensions[3].height = 22
-    ws.merge_cells('A1:B3')
-    if show_dir_col:
-        ws.merge_cells('C1:F3')
-        ws.merge_cells('G1:H3')
-    else:
-        ws.merge_cells('C1:E3')
-        ws.merge_cells('F1:G3')
-    c = ws['C1']
-    c.value = "BP 02 Adja-Ouèrè\nTél : +229 01 61 91 96 12\nEmail : contact.adjaouere@mairie.bj"
-    c.font = Font(bold=True, size=9)
-    c.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
-
-    # Images bandeau + logo
-    try:
-        from openpyxl.drawing.image import Image as _XLImg
-        from PIL import Image as _PILImg
-        import io as _imgio
-        _simg = _os.path.join(current_app.root_path, 'static', 'img')
-        _H = 52
-        _band = _os.path.join(_simg, 'bandeau.png')
-        _logo = _os.path.join(_simg, 'logo_commune.png')
-        if _os.path.exists(_band):
-            _buf = _imgio.BytesIO()
-            with _PILImg.open(_band) as _p:
-                _ow, _oh = _p.size; _p.save(_buf, 'PNG')
-            _buf.seek(0)
-            _i = _XLImg(_buf); _i.height = _H; _i.width = int(_ow * _H / _oh)
-            ws.add_image(_i, 'A1')
-        if _os.path.exists(_logo):
-            _buf2 = _imgio.BytesIO()
-            with _PILImg.open(_logo) as _p2:
-                _ow2, _oh2 = _p2.size; _p2.save(_buf2, 'PNG')
-            _buf2.seek(0)
-            _i2 = _XLImg(_buf2); _lw = int(_ow2 * _H / _oh2)
-            _i2.height = _H; _i2.width = _lw
-            try:
-                from openpyxl.drawing.spreadsheet_drawing import OneCellAnchor, AnchorMarker
-                from openpyxl.drawing.xdr import XDRPositiveSize2D
-                _a = OneCellAnchor()
-                _a._from = AnchorMarker(col=6, colOff=-int(_lw * 9525), row=0, rowOff=0)
-                _a.ext = XDRPositiveSize2D(int(_lw * 9525), int(_H * 9525))
-                _i2.anchor = _a; ws.add_image(_i2)
-            except Exception:
-                ws.add_image(_i2, 'F1')
-    except Exception:
-        pass
-
-    # ── Ligne 4 : Titre ───────────────────────────────────────────────────────
-    _last_col = get_column_letter(NCOLS)
-    ws.merge_cells(f'A4:{_last_col}4')
-    _tri_lbl = f"Trimestre {trimestre}" if trimestre else "Tous trimestres"
-    ws['A4'].value = (f"SUIVI D'EXÉCUTION DU PTA — Exercice {annee.annee}"
-                      f"   |   {titre}   |   {_tri_lbl}{nature_lbl}"
-                      f"   |   Taux : {taux_gl:.2f}%")
-    ws['A4'].font = Font(bold=True, size=12)
-    ws['A4'].alignment = Alignment(horizontal='center', vertical='center')
-    ws['A4'].fill = f_tit
-    for _tc in range(1, NCOLS+1):
-        ws.cell(row=4, column=_tc).border = Border(
-            left=med if _tc==1 else Side(style=None),
-            right=med if _tc==NCOLS else Side(style=None),
-            top=med, bottom=med)
-    ws.row_dimensions[4].height = 28
-
-    # ── Ligne 5 : Objectif général ────────────────────────────────────────────
-    if annee.objectif_general:
-        ws.merge_cells(f'A5:{_last_col}5')
-        c = ws['A5']
-        c.value = f"Objectif général / Résultat général : {annee.objectif_general}"
-        c.font = Font(bold=True, italic=True, size=9); c.alignment = lft
-        start_row = 6
-    else:
-        start_row = 5
-
-    # ── En-têtes tableau ──────────────────────────────────────────────────────
-    if show_dir_col:
-        hdrs = ['Code', 'Libellé / Activité / Tâche', 'Dir./Unité Resp.', 'Période',
-                'Poids (%)', 'Statut', 'Taux (%)', 'Observations / Difficultés']
-    else:
-        hdrs = ['Code', 'Libellé / Activité / Tâche', 'Période',
-                'Poids (%)', 'Statut', 'Taux (%)', 'Observations / Difficultés']
-    for ci, h in enumerate(hdrs, 1):
-        c = ws.cell(row=start_row, column=ci, value=h)
-        c.fill = f_hdr; c.font = Font(bold=True, size=9, color="000000")
-        c.alignment = ctr; c.border = brd
-    ws.row_dimensions[start_row].height = 20
-
-    row = start_row + 1
-
-    # ── Données ───────────────────────────────────────────────────────────────
-    for pd in data:
-        prog = pd['programme']
-        if prog.objectif_specifique:
-            ws.merge_cells(f'A{row}:{_last_col}{row}')
-            c = ws.cell(row=row, column=1,
-                value=f"Objectif {pd['code']}/Résultat {pd['code']} : {prog.objectif_specifique}")
-            c.font = Font(bold=True, italic=True, size=9)
-            c.fill = f_obj; c.alignment = lft; c.border = brd
-            row += 1
-
-        _prog_row = [pd['code'], f"Programme {pd['code']} : {prog.nom}"]
-        if show_dir_col: _prog_row.append('')
-        _prog_row += ['', f"{pd['new_poids']:.2f}%", '', f"{pd['taux']:.2f}%", '']
-        wr(_prog_row, f_prog, True, row)
-        row += 1
-
-        for pjd in pd['projets']:
-            proj = pjd['projet']
-            _proj_row = [pjd['code'], f"Projet {pjd['code']} : {proj.nom}"]
-            if show_dir_col: _proj_row.append('')
-            _proj_row += ['', f"{pjd['new_poids']:.2f}%", '', f"{pjd['taux']:.2f}%", '']
-            wr(_proj_row, f_proj, True, row)
-            row += 1
-
-            for ad in pjd['activites']:
-                act    = ad['activite']
-                per_a  = _fmt_periode(act.periode_debut, act.periode_fin)
-                st_lbl = STATUTS.get(ad['statut'] or 'non_execute', '—')
-                _act_row = [ad['code'], act.nom]
-                if show_dir_col: _act_row.append('')
-                _act_row += [per_a, f"{ad['new_poids']:.2f}%", st_lbl, f"{ad['taux']:.2f}%", '']
-                wr(_act_row, f_act, True, row)
-                row += 1
-
-                for td in ad['taches']:
-                    t      = td['tache']
-                    per_t  = _fmt_periode(t.periode_debut, t.periode_fin)
-                    st_lbl = STATUTS.get(td['statut'] or 'non_execute', '—')
-                    obs    = td['suivi'].observation if td['suivi'] and td['suivi'].observation else ''
-                    nom_t  = f"  {t.nom}"
-                    if show_service_badge and t.service_responsable:
-                        nom_t = f"  [{t.service_responsable.code}] {t.nom}"
-                    _tch_row = [td['num'], nom_t]
-                    if show_dir_col: _tch_row.append(_dir_unit(t))
-                    _tch_row += [per_t, f"{td['new_poids']:.2f}%", st_lbl, f"{td['taux']:.2f}%", obs]
-                    _al_tch = [ctr, lft]
-                    if show_dir_col: _al_tch.append(ctr)
-                    _al_tch += [ctr, ctr, ctr, ctr, lft]
-                    wr(_tch_row, f_tch, False, row, aligns=_al_tch)
-                    row += 1
-
-    # ── Total général ─────────────────────────────────────────────────────────
-    _tot_vals = ['', 'TOTAL GÉNÉRAL']
-    if show_dir_col: _tot_vals.append('')
-    _tot_vals += ['', '100%', '', f"{taux_gl:.2f}%", '']
-    for ci, val in enumerate(_tot_vals, 1):
-        c = ws.cell(row=row, column=ci, value=val)
-        c.fill = f_tot
-        c.font = Font(bold=True, size=9, color="FFFFFF")
-        c.border = brd; c.alignment = ctr
-    row += 1
-
-    # ── Pied ──────────────────────────────────────────────────────────────────
-    _date_str = datetime.now().strftime('%d/%m/%Y à %H:%M')
-    ws.merge_cells(f'A{row}:C{row}')
-    c = ws.cell(row=row, column=1, value=f"Exporté le {_date_str}")
-    c.font = Font(bold=True, size=8); c.alignment = lft
-    ws.merge_cells(f'D{row}:{_last_col}{row}')
-    c = ws.cell(row=row, column=4,
-                value="Direction du Développement Local et de la Planification (DDLP)")
-    c.font = Font(bold=True, size=8); c.alignment = rgt
-
-    # ── Largeurs colonnes ─────────────────────────────────────────────────────
-    if show_dir_col:
-        col_widths = [8, 38, 20, 12, 9, 16, 9, 38]
-    else:
-        col_widths = [8, 46, 12, 9, 16, 9, 42]
-    for ci, w in enumerate(col_widths, 1):
-        ws.column_dimensions[get_column_letter(ci)].width = w
-
-    ws.freeze_panes = f'A{start_row + 1}'
+    _fill_suivi_sheet(ws, annee, data, taux_gl, titre,
+                      trimestre=trimestre, show_dir_col=show_dir_col,
+                      show_service_badge=show_service_badge, nature_lbl=nature_lbl)
 
     buf = io.BytesIO()
     wb.save(buf); buf.seek(0)

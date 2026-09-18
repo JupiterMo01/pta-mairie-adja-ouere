@@ -634,9 +634,9 @@ def _fill_suivi_sheet(ws, annee, data, taux_gl, titre, trimestre=0,
 
     def _dir_unit(t):
         if t.service_responsable:
-            return f"{t.service_responsable.code} — {t.service_responsable.nom}"
+            return t.service_responsable.code
         if t.direction_responsable:
-            return f"{t.direction_responsable.code} — {t.direction_responsable.nom}"
+            return t.direction_responsable.code
         return ''
 
     thin = Side(style='thin'); med = Side(style='medium')

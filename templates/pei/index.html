@@ -405,6 +405,7 @@ function _fmtFcfa(v) {
 }
 
 {% if peut_editer_taux %}
+var _modalPeiTaux = null;
 var _peiTauxActId = null, _peiTauxMin = 0;
 
 function _openPeiTaux(actId, tauxActuel, obs) {
@@ -421,7 +422,10 @@ function _openPeiTaux(actId, tauxActuel, obs) {
     document.getElementById('peiTauxActNom').textContent =
       td ? td.textContent.trim().replace(/\s+/g,' ') : '';
   }
-  bootstrap.Modal.getOrCreateInstance(document.getElementById('modalPeiTaux')).show();
+  if (!_modalPeiTaux) {
+    _modalPeiTaux = new bootstrap.Modal(document.getElementById('modalPeiTaux'));
+  }
+  _modalPeiTaux.show();
 }
 
 document.getElementById('formPeiTaux').addEventListener('submit', function (e) {
@@ -456,20 +460,17 @@ document.getElementById('formPeiTaux').addEventListener('submit', function (e) {
       var obsEl = document.getElementById('pei-obs-' + _peiTauxActId);
       if (obsEl) obsEl.textContent = data.obs || '—';
       _peiTauxMin = data.taux_phys;
-      bootstrap.Modal.getInstance(document.getElementById('modalPeiTaux')).hide();
+      _modalPeiTaux.hide();
     })
     .catch(function () {
       errEl.textContent = 'Erreur réseau. Veuillez réessayer.';
       errEl.classList.remove('d-none');
     });
 });
-document.getElementById('modalPeiTaux').addEventListener('hidden.bs.modal', function () {
-  var inst = bootstrap.Modal.getInstance(this);
-  if (inst) inst.dispose();
-});
 {% endif %}
 
 {% if peut_editer %}
+var _modalPeiEdit = null;
 var _peiEditActId = null, _peiBudget = 0, _peiEngageLocked = false, _peiIsAdmin = false;
 
 function _openPeiEdit(btn) {
@@ -525,7 +526,10 @@ function _openPeiEdit(btn) {
     document.getElementById('peiEditActNom').textContent =
       td ? td.textContent.trim().replace(/\s+/g,' ') : '';
   }
-  bootstrap.Modal.getOrCreateInstance(document.getElementById('modalPeiEdit')).show();
+  if (!_modalPeiEdit) {
+    _modalPeiEdit = new bootstrap.Modal(document.getElementById('modalPeiEdit'));
+  }
+  _modalPeiEdit.show();
 }
 
 document.getElementById('formPeiEdit').addEventListener('submit', function (e) {
@@ -577,16 +581,12 @@ document.getElementById('formPeiEdit').addEventListener('submit', function (e) {
         editBtn.dataset.paye    = data.paye;
         editBtn.dataset.locked  = data.engage_verrouille ? 'true' : 'false';
       }
-      bootstrap.Modal.getInstance(document.getElementById('modalPeiEdit')).hide();
+      _modalPeiEdit.hide();
     })
     .catch(function () {
       errEl.textContent = 'Erreur réseau. Veuillez réessayer.';
       errEl.classList.remove('d-none');
     });
-});
-document.getElementById('modalPeiEdit').addEventListener('hidden.bs.modal', function () {
-  var inst = bootstrap.Modal.getInstance(this);
-  if (inst) inst.dispose();
 });
 
 document.getElementById('peiEngage').addEventListener('input', function () {

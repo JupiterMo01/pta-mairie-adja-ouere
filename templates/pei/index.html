@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 {% block title %}Point d'exécution PAI — {{ annee.annee }}{% endblock %}
 {% block page_title %}<i class="fas fa-chart-bar me-2"></i>Point d'exécution du PAI {{ annee.annee }}{% endblock %}
 
@@ -130,14 +130,7 @@
         <button class="btn btn-outline-warning py-0 px-1 float-end"
                 style="font-size:.62rem;line-height:1.3;"
                 title="Modifier les montants financiers"
-                data-id="{{ ad.activite.id }}"
-                data-budget="{{ ad.budget }}"
-                data-engage="{{ ad.engage }}"
-                data-mandate="{{ ad.mandate }}"
-                data-paye="{{ ad.paye }}"
-                data-locked="{{ 'true' if ad.engage_verrouille else 'false' }}"
-                data-admin="{{ 'true' if current_user.role == 'admin_editeur' else 'false' }}"
-                onclick="_prepPeiEdit(this)">
+                onclick="_prepPeiEdit({{ ad.activite.id }})">
           <i class="fas fa-pencil-alt"></i>
         </button>
         {% endif %}
@@ -165,10 +158,7 @@
                 class="btn btn-outline-success py-0 px-1 mt-1"
                 style="font-size:.58rem;line-height:1.2;"
                 title="Saisir le taux d'exécution physique et le niveau d'exécution"
-                data-id="{{ ad.activite.id }}"
-                data-taux="{{ ad.taux_phys }}"
-                data-obs="{{ ad.pei.observations | e if ad.pei.observations else '' }}"
-                onclick="_prepPeiTaux(this)">
+                onclick="_prepPeiTaux({{ ad.activite.id }})">
           <i class="fas fa-pen"></i>
         </button>
         {% endif %}
@@ -404,30 +394,39 @@ function _fmtFcfa(v) {
   return Math.round(v).toLocaleString('fr-FR');
 }
 
+/* ── Donnees pre-chargees (meme pattern que PAI) ───────────────────── */
+var PEI_DATA = {
+{% for pd in data %}{% for pjd in pd.projets %}{% for ad in pjd.activites %}
+  {{ ad.activite.id }}: {
+    nom:     {{ ad.activite.nom | tojson }},
+    budget:  {{ ad.budget }},
+    engage:  {{ ad.engage }},
+    mandate: {{ ad.mandate }},
+    paye:    {{ ad.paye }},
+    locked:  {{ 'true' if ad.engage_verrouille else 'false' }},
+    isAdmin: {{ 'true' if current_user.role == 'admin_editeur' else 'false' }},
+    taux: {{ ad.taux_phys }},
+    obs:  {{ (ad.pei.observations or '') | tojson if ad.pei else '""' }},
+  },
+{% endfor %}{% endfor %}{% endfor %}
+};
+
 {% if peut_editer_taux %}
-var _peiTauxActId = null, _peiTauxMin = 0, _peiTauxLastBtn = null;
+var _peiTauxActId = null, _peiTauxMin = 0;
 
-function _fillPeiTaux(btn) {
-  _peiTauxActId = +btn.dataset.id;
-  var tauxActuel = +btn.dataset.taux;
-  _peiTauxMin   = tauxActuel;
-  document.getElementById('peiTauxActuel').textContent = tauxActuel;
-  document.getElementById('peiTauxInput').value = tauxActuel || '';
-  document.getElementById('peiTauxInput').min   = tauxActuel;
-  document.getElementById('peiTauxObs').value   = btn.dataset.obs || '';
+function _prepPeiTaux(actId) {
+  var d = PEI_DATA[actId];
+  if (!d) return;
+  _peiTauxActId = actId;
+  _peiTauxMin   = d.taux;
+  document.getElementById('peiTauxActuel').textContent = d.taux;
+  document.getElementById('peiTauxInput').value = d.taux || '';
+  document.getElementById('peiTauxInput').min   = d.taux;
+  document.getElementById('peiTauxObs').value   = d.obs || '';
   document.getElementById('peiTauxErr').classList.add('d-none');
-  var row = document.getElementById('row-act-' + _peiTauxActId);
-  if (row) {
-    var td = row.querySelectorAll('td')[1];
-    document.getElementById('peiTauxActNom').textContent =
-      td ? td.textContent.trim().replace(/\s+/g,' ') : '';
-  }
+  document.getElementById('peiTauxActNom').textContent = d.nom || '';
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('modalPeiTaux')).show();
 }
-function _prepPeiTaux(btn) { _peiTauxLastBtn = btn; _fillPeiTaux(btn); bootstrap.Modal.getOrCreateInstance(document.getElementById('modalPeiTaux')).show(); }
-
-document.getElementById('modalPeiTaux').addEventListener('shown.bs.modal', function () {
-  if (_peiTauxLastBtn) _fillPeiTaux(_peiTauxLastBtn);
-});
 
 document.getElementById('formPeiTaux').addEventListener('submit', function (e) {
   e.preventDefault();
@@ -435,11 +434,11 @@ document.getElementById('formPeiTaux').addEventListener('submit', function (e) {
   var errEl = document.getElementById('peiTauxErr');
   errEl.classList.add('d-none');
   if (val < _peiTauxMin) {
-    errEl.textContent = 'Le taux ne peut pas diminuer. Valeur actuelle : ' + _peiTauxMin + ' %.';
+    errEl.textContent = 'Le taux ne peut pas diminuer (valeur actuelle : ' + _peiTauxMin + ' %).';
     errEl.classList.remove('d-none'); return;
   }
   if (val < 0 || val > 100) {
-    errEl.textContent = 'Le taux doit être compris entre 0 et 100 %.';
+    errEl.textContent = 'Le taux doit etre compris entre 0 et 100 %.';
     errEl.classList.remove('d-none'); return;
   }
   var url = '{{ url_for("pei.edit_taux_phys", activite_id=0) }}'.replace('/0', '/' + _peiTauxActId);
@@ -450,84 +449,69 @@ document.getElementById('formPeiTaux').addEventListener('submit', function (e) {
         errEl.textContent = data.error || 'Erreur inconnue.';
         errEl.classList.remove('d-none'); return;
       }
+      PEI_DATA[_peiTauxActId].taux = data.taux_phys;
+      PEI_DATA[_peiTauxActId].obs  = data.obs || '';
       var badgeEl = document.getElementById('pei-taux-phys-' + _peiTauxActId);
       if (badgeEl) {
         badgeEl.textContent    = _fmtPct(data.taux_phys) + ' %';
         badgeEl.className      = _pctClass(data.taux_phys);
         badgeEl.style.fontSize = '.62rem';
       }
-      var btnEl = document.getElementById('pei-taux-btn-' + _peiTauxActId);
-      if (btnEl) { btnEl.dataset.taux = data.taux_phys; btnEl.dataset.obs = data.obs; }
       var obsEl = document.getElementById('pei-obs-' + _peiTauxActId);
       if (obsEl) obsEl.textContent = data.obs || '—';
       _peiTauxMin = data.taux_phys;
       bootstrap.Modal.getInstance(document.getElementById('modalPeiTaux')).hide();
     })
     .catch(function () {
-      errEl.textContent = 'Erreur réseau. Veuillez réessayer.';
+      errEl.textContent = 'Erreur reseau. Veuillez reessayer.';
       errEl.classList.remove('d-none');
     });
 });
 {% endif %}
 
 {% if peut_editer %}
-var _peiEditActId = null, _peiBudget = 0, _peiEngageLocked = false, _peiIsAdmin = false, _peiEditLastBtn = null;
+var _peiEditActId = null, _peiBudget = 0, _peiEngageLocked = false, _peiIsAdmin = false;
 
-function _fillPeiEdit(btn) {
-  var actId   = +btn.dataset.id;
-  var budget  = +btn.dataset.budget;
-  var engage  = +btn.dataset.engage;
-  var mandate = +btn.dataset.mandate;
-  var paye    = +btn.dataset.paye;
-  var locked  = btn.dataset.locked === 'true';
-  var isAdmin = btn.dataset.admin  === 'true';
-
+function _prepPeiEdit(actId) {
+  var d = PEI_DATA[actId];
+  if (!d) return;
   _peiEditActId    = actId;
-  _peiBudget       = budget;
-  _peiEngageLocked = locked && !isAdmin;
-  _peiIsAdmin      = isAdmin;
+  _peiBudget       = d.budget;
+  _peiEngageLocked = d.locked && !d.isAdmin;
+  _peiIsAdmin      = d.isAdmin;
 
-  document.getElementById('peiEditBudget').textContent = budget.toLocaleString('fr-FR');
+  document.getElementById('peiEditBudget').textContent = d.budget.toLocaleString('fr-FR');
   document.getElementById('peiEditErr').classList.add('d-none');
+  document.getElementById('peiEditActNom').textContent = d.nom || '';
 
   var engInput = document.getElementById('peiEngage');
-  engInput.value    = engage || '';
-  engInput.max      = budget;
+  engInput.value    = d.engage || '';
+  engInput.max      = d.budget;
   engInput.readOnly = _peiEngageLocked;
   engInput.classList.toggle('bg-light', _peiEngageLocked);
   var engHint = document.getElementById('peiEngageHint');
   if (_peiEngageLocked) {
-    engHint.innerHTML = '<i class="fas fa-lock me-1 text-danger"></i><span class="text-danger fw-semibold">Verrouillé — saisie unique déjà effectuée</span>';
+    engHint.innerHTML = '<i class="fas fa-lock me-1 text-danger"></i><span class="text-danger fw-semibold">Verrouille — saisie unique deja effectuee</span>';
   } else {
-    engHint.innerHTML = 'Max : <span class="fw-semibold">' + budget.toLocaleString('fr-FR') + '</span> F CFA (coût total)';
+    engHint.innerHTML = 'Max : <span class="fw-semibold">' + d.budget.toLocaleString('fr-FR') + '</span> F CFA (cout total)';
   }
 
   var mandInput = document.getElementById('peiMandate');
-  mandInput.value = mandate || '';
-  mandInput.max   = engage || budget;
-  mandInput.min   = isAdmin ? 0 : (mandate || 0);
+  mandInput.value = d.mandate || '';
+  mandInput.max   = d.engage || d.budget;
+  mandInput.min   = d.isAdmin ? 0 : (d.mandate || 0);
   var mandHint = document.getElementById('peiMandateHint');
-  mandHint.textContent = isAdmin
-    ? 'Ne peut pas dépasser le montant engagé'
-    : 'Doit être ≥ ' + (mandate || 0).toLocaleString('fr-FR') + ' F et ≤ montant engagé';
+  mandHint.textContent = d.isAdmin
+    ? 'Ne peut pas depasser le montant engage'
+    : 'Doit etre >= ' + (d.mandate || 0).toLocaleString('fr-FR') + ' F et <= montant engage';
 
   var payeInput = document.getElementById('peiPaye');
-  payeInput.value = paye || '';
-  payeInput.max   = mandate || 0;
-  payeInput.min   = isAdmin ? 0 : (paye || 0);
+  payeInput.value = d.paye || '';
+  payeInput.max   = d.mandate || 0;
+  payeInput.min   = d.isAdmin ? 0 : (d.paye || 0);
 
-  var row = document.getElementById('row-act-' + actId);
-  if (row) {
-    var td = row.querySelectorAll('td')[1];
-    document.getElementById('peiEditActNom').textContent =
-      td ? td.textContent.trim().replace(/\s+/g,' ') : '';
-  }
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('modalPeiEdit')).show();
 }
-function _prepPeiEdit(btn) { _peiEditLastBtn = btn; _fillPeiEdit(btn); bootstrap.Modal.getOrCreateInstance(document.getElementById('modalPeiEdit')).show(); }
-
-document.getElementById('modalPeiEdit').addEventListener('shown.bs.modal', function () {
-  if (_peiEditLastBtn) _fillPeiEdit(_peiEditLastBtn);
-});
 
 document.getElementById('formPeiEdit').addEventListener('submit', function (e) {
   e.preventDefault();
@@ -537,15 +521,15 @@ document.getElementById('formPeiEdit').addEventListener('submit', function (e) {
   var errEl = document.getElementById('peiEditErr');
   errEl.classList.add('d-none');
   if (eng > _peiBudget) {
-    errEl.textContent = 'Montant engagé dépasse le coût total (' + _peiBudget.toLocaleString('fr-FR') + ' F CFA).';
+    errEl.textContent = 'Montant engage depasse le cout total (' + _peiBudget.toLocaleString('fr-FR') + ' F CFA).';
     errEl.classList.remove('d-none'); return;
   }
   if (mand > eng) {
-    errEl.textContent = 'Montant mandaté dépasse le montant engagé (' + eng.toLocaleString('fr-FR') + ' F CFA).';
+    errEl.textContent = 'Montant mandate depasse le montant engage (' + eng.toLocaleString('fr-FR') + ' F CFA).';
     errEl.classList.remove('d-none'); return;
   }
   if (pay > mand) {
-    errEl.textContent = 'Montant payé dépasse le montant mandaté (' + mand.toLocaleString('fr-FR') + ' F CFA).';
+    errEl.textContent = 'Montant paye depasse le montant mandate (' + mand.toLocaleString('fr-FR') + ' F CFA).';
     errEl.classList.remove('d-none'); return;
   }
   var url = '{{ url_for("pei.edit_montants", activite_id=0) }}'.replace('/0', '/' + _peiEditActId);
@@ -556,32 +540,26 @@ document.getElementById('formPeiEdit').addEventListener('submit', function (e) {
         errEl.textContent = data.error || 'Erreur inconnue.';
         errEl.classList.remove('d-none'); return;
       }
+      PEI_DATA[_peiEditActId].engage  = data.engage;
+      PEI_DATA[_peiEditActId].mandate = data.mandate;
+      PEI_DATA[_peiEditActId].paye    = data.paye;
+      PEI_DATA[_peiEditActId].locked  = data.engage_verrouille;
       var engEl = document.getElementById('pei-engage-'  + _peiEditActId);
       if (engEl)  engEl.textContent  = _fmtFcfa(data.engage);
       var mandEl = document.getElementById('pei-mandate-' + _peiEditActId);
       if (mandEl) mandEl.textContent = _fmtFcfa(data.mandate);
       var payeEl = document.getElementById('pei-paye-'    + _peiEditActId);
       if (payeEl) payeEl.textContent = _fmtFcfa(data.paye);
-
       var teEl = document.getElementById('pei-taux-eng-'  + _peiEditActId);
       if (teEl)  { teEl.textContent  = _fmtPct(data.taux_eng)  + ' %'; teEl.className  = _pctClass(data.taux_eng);  teEl.style.fontSize  = '.62rem'; }
       var tmEl = document.getElementById('pei-taux-mand-' + _peiEditActId);
       if (tmEl)  { tmEl.textContent  = _fmtPct(data.taux_mand) + ' %'; tmEl.className  = _pctClass(data.taux_mand); tmEl.style.fontSize  = '.62rem'; }
       var tpEl = document.getElementById('pei-taux-pay-'  + _peiEditActId);
       if (tpEl)  { tpEl.textContent  = _fmtPct(data.taux_pay)  + ' %'; tpEl.className  = _pctClass(data.taux_pay);  tpEl.style.fontSize  = '.62rem'; }
-
-      /* Mettre à jour les data-* du bouton pour la prochaine ouverture */
-      var editBtn = _peiEditLastBtn;
-      if (editBtn) {
-        editBtn.dataset.engage  = data.engage;
-        editBtn.dataset.mandate = data.mandate;
-        editBtn.dataset.paye    = data.paye;
-        editBtn.dataset.locked  = data.engage_verrouille ? 'true' : 'false';
-      }
       bootstrap.Modal.getInstance(document.getElementById('modalPeiEdit')).hide();
     })
     .catch(function () {
-      errEl.textContent = 'Erreur réseau. Veuillez réessayer.';
+      errEl.textContent = 'Erreur reseau. Veuillez reessayer.';
       errEl.classList.remove('d-none');
     });
 });

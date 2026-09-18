@@ -90,13 +90,13 @@
     <td class="text-center" style="padding:2px;">{{ pd.poids }} %</td>
     <td></td><td></td><td></td>
     <td class="text-center" style="padding:2px 4px;">{{ pd.budget | fcfa }}</td>
-    <td class="text-center" style="padding:2px;">{{ pd.taux_phys|pct }} %</td>
-    <td class="text-center" style="padding:2px 4px;">{{ pd.engage | fcfa }}</td>
-    <td class="text-center" style="padding:2px;">{{ pd.taux_eng|pct }} %</td>
-    <td class="text-center" style="padding:2px 4px;">{{ pd.mandate | fcfa }}</td>
-    <td class="text-center" style="padding:2px;">{{ pd.taux_mand|pct }} %</td>
-    <td class="text-center" style="padding:2px 4px;">{{ pd.paye | fcfa }}</td>
-    <td class="text-center" style="padding:2px;">{{ pd.taux_pay|pct }} %</td>
+    <td class="text-center" style="padding:2px;"><span id="pei-prog-taux-phys-{{ pd.programme.id }}">{{ pd.taux_phys|pct }} %</span></td>
+    <td id="pei-prog-engage-{{ pd.programme.id }}" class="text-center" style="padding:2px 4px;">{{ pd.engage | fcfa }}</td>
+    <td class="text-center" style="padding:2px;"><span id="pei-prog-taux-eng-{{ pd.programme.id }}">{{ pd.taux_eng|pct }} %</span></td>
+    <td id="pei-prog-mandate-{{ pd.programme.id }}" class="text-center" style="padding:2px 4px;">{{ pd.mandate | fcfa }}</td>
+    <td class="text-center" style="padding:2px;"><span id="pei-prog-taux-mand-{{ pd.programme.id }}">{{ pd.taux_mand|pct }} %</span></td>
+    <td id="pei-prog-paye-{{ pd.programme.id }}" class="text-center" style="padding:2px 4px;">{{ pd.paye | fcfa }}</td>
+    <td class="text-center" style="padding:2px;"><span id="pei-prog-taux-pay-{{ pd.programme.id }}">{{ pd.taux_pay|pct }} %</span></td>
     <td></td>
   </tr>
 
@@ -110,13 +110,13 @@
       <td class="text-center" style="padding:2px;">{{ pjd.poids }} %</td>
       <td></td><td></td><td></td>
       <td class="text-center" style="padding:2px 4px;">{{ pjd.budget | fcfa }}</td>
-      <td class="text-center" style="padding:2px;">{{ pjd.taux_phys|pct }} %</td>
-      <td class="text-center" style="padding:2px 4px;">{{ pjd.engage | fcfa }}</td>
-      <td class="text-center" style="padding:2px;">{{ pjd.taux_eng|pct }} %</td>
-      <td class="text-center" style="padding:2px 4px;">{{ pjd.mandate | fcfa }}</td>
-      <td class="text-center" style="padding:2px;">{{ pjd.taux_mand|pct }} %</td>
-      <td class="text-center" style="padding:2px 4px;">{{ pjd.paye | fcfa }}</td>
-      <td class="text-center" style="padding:2px;">{{ pjd.taux_pay|pct }} %</td>
+      <td class="text-center" style="padding:2px;"><span id="pei-proj-taux-phys-{{ pjd.projet.id }}">{{ pjd.taux_phys|pct }} %</span></td>
+      <td id="pei-proj-engage-{{ pjd.projet.id }}" class="text-center" style="padding:2px 4px;">{{ pjd.engage | fcfa }}</td>
+      <td class="text-center" style="padding:2px;"><span id="pei-proj-taux-eng-{{ pjd.projet.id }}">{{ pjd.taux_eng|pct }} %</span></td>
+      <td id="pei-proj-mandate-{{ pjd.projet.id }}" class="text-center" style="padding:2px 4px;">{{ pjd.mandate | fcfa }}</td>
+      <td class="text-center" style="padding:2px;"><span id="pei-proj-taux-mand-{{ pjd.projet.id }}">{{ pjd.taux_mand|pct }} %</span></td>
+      <td id="pei-proj-paye-{{ pjd.projet.id }}" class="text-center" style="padding:2px 4px;">{{ pjd.paye | fcfa }}</td>
+      <td class="text-center" style="padding:2px;"><span id="pei-proj-taux-pay-{{ pjd.projet.id }}">{{ pjd.taux_pay|pct }} %</span></td>
       <td></td>
     </tr>
 
@@ -196,19 +196,19 @@
   <td colspan="3"></td>
   <td class="text-center" style="padding:3px 4px;">{{ totaux.budget | fcfa }}</td>
   <td class="text-center" style="padding:3px;">
-    <span class="badge {{ 'bg-success' if totaux.taux_phys >= 75 else ('bg-warning text-dark' if totaux.taux_phys >= 50 else 'bg-danger') }}">{{ totaux.taux_phys|pct }} %</span>
+    <span id="pei-gl-taux-phys" class="badge {{ 'bg-success' if totaux.taux_phys >= 75 else ('bg-warning text-dark' if totaux.taux_phys >= 50 else 'bg-danger') }}">{{ totaux.taux_phys|pct }} %</span>
   </td>
-  <td class="text-center" style="padding:3px 4px;">{{ totaux.engage | fcfa }}</td>
+  <td id="pei-gl-engage" class="text-center" style="padding:3px 4px;">{{ totaux.engage | fcfa }}</td>
   <td class="text-center" style="padding:3px;">
-    <span class="badge {{ 'bg-success' if totaux.taux_eng >= 75 else ('bg-warning text-dark' if totaux.taux_eng >= 50 else 'bg-danger') }}">{{ totaux.taux_eng|pct }} %</span>
+    <span id="pei-gl-taux-eng" class="badge {{ 'bg-success' if totaux.taux_eng >= 75 else ('bg-warning text-dark' if totaux.taux_eng >= 50 else 'bg-danger') }}">{{ totaux.taux_eng|pct }} %</span>
   </td>
-  <td class="text-center" style="padding:3px 4px;">{{ totaux.mandate | fcfa }}</td>
+  <td id="pei-gl-mandate" class="text-center" style="padding:3px 4px;">{{ totaux.mandate | fcfa }}</td>
   <td class="text-center" style="padding:3px;">
-    <span class="badge {{ 'bg-success' if totaux.taux_mand >= 75 else ('bg-warning text-dark' if totaux.taux_mand >= 50 else 'bg-danger') }}">{{ totaux.taux_mand|pct }} %</span>
+    <span id="pei-gl-taux-mand" class="badge {{ 'bg-success' if totaux.taux_mand >= 75 else ('bg-warning text-dark' if totaux.taux_mand >= 50 else 'bg-danger') }}">{{ totaux.taux_mand|pct }} %</span>
   </td>
-  <td class="text-center" style="padding:3px 4px;">{{ totaux.paye | fcfa }}</td>
+  <td id="pei-gl-paye" class="text-center" style="padding:3px 4px;">{{ totaux.paye | fcfa }}</td>
   <td class="text-center" style="padding:3px;">
-    <span class="badge {{ 'bg-success' if totaux.taux_pay >= 75 else ('bg-warning text-dark' if totaux.taux_pay >= 50 else 'bg-danger') }}">{{ totaux.taux_pay|pct }} %</span>
+    <span id="pei-gl-taux-pay" class="badge {{ 'bg-success' if totaux.taux_pay >= 75 else ('bg-warning text-dark' if totaux.taux_pay >= 50 else 'bg-danger') }}">{{ totaux.taux_pay|pct }} %</span>
   </td>
   <td></td>
 </tr>
@@ -393,6 +393,80 @@ function _pctClass(v) {
 function _fmtFcfa(v) {
   return Math.round(v).toLocaleString('fr-FR');
 }
+function _jWavg(pairs) {
+  var tw = 0, s = 0, i;
+  for (i = 0; i < pairs.length; i++) tw += pairs[i][1];
+  if (!tw) return 0;
+  for (i = 0; i < pairs.length; i++) s += pairs[i][0] * pairs[i][1];
+  return Math.round(s / tw * 100) / 100;
+}
+function _updAggCells(pfx, id, eng, mand, paye, tp, te, tm, tpay) {
+  var e;
+  e = document.getElementById(pfx + 'engage-'    + id); if (e) e.textContent = _fmtFcfa(eng);
+  e = document.getElementById(pfx + 'mandate-'   + id); if (e) e.textContent = _fmtFcfa(mand);
+  e = document.getElementById(pfx + 'paye-'      + id); if (e) e.textContent = _fmtFcfa(paye);
+  e = document.getElementById(pfx + 'taux-phys-' + id); if (e) e.textContent = _fmtPct(tp)   + ' %';
+  e = document.getElementById(pfx + 'taux-eng-'  + id); if (e) e.textContent = _fmtPct(te)   + ' %';
+  e = document.getElementById(pfx + 'taux-mand-' + id); if (e) e.textContent = _fmtPct(tm)   + ' %';
+  e = document.getElementById(pfx + 'taux-pay-'  + id); if (e) e.textContent = _fmtPct(tpay) + ' %';
+}
+function _recalcAgg(actId) {
+  var d = PEI_DATA[actId];
+  if (!d) return;
+  var pj = PEI_HIER.proj[d.projId];
+  if (!pj) return;
+
+  // ── recalc projet ──
+  var eng = 0, mand = 0, paye = 0, wtp = [], wte = [], wtm = [], wtpy = [];
+  pj.actIds.forEach(function(aid) {
+    var a = PEI_DATA[aid]; if (!a) return;
+    eng += a.engage; mand += a.mandate; paye += a.paye;
+    var te  = a.budget ? a.engage  / a.budget * 100 : 0;
+    var tm  = a.engage ? a.mandate / a.engage * 100 : 0;
+    var tpy = a.engage ? a.paye    / a.engage * 100 : 0;
+    wtp.push([a.taux, a.poids]); wte.push([te, a.poids]);
+    wtm.push([tm, a.poids]);     wtpy.push([tpy, a.poids]);
+  });
+  pj.engage = eng; pj.mandate = mand; pj.paye = paye;
+  pj.taux_phys = _jWavg(wtp); pj.taux_eng  = _jWavg(wte);
+  pj.taux_mand = _jWavg(wtm); pj.taux_pay  = _jWavg(wtpy);
+  _updAggCells('pei-proj-', d.projId,
+    pj.engage, pj.mandate, pj.paye, pj.taux_phys, pj.taux_eng, pj.taux_mand, pj.taux_pay);
+
+  // ── recalc programme ──
+  var pg = PEI_HIER.prog[d.progId];
+  if (!pg) return;
+  eng = 0; mand = 0; paye = 0; wtp = []; wte = []; wtm = []; wtpy = [];
+  pg.projIds.forEach(function(pid) {
+    var p = PEI_HIER.proj[pid]; if (!p) return;
+    eng += p.engage; mand += p.mandate; paye += p.paye;
+    wtp.push([p.taux_phys, p.poids]); wte.push([p.taux_eng,  p.poids]);
+    wtm.push([p.taux_mand, p.poids]); wtpy.push([p.taux_pay, p.poids]);
+  });
+  pg.engage = eng; pg.mandate = mand; pg.paye = paye;
+  pg.taux_phys = _jWavg(wtp); pg.taux_eng  = _jWavg(wte);
+  pg.taux_mand = _jWavg(wtm); pg.taux_pay  = _jWavg(wtpy);
+  _updAggCells('pei-prog-', d.progId,
+    pg.engage, pg.mandate, pg.paye, pg.taux_phys, pg.taux_eng, pg.taux_mand, pg.taux_pay);
+
+  // ── recalc global ──
+  eng = 0; mand = 0; paye = 0; wtp = []; wte = []; wtm = []; wtpy = [];
+  Object.keys(PEI_HIER.prog).forEach(function(pgid) {
+    var p = PEI_HIER.prog[pgid];
+    eng += p.engage; mand += p.mandate; paye += p.paye;
+    wtp.push([p.taux_phys, p.poids]); wte.push([p.taux_eng,  p.poids]);
+    wtm.push([p.taux_mand, p.poids]); wtpy.push([p.taux_pay, p.poids]);
+  });
+  var e;
+  e = document.getElementById('pei-gl-engage');    if (e) e.textContent = _fmtFcfa(eng);
+  e = document.getElementById('pei-gl-mandate');   if (e) e.textContent = _fmtFcfa(mand);
+  e = document.getElementById('pei-gl-paye');      if (e) e.textContent = _fmtFcfa(paye);
+  var gl_tp = _jWavg(wtp), gl_te = _jWavg(wte), gl_tm = _jWavg(wtm), gl_tpy = _jWavg(wtpy);
+  e = document.getElementById('pei-gl-taux-phys'); if (e) { e.textContent = _fmtPct(gl_tp)  + ' %'; e.className = _pctClass(gl_tp);  }
+  e = document.getElementById('pei-gl-taux-eng');  if (e) { e.textContent = _fmtPct(gl_te)  + ' %'; e.className = _pctClass(gl_te);  }
+  e = document.getElementById('pei-gl-taux-mand'); if (e) { e.textContent = _fmtPct(gl_tm)  + ' %'; e.className = _pctClass(gl_tm);  }
+  e = document.getElementById('pei-gl-taux-pay');  if (e) { e.textContent = _fmtPct(gl_tpy) + ' %'; e.className = _pctClass(gl_tpy); }
+}
 
 /* ── Donnees pre-chargees (meme pattern que PAI) ───────────────────── */
 var PEI_DATA = {
@@ -405,10 +479,32 @@ var PEI_DATA = {
     paye:    {{ ad.paye or 0 }},
     locked:  {{ 'true' if ad.engage_verrouille else 'false' }},
     isAdmin: {{ 'true' if current_user.role == 'admin_editeur' else 'false' }},
-    taux: {{ ad.taux_phys or 0 }},
-    obs:  {{ (ad.pei.observations or '') | tojson if ad.pei else '""' }},
+    taux:    {{ ad.taux_phys or 0 }},
+    obs:     {{ (ad.pei.observations or '') | tojson if ad.pei else '""' }},
+    poids:   {{ ad.poids or 0 }},
+    projId:  {{ pjd.projet.id }},
+    progId:  {{ pd.programme.id }},
   },
 {% endfor %}{% endfor %}{% endfor %}
+};
+
+var PEI_HIER = {
+  proj: {
+{% for pd in data %}{% for pjd in pd.projets %}
+    {{ pjd.projet.id }}: { poids: {{ pjd.poids }}, progId: {{ pd.programme.id }}, budget: {{ pjd.budget }},
+      actIds: [{% for ad in pjd.activites %}{{ ad.activite.id }}{% if not loop.last %},{% endif %}{% endfor %}],
+      engage: {{ pjd.engage }}, mandate: {{ pjd.mandate }}, paye: {{ pjd.paye }},
+      taux_phys: {{ pjd.taux_phys }}, taux_eng: {{ pjd.taux_eng }}, taux_mand: {{ pjd.taux_mand }}, taux_pay: {{ pjd.taux_pay }} },
+{% endfor %}{% endfor %}
+  },
+  prog: {
+{% for pd in data %}
+    {{ pd.programme.id }}: { poids: {{ pd.poids }}, budget: {{ pd.budget }},
+      projIds: [{% for pjd in pd.projets %}{{ pjd.projet.id }}{% if not loop.last %},{% endif %}{% endfor %}],
+      engage: {{ pd.engage }}, mandate: {{ pd.mandate }}, paye: {{ pd.paye }},
+      taux_phys: {{ pd.taux_phys }}, taux_eng: {{ pd.taux_eng }}, taux_mand: {{ pd.taux_mand }}, taux_pay: {{ pd.taux_pay }} },
+{% endfor %}
+  }
 };
 
 {% if peut_editer_taux %}
@@ -460,6 +556,7 @@ document.getElementById('formPeiTaux').addEventListener('submit', function (e) {
       var obsEl = document.getElementById('pei-obs-' + _peiTauxActId);
       if (obsEl) obsEl.textContent = data.obs || '—';
       _peiTauxMin = data.taux_phys;
+      _recalcAgg(_peiTauxActId);
       bootstrap.Modal.getInstance(document.getElementById('modalPeiTaux')).hide();
     })
     .catch(function () {
@@ -574,6 +671,7 @@ document.getElementById('formPeiEdit').addEventListener('submit', function (e) {
       if (tmEl)  { tmEl.textContent  = _fmtPct(data.taux_mand) + ' %'; tmEl.className  = _pctClass(data.taux_mand); tmEl.style.fontSize  = '.62rem'; }
       var tpEl = document.getElementById('pei-taux-pay-'  + _peiEditActId);
       if (tpEl)  { tpEl.textContent  = _fmtPct(data.taux_pay)  + ' %'; tpEl.className  = _pctClass(data.taux_pay);  tpEl.style.fontSize  = '.62rem'; }
+      _recalcAgg(_peiEditActId);
       bootstrap.Modal.getInstance(document.getElementById('modalPeiEdit')).hide();
     })
     .catch(function () {

@@ -415,6 +415,10 @@ var PEI_DATA = {
 var _peiTauxActId = null, _peiTauxMin = 0;
 
 document.getElementById('modalPeiTaux').addEventListener('hidden.bs.modal', function () {
+  document.body.classList.remove('modal-open');
+  document.body.style.removeProperty('overflow');
+  document.body.style.removeProperty('padding-right');
+  document.querySelectorAll('.modal-backdrop').forEach(function(b) { b.remove(); });
   var inst = bootstrap.Modal.getInstance(this);
   if (inst) inst.dispose();
 });
@@ -478,6 +482,10 @@ document.getElementById('formPeiTaux').addEventListener('submit', function (e) {
 var _peiEditActId = null, _peiBudget = 0, _peiEngageLocked = false, _peiIsAdmin = false;
 
 document.getElementById('modalPeiEdit').addEventListener('hidden.bs.modal', function () {
+  document.body.classList.remove('modal-open');
+  document.body.style.removeProperty('overflow');
+  document.body.style.removeProperty('padding-right');
+  document.querySelectorAll('.modal-backdrop').forEach(function(b) { b.remove(); });
   var inst = bootstrap.Modal.getInstance(this);
   if (inst) inst.dispose();
 });

@@ -419,8 +419,6 @@ document.getElementById('modalPeiTaux').addEventListener('hidden.bs.modal', func
   document.body.style.removeProperty('overflow');
   document.body.style.removeProperty('padding-right');
   document.querySelectorAll('.modal-backdrop').forEach(function(b) { b.remove(); });
-  var inst = bootstrap.Modal.getInstance(this);
-  if (inst) inst.dispose();
 });
 
 function _prepPeiTaux(actId) {
@@ -486,8 +484,6 @@ document.getElementById('modalPeiEdit').addEventListener('hidden.bs.modal', func
   document.body.style.removeProperty('overflow');
   document.body.style.removeProperty('padding-right');
   document.querySelectorAll('.modal-backdrop').forEach(function(b) { b.remove(); });
-  var inst = bootstrap.Modal.getInstance(this);
-  if (inst) inst.dispose();
 });
 
 function _prepPeiEdit(actId) {

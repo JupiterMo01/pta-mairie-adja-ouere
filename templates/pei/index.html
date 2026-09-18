@@ -399,13 +399,13 @@ var PEI_DATA = {
 {% for pd in data %}{% for pjd in pd.projets %}{% for ad in pjd.activites %}
   {{ ad.activite.id }}: {
     nom:     {{ ad.activite.nom | tojson }},
-    budget:  {{ ad.budget }},
-    engage:  {{ ad.engage }},
-    mandate: {{ ad.mandate }},
-    paye:    {{ ad.paye }},
+    budget:  {{ ad.budget or 0 }},
+    engage:  {{ ad.engage or 0 }},
+    mandate: {{ ad.mandate or 0 }},
+    paye:    {{ ad.paye or 0 }},
     locked:  {{ 'true' if ad.engage_verrouille else 'false' }},
     isAdmin: {{ 'true' if current_user.role == 'admin_editeur' else 'false' }},
-    taux: {{ ad.taux_phys }},
+    taux: {{ ad.taux_phys or 0 }},
     obs:  {{ (ad.pei.observations or '') | tojson if ad.pei else '""' }},
   },
 {% endfor %}{% endfor %}{% endfor %}

@@ -548,12 +548,15 @@ class PaiProjet(db.Model):
 
 
 class PeiActivite(db.Model):
-    """Données d'exécution financière du PAI saisies par admin/DAAF/SBFC."""
+    """Données d'exécution du PAI : financières (admin/DAAF/SBFC) + taux physique (direction responsable)."""
     __tablename__ = 'pei_activites'
-    id             = db.Column(db.Integer, primary_key=True)
-    activite_id    = db.Column(db.Integer, db.ForeignKey('activites.id'), nullable=False, unique=True)
-    montant_engage = db.Column(db.Float, default=0.0)
-    montant_mandate = db.Column(db.Float, default=0.0)
-    montant_paye   = db.Column(db.Float, default=0.0)
+    id              = db.Column(db.Integer, primary_key=True)
+    activite_id     = db.Column(db.Integer, db.ForeignKey('activites.id'), nullable=False, unique=True)
+    montant_engage     = db.Column(db.Float,   default=0.0)
+    montant_mandate    = db.Column(db.Float,   default=0.0)
+    montant_paye       = db.Column(db.Float,   default=0.0)
+    engage_verrouille  = db.Column(db.Boolean, default=False)
+    taux_physique      = db.Column(db.Float,   default=0.0)
+    observations       = db.Column(db.Text)
 
     activite = db.relationship('Activite', backref=db.backref('pei_extra', uselist=False))

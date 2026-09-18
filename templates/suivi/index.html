@@ -343,7 +343,14 @@
   <tr class="bg-act">
     <td class="text-center">{{ ad['code'] }}</td>
     <td>{{ act.nom }}</td>
-    {% if role in ('admin_editeur','admin_lecteur') %}<td></td>{% endif %}
+    {% if role in ('admin_editeur','admin_lecteur') %}
+    <td class="text-center" style="font-size:.65rem;">
+      {% if act.direction_responsable %}
+        <span class="badge bg-secondary bg-opacity-25 text-dark border" style="font-size:.6rem;"
+              title="{{ act.direction_responsable.nom }}">{{ act.direction_responsable.code }}</span>
+      {% else %}—{% endif %}
+    </td>
+    {% endif %}
     <td class="text-center">{{ per_a }}</td>
     <td class="text-center">{{ ad['new_poids']|pct }}%</td>
     <td class="text-center" id="statut-act-{{ act.id }}">

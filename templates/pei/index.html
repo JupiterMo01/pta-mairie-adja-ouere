@@ -409,9 +409,9 @@ function _fmtFcfa(v) {
 }
 
 {% if peut_editer_taux %}
-var _peiTauxActId = null, _peiTauxMin = 0;
+var _peiTauxActId = null, _peiTauxMin = 0, _peiTauxLastBtn = null;
 
-function _prepPeiTaux(btn) {
+function _fillPeiTaux(btn) {
   _peiTauxActId = +btn.dataset.id;
   var tauxActuel = +btn.dataset.taux;
   _peiTauxMin   = tauxActuel;
@@ -427,6 +427,11 @@ function _prepPeiTaux(btn) {
       td ? td.textContent.trim().replace(/\s+/g,' ') : '';
   }
 }
+function _prepPeiTaux(btn) { _peiTauxLastBtn = btn; _fillPeiTaux(btn); }
+
+document.getElementById('modalPeiTaux').addEventListener('shown.bs.modal', function () {
+  if (_peiTauxLastBtn) _fillPeiTaux(_peiTauxLastBtn);
+});
 
 document.getElementById('formPeiTaux').addEventListener('submit', function (e) {
   e.preventDefault();
@@ -470,9 +475,9 @@ document.getElementById('formPeiTaux').addEventListener('submit', function (e) {
 {% endif %}
 
 {% if peut_editer %}
-var _peiEditActId = null, _peiBudget = 0, _peiEngageLocked = false, _peiIsAdmin = false;
+var _peiEditActId = null, _peiBudget = 0, _peiEngageLocked = false, _peiIsAdmin = false, _peiEditLastBtn = null;
 
-function _prepPeiEdit(btn) {
+function _fillPeiEdit(btn) {
   var actId   = +btn.dataset.id;
   var budget  = +btn.dataset.budget;
   var engage  = +btn.dataset.engage;
@@ -522,6 +527,11 @@ function _prepPeiEdit(btn) {
       td ? td.textContent.trim().replace(/\s+/g,' ') : '';
   }
 }
+function _prepPeiEdit(btn) { _peiEditLastBtn = btn; _fillPeiEdit(btn); }
+
+document.getElementById('modalPeiEdit').addEventListener('shown.bs.modal', function () {
+  if (_peiEditLastBtn) _fillPeiEdit(_peiEditLastBtn);
+});
 
 document.getElementById('formPeiEdit').addEventListener('submit', function (e) {
   e.preventDefault();

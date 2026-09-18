@@ -1,7 +1,7 @@
-from flask import render_template, abort, request, redirect, url_for, flash
+from flask import render_template, abort, request, redirect, url_for, flash, jsonify
 from flask_login import login_required, current_user
-from models import (db, Programme, PaiActivite, PaiProgramme, PaiProjet,
-                    PeiActivite, SuiviTache)
+from models import (db, Activite, Programme, PaiActivite, PaiProgramme, PaiProjet,
+                    PeiActivite)
 from utils import get_annee, log_audit
 from . import pei_bp
 
@@ -9,6 +9,7 @@ from . import pei_bp
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 
 def _peut_editer():
+    """Peut éditer les montants financiers (DAAF / SBFC / admin_editeur)."""
     if current_user.role == 'admin_editeur':
         return True
     if current_user.role == 'direction' and current_user.direction \
@@ -20,51 +21,26 @@ def _peut_editer():
     return False
 
 
-def _taux_sv(sv):
-    if sv is None:             return 0.0
-    if sv.statut == 'execute': return 100.0
-    if sv.statut == 'en_cours': return float(sv.taux_execution or 0)
-    return 0.0
-
-
-def _load_suivi_global(annee_id):
-    """Taux le plus récent par tâche (trimestre le plus élevé)."""
-    suivis = (SuiviTache.query
-              .filter_by(annee_id=annee_id)
-              .order_by(SuiviTache.trimestre.desc())
-              .all())
-    result = {}
-    for s in suivis:
-        ex = result.get(s.tache_id)
-        if ex is None:
-            result[s.tache_id] = s
-        elif (s.trimestre == ex.trimestre
-              and s.service_id is not None
-              and ex.service_id is None):
-            result[s.tache_id] = s
-    return result
+def _peut_editer_taux(activite):
+    """Peut saisir le taux physique et les observations/niveau d'exécution.
+    admin_editeur : toutes activités.
+    direction     : uniquement les activités dont il est la structure responsable.
+    """
+    if current_user.role == 'admin_editeur':
+        return True
+    if current_user.role == 'direction':
+        d = current_user.direction
+        return bool(d and activite.direction_responsable_id == d.id)
+    return False
 
 
 def _wavg(pairs):
     """Moyenne pondérée [(valeur, poids)]. Renvoie 0.0 si poids total nul."""
     p = sum(w for _, w in pairs)
-    return round(sum(v * w for v, w in pairs) / p, 1) if p else 0.0
+    return round(sum(v * w for v, w in pairs) / p, 2) if p else 0.0
 
 
 def _build_pei_data(annee):
-    suivi_map = _load_suivi_global(annee.id)
-
-    # Toutes observations de l'année (tous trimestres)
-    all_svs = SuiviTache.query.filter(
-        SuiviTache.annee_id == annee.id,
-        SuiviTache.observation.isnot(None)
-    ).all()
-    obs_map = {}
-    for sv in all_svs:
-        txt = (sv.observation or '').strip()
-        if txt:
-            obs_map.setdefault(sv.tache_id, []).append(txt)
-
     programmes = (Programme.query
                   .filter_by(annee_id=annee.id)
                   .order_by(Programme.numero)
@@ -92,32 +68,24 @@ def _build_pei_data(annee):
             for act in inv_acts:
                 act_num += 1
 
-                # Taux physique : moyenne pondérée des tâches (poids PTA)
-                task_pairs = []
-                for t in act.taches:
-                    task_pairs.append((_taux_sv(suivi_map.get(t.id)), t.poids or 0))
-                taux_phys = _wavg(task_pairs) if task_pairs else 0.0
-
-                # Observations compilées
-                obs_parts = []
-                for t in act.taches:
-                    obs_parts.extend(obs_map.get(t.id, []))
-                obs_compiled = ' ; '.join(obs_parts)
-
                 # PeiActivite (crée si absent)
                 pei = PeiActivite.query.filter_by(activite_id=act.id).first()
                 if not pei:
                     pei = PeiActivite(activite_id=act.id)
                     db.session.add(pei)
 
+                # Taux physique : saisi manuellement par la direction responsable
+                taux_phys = float(pei.taux_physique or 0.0)
+                obs       = pei.observations or ''
+
                 budget   = act.budget_total
                 engage   = pei.montant_engage  or 0.0
                 mandate  = pei.montant_mandate or 0.0
                 paye     = pei.montant_paye    or 0.0
 
-                taux_eng  = round(engage  / budget  * 100, 1) if budget  else 0.0
-                taux_mand = round(mandate / engage  * 100, 1) if engage  else 0.0
-                taux_pay  = round(paye    / engage  * 100, 1) if engage  else 0.0
+                taux_eng  = round(engage  / budget  * 100, 2) if budget  else 0.0
+                taux_mand = round(mandate / engage  * 100, 2) if engage  else 0.0
+                taux_pay  = round(paye    / engage  * 100, 2) if engage  else 0.0
 
                 pai_extra = act.pai_extra
                 poids = int(pai_extra.poids_pai or 0) if pai_extra else 0
@@ -128,19 +96,21 @@ def _build_pei_data(annee):
                 gl_paye    += paye
 
                 act_datas.append({
-                    'activite':  act,
-                    'act_num':   act_num,
-                    'poids':     poids,
-                    'taux_phys': taux_phys,
-                    'budget':    budget,
-                    'engage':    engage,
-                    'mandate':   mandate,
-                    'paye':      paye,
-                    'taux_eng':  taux_eng,
-                    'taux_mand': taux_mand,
-                    'taux_pay':  taux_pay,
-                    'obs':       obs_compiled,
-                    'pei':       pei,
+                    'activite':         act,
+                    'act_num':          act_num,
+                    'poids':            poids,
+                    'taux_phys':        taux_phys,
+                    'budget':           budget,
+                    'engage':           engage,
+                    'mandate':          mandate,
+                    'paye':             paye,
+                    'taux_eng':         taux_eng,
+                    'taux_mand':        taux_mand,
+                    'taux_pay':         taux_pay,
+                    'obs':              obs,
+                    'pei':              pei,
+                    'editable_taux':    _peut_editer_taux(act),
+                    'engage_verrouille': bool(pei.engage_verrouille),
                 })
 
             # Projet — agrégation par poids PAI activités
@@ -238,12 +208,20 @@ def index():
     data, totaux = _build_pei_data(annee)
     go = request.args.get('go', '')
 
+    # peut_editer_taux_global : True si l'utilisateur peut éditer le taux physique
+    # d'au moins une activité (affiche ou non le modal dans la page)
+    peut_editer_taux_global = (
+        current_user.role == 'admin_editeur' or
+        current_user.role == 'direction'
+    )
+
     return render_template(
         'pei/index.html',
         annee=annee,
         data=data,
         totaux=totaux,
         peut_editer=_peut_editer(),
+        peut_editer_taux=peut_editer_taux_global,
         go=go,
     )
 
@@ -361,7 +339,7 @@ def export_excel():
         (7,  'Struct. Resp.'),
         (8,  'Coût total (F CFA)'),
         (9,  'Taux exéc. physique (%)'),
-        (16, 'Observations'),
+        (16, "Observations / Niveau d'exéc."),
     ]
     for col, h in simple_h:
         ws.merge_cells(start_row=5, start_column=col, end_row=6, end_column=col)
@@ -397,8 +375,8 @@ def export_excel():
         return act.periode_debut or act.periode_fin or ''
 
     def _pct_cell(ws, r, col, val):
-        c = ws.cell(row=r, column=col, value=round(val, 1))
-        c.number_format = '0.0"%"'
+        c = ws.cell(row=r, column=col, value=round(val, 2))
+        c.number_format = '0.00"%"'
         return c
 
     for pd in data:
@@ -468,13 +446,13 @@ def export_excel():
                     _periode(act),
                     act.direction_responsable.code if act.direction_responsable else '',
                     ad['budget'],
-                    round(ad['taux_phys'], 1),
+                    round(ad['taux_phys'], 2),
                     ad['engage'],
-                    round(ad['taux_eng'],  1),
+                    round(ad['taux_eng'],  2),
                     ad['mandate'],
-                    round(ad['taux_mand'], 1),
+                    round(ad['taux_mand'], 2),
                     ad['paye'],
-                    round(ad['taux_pay'],  1),
+                    round(ad['taux_pay'],  2),
                     ad['obs'],
                 ]
                 for col, val in enumerate(row_data, 1):
@@ -484,7 +462,7 @@ def export_excel():
                     if col in (8, 10, 12, 14):
                         c.number_format = '#,##0'
                     if col in (9, 11, 13, 15):
-                        c.number_format = '0.0"%"'
+                        c.number_format = '0.00"%"'
                 r += 1
 
     # Ligne totaux
@@ -554,34 +532,108 @@ def edit_montants(activite_id):
     if not pei:
         abort(404)
 
+    is_admin = (current_user.role == 'admin_editeur')
     budget = pei.activite.budget_total
+
+    engage_actuel  = float(pei.montant_engage  or 0.0)
+    mandate_actuel = float(pei.montant_mandate or 0.0)
+    paye_actuel    = float(pei.montant_paye    or 0.0)
+
+    def _err(msg):
+        return jsonify({'ok': False, 'error': msg}), 400
 
     try:
         engage  = float(request.form.get('montant_engage',  0) or 0)
         mandate = float(request.form.get('montant_mandate', 0) or 0)
         paye    = float(request.form.get('montant_paye',    0) or 0)
     except ValueError:
-        flash("Valeurs invalides.", 'danger')
-        return redirect(url_for('pei.index'))
+        return _err("Valeurs invalides.")
 
-    # Contraintes
+    # Montant engagé : saisie unique pour DAAF/SBFC — l'admin peut toujours corriger
+    if not is_admin and pei.engage_verrouille:
+        engage = engage_actuel
+
+    # ── Contrôles communs (tous rôles) ──────────────────────────────────────
     if engage > budget:
-        flash(f"Le montant engagé ({engage:,.0f}) ne peut pas dépasser le coût total ({budget:,.0f}).", 'warning')
-        return redirect(url_for('pei.index', go=f'act-{activite_id}'))
-    if mandate > engage:
-        flash(f"Le montant mandaté ({mandate:,.0f}) ne peut pas dépasser le montant engagé ({engage:,.0f}).", 'warning')
-        return redirect(url_for('pei.index', go=f'act-{activite_id}'))
-    if paye > engage:
-        flash(f"Le montant payé ({paye:,.0f}) ne peut pas dépasser le montant engagé ({engage:,.0f}).", 'warning')
-        return redirect(url_for('pei.index', go=f'act-{activite_id}'))
+        return _err(f"Le montant engagé ({engage:,.0f} F) ne peut pas dépasser le coût total ({budget:,.0f} F).")
 
+    if mandate > engage:
+        return _err(f"Le montant mandaté ({mandate:,.0f} F) ne peut pas dépasser le montant engagé ({engage:,.0f} F).")
+
+    if paye > mandate:
+        return _err(f"Le montant payé ({paye:,.0f} F) ne peut pas dépasser le montant mandaté ({mandate:,.0f} F).")
+
+    # ── Contraintes DAAF / SBFC : mandate et paye ne peuvent que croître ────
+    if not is_admin:
+        if mandate < mandate_actuel:
+            return _err(f"Le montant mandaté ne peut pas diminuer (valeur actuelle : {mandate_actuel:,.0f} F CFA).")
+        if paye < paye_actuel:
+            return _err(f"Le montant payé ne peut pas diminuer (valeur actuelle : {paye_actuel:,.0f} F CFA).")
+
+    # ── Enregistrement ──────────────────────────────────────────────────────
     pei.montant_engage  = engage
     pei.montant_mandate = mandate
     pei.montant_paye    = paye
+
+    if not is_admin:
+        pei.engage_verrouille = True
+
     db.session.commit()
 
     log_audit('pei_edit',
               f"Activité {pei.activite.code} — Engagé {engage:,.0f} / "
               f"Mandaté {mandate:,.0f} / Payé {paye:,.0f} F CFA")
 
-    return redirect(url_for('pei.index', go=f'act-{activite_id}'))
+    taux_eng  = round(engage  / budget  * 100, 2) if budget  else 0.0
+    taux_mand = round(mandate / engage  * 100, 2) if engage  else 0.0
+    taux_pay  = round(paye    / mandate * 100, 2) if mandate else 0.0
+
+    return jsonify({
+        'ok':               True,
+        'engage':           engage,
+        'mandate':          mandate,
+        'paye':             paye,
+        'taux_eng':         taux_eng,
+        'taux_mand':        taux_mand,
+        'taux_pay':         taux_pay,
+        'engage_verrouille': bool(pei.engage_verrouille),
+    })
+
+
+@pei_bp.route('/edit-taux/<int:activite_id>', methods=['POST'])
+@login_required
+def edit_taux_phys(activite_id):
+    act = db.get_or_404(Activite, activite_id)
+    if not _peut_editer_taux(act):
+        abort(403)
+
+    annee = get_annee()
+    if not annee:
+        abort(404)
+
+    pei = PeiActivite.query.filter_by(activite_id=activite_id).first()
+    if not pei:
+        abort(404)
+
+    try:
+        taux = float(str(request.form.get('taux_physique', 0) or 0).replace(',', '.'))
+    except ValueError:
+        return jsonify({'ok': False, 'error': "Taux invalide."}), 400
+
+    taux = round(max(0.0, min(100.0, taux)), 2)
+    current_taux = float(pei.taux_physique or 0.0)
+
+    if current_user.role != 'admin_editeur' and taux < current_taux:
+        return jsonify({'ok': False,
+                        'error': f"Le taux ne peut pas diminuer (valeur actuelle : {current_taux} %). "
+                                 f"Saisissez {current_taux} % ou plus."}), 400
+
+    obs = str(request.form.get('observations', '') or '').strip()[:3000]
+    pei.taux_physique = taux
+    pei.observations  = obs
+    db.session.commit()
+
+    log_audit('pei_taux',
+              f"Activité {act.code} — Taux physique {taux} %")
+
+    return jsonify({'ok': True, 'taux_phys': taux, 'obs': obs or ''})

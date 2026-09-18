@@ -67,7 +67,7 @@
     <th rowspan="2" style="padding:3px 2px;">Coût total<br>(F CFA)</th>
     <th rowspan="2" style="padding:3px 2px;background:#0f6f3a;">Taux<br>phys. (%)</th>
     <th colspan="6" style="padding:3px 2px;background:#7b3f00;">EXÉCUTION FINANCIÈRE (F CFA)</th>
-    <th rowspan="2" style="padding:3px 2px;background:#333;">Observations</th>
+    <th rowspan="2" style="padding:3px 2px;background:#333;">Observations /<br>Niveau d'exéc.</th>
   </tr>
   <tr style="background:#1e3a5f;color:#fcd116;text-align:center;vertical-align:middle;line-height:1.2;">
     <th style="padding:3px 2px;background:#7b3f00;">Engagé</th>
@@ -90,13 +90,13 @@
     <td class="text-center" style="padding:2px;">{{ pd.poids }} %</td>
     <td></td><td></td><td></td>
     <td class="text-center" style="padding:2px 4px;">{{ pd.budget | fcfa }}</td>
-    <td class="text-center" style="padding:2px;">{{ pd.taux_phys }} %</td>
+    <td class="text-center" style="padding:2px;">{{ pd.taux_phys|pct }} %</td>
     <td class="text-center" style="padding:2px 4px;">{{ pd.engage | fcfa }}</td>
-    <td class="text-center" style="padding:2px;">{{ pd.taux_eng }} %</td>
+    <td class="text-center" style="padding:2px;">{{ pd.taux_eng|pct }} %</td>
     <td class="text-center" style="padding:2px 4px;">{{ pd.mandate | fcfa }}</td>
-    <td class="text-center" style="padding:2px;">{{ pd.taux_mand }} %</td>
+    <td class="text-center" style="padding:2px;">{{ pd.taux_mand|pct }} %</td>
     <td class="text-center" style="padding:2px 4px;">{{ pd.paye | fcfa }}</td>
-    <td class="text-center" style="padding:2px;">{{ pd.taux_pay }} %</td>
+    <td class="text-center" style="padding:2px;">{{ pd.taux_pay|pct }} %</td>
     <td></td>
   </tr>
 
@@ -110,13 +110,13 @@
       <td class="text-center" style="padding:2px;">{{ pjd.poids }} %</td>
       <td></td><td></td><td></td>
       <td class="text-center" style="padding:2px 4px;">{{ pjd.budget | fcfa }}</td>
-      <td class="text-center" style="padding:2px;">{{ pjd.taux_phys }} %</td>
+      <td class="text-center" style="padding:2px;">{{ pjd.taux_phys|pct }} %</td>
       <td class="text-center" style="padding:2px 4px;">{{ pjd.engage | fcfa }}</td>
-      <td class="text-center" style="padding:2px;">{{ pjd.taux_eng }} %</td>
+      <td class="text-center" style="padding:2px;">{{ pjd.taux_eng|pct }} %</td>
       <td class="text-center" style="padding:2px 4px;">{{ pjd.mandate | fcfa }}</td>
-      <td class="text-center" style="padding:2px;">{{ pjd.taux_mand }} %</td>
+      <td class="text-center" style="padding:2px;">{{ pjd.taux_mand|pct }} %</td>
       <td class="text-center" style="padding:2px 4px;">{{ pjd.paye | fcfa }}</td>
-      <td class="text-center" style="padding:2px;">{{ pjd.taux_pay }} %</td>
+      <td class="text-center" style="padding:2px;">{{ pjd.taux_pay|pct }} %</td>
       <td></td>
     </tr>
 
@@ -130,7 +130,14 @@
         <button class="btn btn-outline-warning py-0 px-1 float-end"
                 style="font-size:.62rem;line-height:1.3;"
                 title="Modifier les montants financiers"
-                onclick="_openPeiEdit({{ ad.activite.id }},{{ ad.budget }},{{ ad.engage }},{{ ad.mandate }},{{ ad.paye }})">
+                data-id="{{ ad.activite.id }}"
+                data-budget="{{ ad.budget }}"
+                data-engage="{{ ad.engage }}"
+                data-mandate="{{ ad.mandate }}"
+                data-paye="{{ ad.paye }}"
+                data-locked="{{ 'true' if ad.engage_verrouille else 'false' }}"
+                data-admin="{{ 'true' if current_user.role == 'admin_editeur' else 'false' }}"
+                onclick="_openPeiEdit(this)">
           <i class="fas fa-pencil-alt"></i>
         </button>
         {% endif %}
@@ -150,25 +157,41 @@
       <td class="text-center" style="padding:2px;">{{ ad.activite.direction_responsable.code if ad.activite.direction_responsable else '—' }}</td>
       <td class="text-center fw-semibold" style="padding:2px 4px;">{{ ad.budget | fcfa }}</td>
       <td class="text-center" style="padding:2px;">
-        <span class="badge {{ 'bg-success' if ad.taux_phys >= 75 else ('bg-warning text-dark' if ad.taux_phys >= 50 else 'bg-danger') }}"
-              style="font-size:.62rem;">{{ ad.taux_phys }} %</span>
+        <span id="pei-taux-phys-{{ ad.activite.id }}"
+              class="badge {{ 'bg-success' if ad.taux_phys >= 75 else ('bg-warning text-dark' if ad.taux_phys >= 50 else 'bg-danger') }}"
+              style="font-size:.62rem;">{{ ad.taux_phys|pct }} %</span>
+        {% if ad.editable_taux %}
+        <br><button id="pei-taux-btn-{{ ad.activite.id }}"
+                class="btn btn-outline-success py-0 px-1 mt-1"
+                style="font-size:.58rem;line-height:1.2;"
+                title="Saisir le taux d'exécution physique et le niveau d'exécution"
+                data-id="{{ ad.activite.id }}"
+                data-taux="{{ ad.taux_phys }}"
+                data-obs="{{ ad.pei.observations | e if ad.pei.observations else '' }}"
+                onclick="_openPeiTaux(+this.dataset.id, +this.dataset.taux, this.dataset.obs)">
+          <i class="fas fa-pen"></i>
+        </button>
+        {% endif %}
       </td>
-      <td class="text-center" style="padding:2px 4px;">{{ ad.engage | fcfa }}</td>
+      <td id="pei-engage-{{ ad.activite.id }}" class="text-center" style="padding:2px 4px;">{{ ad.engage | fcfa }}</td>
       <td class="text-center" style="padding:2px;">
-        <span class="badge {{ 'bg-success' if ad.taux_eng >= 75 else ('bg-warning text-dark' if ad.taux_eng >= 50 else 'bg-danger') }}"
-              style="font-size:.62rem;">{{ ad.taux_eng }} %</span>
+        <span id="pei-taux-eng-{{ ad.activite.id }}"
+              class="badge {{ 'bg-success' if ad.taux_eng >= 75 else ('bg-warning text-dark' if ad.taux_eng >= 50 else 'bg-danger') }}"
+              style="font-size:.62rem;">{{ ad.taux_eng|pct }} %</span>
       </td>
-      <td class="text-center" style="padding:2px 4px;">{{ ad.mandate | fcfa }}</td>
+      <td id="pei-mandate-{{ ad.activite.id }}" class="text-center" style="padding:2px 4px;">{{ ad.mandate | fcfa }}</td>
       <td class="text-center" style="padding:2px;">
-        <span class="badge {{ 'bg-success' if ad.taux_mand >= 75 else ('bg-warning text-dark' if ad.taux_mand >= 50 else 'bg-danger') }}"
-              style="font-size:.62rem;">{{ ad.taux_mand }} %</span>
+        <span id="pei-taux-mand-{{ ad.activite.id }}"
+              class="badge {{ 'bg-success' if ad.taux_mand >= 75 else ('bg-warning text-dark' if ad.taux_mand >= 50 else 'bg-danger') }}"
+              style="font-size:.62rem;">{{ ad.taux_mand|pct }} %</span>
       </td>
-      <td class="text-center" style="padding:2px 4px;">{{ ad.paye | fcfa }}</td>
+      <td id="pei-paye-{{ ad.activite.id }}" class="text-center" style="padding:2px 4px;">{{ ad.paye | fcfa }}</td>
       <td class="text-center" style="padding:2px;">
-        <span class="badge {{ 'bg-success' if ad.taux_pay >= 75 else ('bg-warning text-dark' if ad.taux_pay >= 50 else 'bg-danger') }}"
-              style="font-size:.62rem;">{{ ad.taux_pay }} %</span>
+        <span id="pei-taux-pay-{{ ad.activite.id }}"
+              class="badge {{ 'bg-success' if ad.taux_pay >= 75 else ('bg-warning text-dark' if ad.taux_pay >= 50 else 'bg-danger') }}"
+              style="font-size:.62rem;">{{ ad.taux_pay|pct }} %</span>
       </td>
-      <td class="text-center" style="padding:2px;font-size:.62rem;color:#444;">{{ ad.obs or '—' }}</td>
+      <td id="pei-obs-{{ ad.activite.id }}" class="text-center" style="padding:2px;font-size:.62rem;color:#444;">{{ ad.obs or '—' }}</td>
     </tr>
     {% endfor %}
 
@@ -183,19 +206,19 @@
   <td colspan="3"></td>
   <td class="text-center" style="padding:3px 4px;">{{ totaux.budget | fcfa }}</td>
   <td class="text-center" style="padding:3px;">
-    <span class="badge {{ 'bg-success' if totaux.taux_phys >= 75 else ('bg-warning text-dark' if totaux.taux_phys >= 50 else 'bg-danger') }}">{{ totaux.taux_phys }} %</span>
+    <span class="badge {{ 'bg-success' if totaux.taux_phys >= 75 else ('bg-warning text-dark' if totaux.taux_phys >= 50 else 'bg-danger') }}">{{ totaux.taux_phys|pct }} %</span>
   </td>
   <td class="text-center" style="padding:3px 4px;">{{ totaux.engage | fcfa }}</td>
   <td class="text-center" style="padding:3px;">
-    <span class="badge {{ 'bg-success' if totaux.taux_eng >= 75 else ('bg-warning text-dark' if totaux.taux_eng >= 50 else 'bg-danger') }}">{{ totaux.taux_eng }} %</span>
+    <span class="badge {{ 'bg-success' if totaux.taux_eng >= 75 else ('bg-warning text-dark' if totaux.taux_eng >= 50 else 'bg-danger') }}">{{ totaux.taux_eng|pct }} %</span>
   </td>
   <td class="text-center" style="padding:3px 4px;">{{ totaux.mandate | fcfa }}</td>
   <td class="text-center" style="padding:3px;">
-    <span class="badge {{ 'bg-success' if totaux.taux_mand >= 75 else ('bg-warning text-dark' if totaux.taux_mand >= 50 else 'bg-danger') }}">{{ totaux.taux_mand }} %</span>
+    <span class="badge {{ 'bg-success' if totaux.taux_mand >= 75 else ('bg-warning text-dark' if totaux.taux_mand >= 50 else 'bg-danger') }}">{{ totaux.taux_mand|pct }} %</span>
   </td>
   <td class="text-center" style="padding:3px 4px;">{{ totaux.paye | fcfa }}</td>
   <td class="text-center" style="padding:3px;">
-    <span class="badge {{ 'bg-success' if totaux.taux_pay >= 75 else ('bg-warning text-dark' if totaux.taux_pay >= 50 else 'bg-danger') }}">{{ totaux.taux_pay }} %</span>
+    <span class="badge {{ 'bg-success' if totaux.taux_pay >= 75 else ('bg-warning text-dark' if totaux.taux_pay >= 50 else 'bg-danger') }}">{{ totaux.taux_pay|pct }} %</span>
   </td>
   <td></td>
 </tr>
@@ -214,6 +237,47 @@
 
 </div>
 
+{# ── Modal saisie taux physique + observations ─────────────────────── #}
+{% if peut_editer_taux %}
+<div class="modal fade" id="modalPeiTaux" tabindex="-1">
+  <div class="modal-dialog modal-md">
+    <div class="modal-content">
+      <div class="modal-header" style="background:#0f6f3a;color:#fff;">
+        <h5 class="modal-title"><i class="fas fa-percent me-2"></i>Taux physique &amp; Niveau d'exécution</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="formPeiTaux" method="POST">
+        <div class="modal-body">
+          <p class="small text-muted mb-3 fw-semibold" id="peiTauxActNom"></p>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Taux d'exécution physique (%)</label>
+            <input type="number" name="taux_physique" id="peiTauxInput"
+                   class="form-control" min="0" max="100" step="0.01" placeholder="0">
+            <div class="form-text">
+              Valeur actuelle : <span id="peiTauxActuel" class="fw-semibold text-success"></span> %
+              &nbsp;·&nbsp; Doit être ≥ à la valeur actuelle &nbsp;·&nbsp; Entre 0 et 100
+            </div>
+          </div>
+          <div class="mb-2">
+            <label class="form-label fw-semibold">Observations / Niveau d'exécution</label>
+            <textarea name="observations" id="peiTauxObs" required
+                      class="form-control" rows="4" maxlength="3000"
+                      placeholder="Décrire le niveau d'exécution, les difficultés rencontrées…"></textarea>
+          </div>
+        </div>
+        <div id="peiTauxErr" class="alert alert-danger d-none mx-3 mb-0 py-2 small"></div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-success">
+            <i class="fas fa-save me-1"></i>Enregistrer
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+
 {# ── Modal édition montants ───────────────────────────────────────────── #}
 {% if peut_editer %}
 <div class="modal fade" id="modalPeiEdit" tabindex="-1">
@@ -230,21 +294,22 @@
             <label class="form-label fw-semibold">Montant engagé (F CFA)</label>
             <input type="number" name="montant_engage" id="peiEngage"
                    class="form-control" min="0" step="1" placeholder="0">
-            <div class="form-text">Max : <span id="peiEditBudget" class="fw-semibold"></span> F CFA (coût total)</div>
+            <div class="form-text" id="peiEngageHint">Max : <span id="peiEditBudget" class="fw-semibold"></span> F CFA (coût total)</div>
           </div>
           <div class="mb-3">
             <label class="form-label fw-semibold">Montant mandaté (F CFA)</label>
             <input type="number" name="montant_mandate" id="peiMandate"
                    class="form-control" min="0" step="1" placeholder="0">
-            <div class="form-text">Ne peut pas dépasser le montant engagé</div>
+            <div class="form-text" id="peiMandateHint">Ne peut pas dépasser le montant engagé</div>
           </div>
           <div class="mb-3">
             <label class="form-label fw-semibold">Montant payé (F CFA)</label>
             <input type="number" name="montant_paye" id="peiPaye"
                    class="form-control" min="0" step="1" placeholder="0">
-            <div class="form-text">Ne peut pas dépasser le montant engagé</div>
+            <div class="form-text">Ne peut pas dépasser le montant mandaté</div>
           </div>
         </div>
+        <div id="peiEditErr" class="alert alert-danger d-none mx-3 mb-0 py-2 small"></div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
           <button type="submit" class="btn btn-warning">
@@ -328,47 +393,207 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 });
 
-{% if peut_editer %}
-var _peiEditActId = null, _peiBudget = 0;
+/* ── Helpers formatage ──────────────────────────────────────────────── */
+function _fmtPct(v) {
+  return (Math.round(v * 100) / 100).toFixed(2).replace('.', ',');
+}
+function _pctClass(v) {
+  return v >= 75 ? 'badge bg-success' : (v >= 50 ? 'badge bg-warning text-dark' : 'badge bg-danger');
+}
+function _fmtFcfa(v) {
+  return Math.round(v).toLocaleString('fr-FR');
+}
 
-function _openPeiEdit(actId, budget, engage, mandate, paye) {
-  _peiEditActId = actId; _peiBudget = budget;
-  document.getElementById('peiEditBudget').textContent = budget.toLocaleString('fr-FR');
-  document.getElementById('peiEngage').value  = engage  || '';
-  document.getElementById('peiEngage').max    = budget;
-  document.getElementById('peiMandate').value = mandate || '';
-  document.getElementById('peiMandate').max   = engage  || budget;
-  document.getElementById('peiPaye').value    = paye    || '';
-  document.getElementById('peiPaye').max      = engage  || budget;
+{% if peut_editer_taux %}
+var _peiTauxActId = null, _peiTauxMin = 0;
+
+function _openPeiTaux(actId, tauxActuel, obs) {
+  _peiTauxActId = actId;
+  _peiTauxMin   = tauxActuel;
+  document.getElementById('peiTauxActuel').textContent = tauxActuel;
+  document.getElementById('peiTauxInput').value = tauxActuel || '';
+  document.getElementById('peiTauxInput').min   = tauxActuel;
+  document.getElementById('peiTauxObs').value   = obs || '';
+  document.getElementById('peiTauxErr').classList.add('d-none');
   var row = document.getElementById('row-act-' + actId);
   if (row) {
     var td = row.querySelectorAll('td')[1];
-    document.getElementById('peiEditActNom').textContent = td ? td.textContent.trim().replace(/\s+/g,' ') : '';
+    document.getElementById('peiTauxActNom').textContent =
+      td ? td.textContent.trim().replace(/\s+/g,' ') : '';
   }
-  document.getElementById('formPeiEdit').action =
-    '{{ url_for("pei.edit_montants", activite_id=0) }}'.replace('/0', '/' + actId);
-  new bootstrap.Modal(document.getElementById('modalPeiEdit')).show();
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('modalPeiTaux')).show();
+}
+
+document.getElementById('formPeiTaux').addEventListener('submit', function (e) {
+  e.preventDefault();
+  var val   = parseFloat(document.getElementById('peiTauxInput').value || 0);
+  var errEl = document.getElementById('peiTauxErr');
+  errEl.classList.add('d-none');
+  if (val < _peiTauxMin) {
+    errEl.textContent = 'Le taux ne peut pas diminuer. Valeur actuelle : ' + _peiTauxMin + ' %.';
+    errEl.classList.remove('d-none'); return;
+  }
+  if (val < 0 || val > 100) {
+    errEl.textContent = 'Le taux doit être compris entre 0 et 100 %.';
+    errEl.classList.remove('d-none'); return;
+  }
+  var url = '{{ url_for("pei.edit_taux_phys", activite_id=0) }}'.replace('/0', '/' + _peiTauxActId);
+  fetch(url, { method: 'POST', body: new FormData(this) })
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      if (!data.ok) {
+        errEl.textContent = data.error || 'Erreur inconnue.';
+        errEl.classList.remove('d-none'); return;
+      }
+      var badgeEl = document.getElementById('pei-taux-phys-' + _peiTauxActId);
+      if (badgeEl) {
+        badgeEl.textContent    = _fmtPct(data.taux_phys) + ' %';
+        badgeEl.className      = _pctClass(data.taux_phys);
+        badgeEl.style.fontSize = '.62rem';
+      }
+      var btnEl = document.getElementById('pei-taux-btn-' + _peiTauxActId);
+      if (btnEl) { btnEl.dataset.taux = data.taux_phys; btnEl.dataset.obs = data.obs; }
+      var obsEl = document.getElementById('pei-obs-' + _peiTauxActId);
+      if (obsEl) obsEl.textContent = data.obs || '—';
+      _peiTauxMin = data.taux_phys;
+      bootstrap.Modal.getInstance(document.getElementById('modalPeiTaux')).hide();
+    })
+    .catch(function () {
+      errEl.textContent = 'Erreur réseau. Veuillez réessayer.';
+      errEl.classList.remove('d-none');
+    });
+});
+document.getElementById('modalPeiTaux').addEventListener('hidden.bs.modal', function () {
+  var inst = bootstrap.Modal.getInstance(this);
+  if (inst) inst.dispose();
+});
+{% endif %}
+
+{% if peut_editer %}
+var _peiEditActId = null, _peiBudget = 0, _peiEngageLocked = false, _peiIsAdmin = false;
+
+function _openPeiEdit(btn) {
+  var actId   = +btn.dataset.id;
+  var budget  = +btn.dataset.budget;
+  var engage  = +btn.dataset.engage;
+  var mandate = +btn.dataset.mandate;
+  var paye    = +btn.dataset.paye;
+  var locked  = btn.dataset.locked === 'true';
+  var isAdmin = btn.dataset.admin  === 'true';
+
+  _peiEditActId     = actId;
+  _peiBudget        = budget;
+  _peiEngageLocked  = locked && !isAdmin;
+  _peiIsAdmin       = isAdmin;
+
+  document.getElementById('peiEditBudget').textContent = budget.toLocaleString('fr-FR');
+  document.getElementById('peiEditErr').classList.add('d-none');
+
+  /* Montant engagé */
+  var engInput = document.getElementById('peiEngage');
+  engInput.value    = engage || '';
+  engInput.max      = budget;
+  engInput.readOnly = _peiEngageLocked;
+  engInput.classList.toggle('bg-light', _peiEngageLocked);
+  var engHint = document.getElementById('peiEngageHint');
+  if (_peiEngageLocked) {
+    engHint.innerHTML = '<i class="fas fa-lock me-1 text-danger"></i><span class="text-danger fw-semibold">Verrouillé — saisie unique déjà effectuée</span>';
+  } else {
+    engHint.innerHTML = 'Max : <span class="fw-semibold">' + budget.toLocaleString('fr-FR') + '</span> F CFA (coût total)';
+  }
+
+  /* Montant mandaté */
+  var mandInput = document.getElementById('peiMandate');
+  mandInput.value = mandate || '';
+  mandInput.max   = engage || budget;
+  mandInput.min   = isAdmin ? 0 : (mandate || 0);
+  var mandHint = document.getElementById('peiMandateHint');
+  mandHint.textContent = isAdmin
+    ? 'Ne peut pas dépasser le montant engagé'
+    : 'Doit être ≥ ' + (mandate || 0).toLocaleString('fr-FR') + ' F et ≤ montant engagé';
+
+  /* Montant payé */
+  var payeInput = document.getElementById('peiPaye');
+  payeInput.value = paye || '';
+  payeInput.max   = mandate || 0;
+  payeInput.min   = isAdmin ? 0 : (paye || 0);
+
+  /* Nom de l'activité */
+  var row = document.getElementById('row-act-' + actId);
+  if (row) {
+    var td = row.querySelectorAll('td')[1];
+    document.getElementById('peiEditActNom').textContent =
+      td ? td.textContent.trim().replace(/\s+/g,' ') : '';
+  }
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('modalPeiEdit')).show();
 }
 
 document.getElementById('formPeiEdit').addEventListener('submit', function (e) {
-  var eng  = parseFloat(document.getElementById('peiEngage').value  || 0);
-  var mand = parseFloat(document.getElementById('peiMandate').value || 0);
-  var pay  = parseFloat(document.getElementById('peiPaye').value    || 0);
+  e.preventDefault();
+  var eng   = parseFloat(document.getElementById('peiEngage').value  || 0);
+  var mand  = parseFloat(document.getElementById('peiMandate').value || 0);
+  var pay   = parseFloat(document.getElementById('peiPaye').value    || 0);
+  var errEl = document.getElementById('peiEditErr');
+  errEl.classList.add('d-none');
   if (eng > _peiBudget) {
-    alert('Montant engagé dépasse le coût total (' + _peiBudget.toLocaleString('fr-FR') + ' F CFA).'); e.preventDefault(); return;
+    errEl.textContent = 'Montant engagé dépasse le coût total (' + _peiBudget.toLocaleString('fr-FR') + ' F CFA).';
+    errEl.classList.remove('d-none'); return;
   }
   if (mand > eng) {
-    alert('Montant mandaté dépasse le montant engagé (' + eng.toLocaleString('fr-FR') + ' F CFA).'); e.preventDefault(); return;
+    errEl.textContent = 'Montant mandaté dépasse le montant engagé (' + eng.toLocaleString('fr-FR') + ' F CFA).';
+    errEl.classList.remove('d-none'); return;
   }
-  if (pay > eng) {
-    alert('Montant payé dépasse le montant engagé (' + eng.toLocaleString('fr-FR') + ' F CFA).'); e.preventDefault(); return;
+  if (pay > mand) {
+    errEl.textContent = 'Montant payé dépasse le montant mandaté (' + mand.toLocaleString('fr-FR') + ' F CFA).';
+    errEl.classList.remove('d-none'); return;
   }
+  var url = '{{ url_for("pei.edit_montants", activite_id=0) }}'.replace('/0', '/' + _peiEditActId);
+  fetch(url, { method: 'POST', body: new FormData(this) })
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      if (!data.ok) {
+        errEl.textContent = data.error || 'Erreur inconnue.';
+        errEl.classList.remove('d-none'); return;
+      }
+      var engEl = document.getElementById('pei-engage-'  + _peiEditActId);
+      if (engEl)  engEl.textContent  = _fmtFcfa(data.engage);
+      var mandEl = document.getElementById('pei-mandate-' + _peiEditActId);
+      if (mandEl) mandEl.textContent = _fmtFcfa(data.mandate);
+      var payeEl = document.getElementById('pei-paye-'    + _peiEditActId);
+      if (payeEl) payeEl.textContent = _fmtFcfa(data.paye);
+
+      var teEl = document.getElementById('pei-taux-eng-'  + _peiEditActId);
+      if (teEl)  { teEl.textContent  = _fmtPct(data.taux_eng)  + ' %'; teEl.className  = _pctClass(data.taux_eng);  teEl.style.fontSize  = '.62rem'; }
+      var tmEl = document.getElementById('pei-taux-mand-' + _peiEditActId);
+      if (tmEl)  { tmEl.textContent  = _fmtPct(data.taux_mand) + ' %'; tmEl.className  = _pctClass(data.taux_mand); tmEl.style.fontSize  = '.62rem'; }
+      var tpEl = document.getElementById('pei-taux-pay-'  + _peiEditActId);
+      if (tpEl)  { tpEl.textContent  = _fmtPct(data.taux_pay)  + ' %'; tpEl.className  = _pctClass(data.taux_pay);  tpEl.style.fontSize  = '.62rem'; }
+
+      /* Mettre à jour les data-* du bouton pour la prochaine ouverture */
+      var editBtn = document.querySelector('button[data-id="' + _peiEditActId + '"][onclick*="_openPeiEdit"]');
+      if (editBtn) {
+        editBtn.dataset.engage  = data.engage;
+        editBtn.dataset.mandate = data.mandate;
+        editBtn.dataset.paye    = data.paye;
+        editBtn.dataset.locked  = data.engage_verrouille ? 'true' : 'false';
+      }
+      bootstrap.Modal.getInstance(document.getElementById('modalPeiEdit')).hide();
+    })
+    .catch(function () {
+      errEl.textContent = 'Erreur réseau. Veuillez réessayer.';
+      errEl.classList.remove('d-none');
+    });
+});
+document.getElementById('modalPeiEdit').addEventListener('hidden.bs.modal', function () {
+  var inst = bootstrap.Modal.getInstance(this);
+  if (inst) inst.dispose();
 });
 
 document.getElementById('peiEngage').addEventListener('input', function () {
-  var eng = parseFloat(this.value || 0);
+  var eng  = parseFloat(this.value || 0);
+  var mand = parseFloat(document.getElementById('peiMandate').value || 0);
   document.getElementById('peiMandate').max = eng;
-  document.getElementById('peiPaye').max    = eng;
+  document.getElementById('peiPaye').max    = mand || eng;
 });
 {% endif %}
 </script>

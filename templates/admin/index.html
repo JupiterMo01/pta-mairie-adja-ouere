@@ -141,6 +141,13 @@
             <i class="fas fa-trash-alt me-2"></i>Purger le suivi (tests)
           </button>
         </form>
+        <form method="POST" action="{{ url_for('admin.purge_pei') }}"
+              class="mt-2"
+              onsubmit="return confirm('⚠️ PURGE DU POINT D\'EXÉCUTION PAI\n\nCette action va remettre à ZÉRO tous les montants financiers, taux d\'exécution physique et observations du PAI pour l\'année en cours.\n\nConfirmer ?')">
+          <button type="submit" class="btn btn-outline-danger w-100">
+            <i class="fas fa-trash-alt me-2"></i>Purger le PAI — point d'exécution (tests)
+          </button>
+        </form>
         {% endif %}
       </div>
     </div>

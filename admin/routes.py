@@ -5,7 +5,7 @@ from markupsafe import Markup, escape
 from flask import render_template, redirect, url_for, flash, request, session
 from flask_login import login_required, current_user
 import json
-from models import db, User, Direction, Service, Annee, StructureExterne, PTABackup, Programme, Projet, Activite, Tache, SuiviTache
+from models import db, User, Direction, Service, Annee, StructureExterne, PTABackup, Programme, Projet, Activite, Tache, SuiviTache, PeiActivite
 from admin import admin_bp
 from extensions import limiter
 from utils import log_audit, valider_mdp
@@ -1085,6 +1085,46 @@ def purge_suivi():
     flash(
         f"Purge effectuée : {nb} suivi(s) supprimé(s) pour l'année {annee.annee}. "
         "Tout est revenu à « Non exécuté ».",
+        'success'
+    )
+    return redirect(url_for('admin.index'))
+
+
+@admin_bp.route('/purge-pei', methods=['POST'])
+@limiter.limit('5 per minute')
+@editeur_required
+def purge_pei():
+    """Remet à zéro tous les montants, taux physique et observations du PEI
+    pour l'année active (tests uniquement)."""
+    from utils import get_annee
+    annee = get_annee()
+    if not annee:
+        flash("Aucune année PTA active.", 'warning')
+        return redirect(url_for('admin.index'))
+
+    # Récupère tous les PeiActivite liés à l'année active
+    pei_records = (PeiActivite.query
+        .join(Activite, PeiActivite.activite_id == Activite.id)
+        .join(Projet,   Activite.projet_id == Projet.id)
+        .join(Programme, Projet.programme_id == Programme.id)
+        .filter(Programme.annee_id == annee.id)
+        .all())
+
+    nb = len(pei_records)
+    for pei in pei_records:
+        pei.montant_engage    = 0.0
+        pei.montant_mandate   = 0.0
+        pei.montant_paye      = 0.0
+        pei.engage_verrouille = False
+        pei.taux_physique     = 0.0
+        pei.observations      = None
+    db.session.commit()
+
+    log_audit('purge_pei',
+              f"Purge du PEI {annee.annee} : {nb} activité(s) remise(s) à zéro")
+    flash(
+        f"Purge PAI effectuée : {nb} activité(s) remise(s) à zéro pour l'année {annee.annee}. "
+        "Montants, taux et observations effacés.",
         'success'
     )
     return redirect(url_for('admin.index'))

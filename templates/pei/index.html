@@ -414,6 +414,11 @@ var PEI_DATA = {
 {% if peut_editer_taux %}
 var _peiTauxActId = null, _peiTauxMin = 0;
 
+document.getElementById('modalPeiTaux').addEventListener('hidden.bs.modal', function () {
+  var inst = bootstrap.Modal.getInstance(this);
+  if (inst) inst.dispose();
+});
+
 function _prepPeiTaux(actId) {
   var d = PEI_DATA[actId];
   if (!d) return;
@@ -471,6 +476,11 @@ document.getElementById('formPeiTaux').addEventListener('submit', function (e) {
 
 {% if peut_editer %}
 var _peiEditActId = null, _peiBudget = 0, _peiEngageLocked = false, _peiIsAdmin = false;
+
+document.getElementById('modalPeiEdit').addEventListener('hidden.bs.modal', function () {
+  var inst = bootstrap.Modal.getInstance(this);
+  if (inst) inst.dispose();
+});
 
 function _prepPeiEdit(actId) {
   var d = PEI_DATA[actId];

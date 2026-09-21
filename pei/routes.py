@@ -575,7 +575,10 @@ def edit_montants(activite_id):
     pei.montant_mandate = mandate
     pei.montant_paye    = paye
 
-    if not is_admin:
+    # Verrouiller dès la première saisie non nulle, quel que soit le rôle.
+    # L'admin peut toujours modifier (le verrou ne bloque que les non-admins),
+    # mais le flag doit être posé même quand c'est l'admin qui saisit en premier.
+    if engage > 0:
         pei.engage_verrouille = True
 
     db.session.commit()

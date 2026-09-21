@@ -173,8 +173,8 @@ def edit():
     rec.montant_mandate = mand_new
     rec.montant_paye    = paye_new
 
-    # Verrouiller les prévisions après première saisie non-admin
-    if not is_admin and prev_new > 0:
+    # Verrouiller dès la première saisie non nulle, quel que soit le rôle.
+    if prev_new > 0:
         rec.previsions_verrouillees = True
 
     db.session.commit()

@@ -908,15 +908,20 @@ def _build_excel_pai(annee, s):
 @statspai_bp.route('/')
 @admin_only
 def index():
+    import base64
     annee = get_annee()
     if not annee:
         return render_template('statspai/index.html', annee=None)
     s                 = _compute_stats_pai(annee)
     cibles            = _compute_cibles_pai(s['pai_data'])
     cibles_directions = _compute_cibles_directions_pai(s['pai_data'])
+    chart_buf = _chart_sources_pai(s['total_fp'], s['total_fadec'], s['total_ptfs'])
+    chart_sources_b64 = (base64.b64encode(chart_buf.read()).decode('utf-8')
+                         if chart_buf else None)
     return render_template('statspai/index.html',
                            annee=annee, cibles=cibles,
-                           cibles_directions=cibles_directions, **s)
+                           cibles_directions=cibles_directions,
+                           chart_sources_b64=chart_sources_b64, **s)
 
 
 @statspai_bp.route('/rapport/word')

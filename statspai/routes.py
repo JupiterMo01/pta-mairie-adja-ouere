@@ -55,27 +55,46 @@ def _act_contrib(act, trim):
 
 # ── Calcul des statistiques PAI ───────────────────────────────────────────────
 
+def _src5(acts):
+    """Retourne (rp, fa, fn, ap, af, total) pour une liste d'activités."""
+    rp = sum(a.src_rp for a in acts)
+    fa = sum(a.src_fa for a in acts)
+    fn = sum(a.src_fn for a in acts)
+    ap = sum(a.src_ap for a in acts)
+    af = sum(a.src_af for a in acts)
+    return rp, fa, fn, ap, af, rp + fa + fn + ap + af
+
+
 def _compute_stats_pai(annee):
-    pai_data, total_fp, total_fadec, total_ptfs, total_global, total_nb = _build_pai_data(annee)
+    pai_data, _fp, _fadec, _ptfs, total_global, total_nb = _build_pai_data(annee)
+
+    all_acts = [a for pg_d in pai_data
+                  for pj_d in pg_d['projets']
+                  for a in pj_d['activites']]
+    total_rp, total_fa, total_fn, total_ap, total_af, _ = _src5(all_acts)
+
+    def pct(val):
+        return round(val / total_global * 100, 1) if total_global else 0
 
     # Stats par programme et projet
     stats_programmes = []
     for pg_d in pai_data:
-        pg     = pg_d['programme']
+        pg      = pg_d['programme']
         acts_pg = [a for pj_d in pg_d['projets'] for a in pj_d['activites']]
+        rp_pg, fa_pg, fn_pg, ap_pg, af_pg, bud_pg = _src5(acts_pg)
         projets_data = []
         for pj_d in pg_d['projets']:
-            pj      = pj_d['projet']
+            pj = pj_d['projet']
             acts_pj = pj_d['activites']
+            rp_pj, fa_pj, fn_pj, ap_pj, af_pj, bud_pj = _src5(acts_pj)
             projets_data.append({
                 'code':         f"{pg_d['prog_num']}.{pj_d['proj_num']}",
                 'nom':          pj.nom,
                 'poids':        pj_d['poids'],
                 'nb_activites': len(acts_pj),
-                'fp':    sum(a.src_rp for a in acts_pj),
-                'fadec': sum(a.src_fa + a.src_fn for a in acts_pj),
-                'ptfs':  sum(a.src_ap + a.src_af for a in acts_pj),
-                'budget': sum(a.budget_total for a in acts_pj),
+                'rp': rp_pj, 'fa': fa_pj, 'fn': fn_pj,
+                'ap': ap_pj, 'af': af_pj, 'budget': bud_pj,
+                'fadec': fa_pj + fn_pj, 'ptfs': ap_pj + af_pj,
             })
         stats_programmes.append({
             'num':  pg_d['prog_num'],
@@ -84,10 +103,9 @@ def _compute_stats_pai(annee):
             'poids': pg_d['poids'],
             'nb_projets':   len(pg_d['projets']),
             'nb_activites': len(acts_pg),
-            'fp':    sum(a.src_rp for a in acts_pg),
-            'fadec': sum(a.src_fa + a.src_fn for a in acts_pg),
-            'ptfs':  sum(a.src_ap + a.src_af for a in acts_pg),
-            'budget': sum(a.budget_total for a in acts_pg),
+            'rp': rp_pg, 'fa': fa_pg, 'fn': fn_pg,
+            'ap': ap_pg, 'af': af_pg, 'budget': bud_pg,
+            'fadec': fa_pg + fn_pg, 'ptfs': ap_pg + af_pg,
             'projets': projets_data,
         })
 
@@ -103,13 +121,19 @@ def _compute_stats_pai(annee):
                         'code': d.code if d else '—',
                         'nom':  d.nom  if d else '—',
                         'nb_activites': 0,
-                        'fp': 0.0, 'fadec': 0.0, 'ptfs': 0.0, 'budget': 0.0,
+                        'rp': 0.0, 'fa': 0.0, 'fn': 0.0,
+                        'ap': 0.0, 'af': 0.0, 'budget': 0.0,
                     }
                 dir_map[key]['nb_activites'] += 1
-                dir_map[key]['fp']    += act.src_rp
-                dir_map[key]['fadec'] += act.src_fa + act.src_fn
-                dir_map[key]['ptfs']  += act.src_ap + act.src_af
+                dir_map[key]['rp'] += act.src_rp
+                dir_map[key]['fa'] += act.src_fa
+                dir_map[key]['fn'] += act.src_fn
+                dir_map[key]['ap'] += act.src_ap
+                dir_map[key]['af'] += act.src_af
                 dir_map[key]['budget'] += act.budget_total
+    for d in dir_map.values():
+        d['fadec'] = d['fa'] + d['fn']
+        d['ptfs']  = d['ap'] + d['af']
     stats_directions = sorted(dir_map.values(), key=lambda x: x['code'])
 
     # Liste détaillée des activités
@@ -128,20 +152,20 @@ def _compute_stats_pai(annee):
                                     if act.periode_debut and act.periode_fin
                                     else act.periode_debut or act.periode_fin or '—'),
                     'poids':       int(extra.poids_pai or 0) if extra else 0,
-                    'fp':          act.src_rp,
-                    'fadec':       act.src_fa + act.src_fn,
-                    'ptfs':        act.src_ap + act.src_af,
+                    'rp': act.src_rp, 'fa': act.src_fa, 'fn': act.src_fn,
+                    'ap': act.src_ap, 'af': act.src_af,
                     'budget':      act.budget_total,
                     'localisation': extra.localisation if extra else '',
                     'indicateurs':  extra.indicateurs  if extra else '',
                 })
 
-    def pct(val):
-        return round(val / total_global * 100, 1) if total_global else 0
-
     return dict(
         pai_data=pai_data,
-        total_fp=total_fp, total_fadec=total_fadec, total_ptfs=total_ptfs,
+        total_rp=total_rp, total_fa=total_fa, total_fn=total_fn,
+        total_ap=total_ap, total_af=total_af,
+        total_fp=total_rp,                            # alias RP = FP
+        total_fadec=total_fa + total_fn,              # regroupé pour tableaux
+        total_ptfs=total_ap + total_af,               # regroupé pour tableaux
         total_budget=total_global,
         nb_programmes=len(pai_data),
         nb_projets=sum(len(pg_d['projets']) for pg_d in pai_data),
@@ -241,15 +265,16 @@ def _compute_cibles_directions_pai(pai_data):
 
 # ── Graphiques ────────────────────────────────────────────────────────────────
 
-def _chart_sources_pai(fp, fadec, ptfs, title='Répartition par source de financement'):
+def _chart_sources_pai(rp, fa, fn, ap, af, title='Répartition par source de financement'):
     try:
         import matplotlib
         matplotlib.use('Agg')
         import matplotlib.pyplot as plt
 
-        labels = ['Fonds Propres (FP)', 'FADeC (FA + FNA)', 'PTFs / Partenaires']
-        values = [fp, fadec, ptfs]
-        colors = ['#1F4E79', '#2E86AB', '#E9C46A']
+        labels = ['Fonds Propres (RP)', 'FADeC Affecté (FA)', 'FADeC Non Affecté (FNA)',
+                  'Appui Partenaires (AP)', 'Autres Financements (AF)']
+        values = [rp, fa, fn, ap, af]
+        colors = ['#1F4E79', '#2E86AB', '#3BB273', '#E9C46A', '#E76F51']
 
         pairs = [(l, v, c) for l, v, c in zip(labels, values, colors) if v > 0]
         if not pairs:
@@ -265,7 +290,7 @@ def _chart_sources_pai(fp, fadec, ptfs, title='Répartition par source de financ
         for at in autotexts:
             at.set_fontsize(9)
         ax.legend(wedges, f_labels, loc='lower center',
-                  bbox_to_anchor=(0.5, -0.22), ncol=2, fontsize=8.5, frameon=False)
+                  bbox_to_anchor=(0.5, -0.28), ncol=2, fontsize=8.5, frameon=False)
         ax.set_title(title, fontsize=11, fontweight='bold', pad=14)
         plt.tight_layout()
         buf = io.BytesIO()
@@ -479,14 +504,15 @@ def _build_word_pai(annee, s, static_img_path, cibles=None, cibles_directions=No
         shade(c, 'D6EAF8')
     doc.add_paragraph()
 
-    pct_fp    = _fr(round(s['total_fp']    / s['total_budget'] * 100, 1)) if s['total_budget'] else '0,0'
-    pct_fadec = _fr(round(s['total_fadec'] / s['total_budget'] * 100, 1)) if s['total_budget'] else '0,0'
-    pct_ptfs  = _fr(round(s['total_ptfs']  / s['total_budget'] * 100, 1)) if s['total_budget'] else '0,0'
+    def _pct_s(v):
+        return _fr(round(v / s['total_budget'] * 100, 1)) if s['total_budget'] else '0,0'
     interp(doc,
         f"Le PAI {annee.annee} comprend {s['nb_programmes']} programme(s) répartis en "
         f"{s['nb_projets']} projet(s) et {s['nb_activites']} activité(s) d'investissement. "
-        f"Le budget global s'élève à {_fmt(s['total_budget'])} F CFA, dont {pct_fp} % "
-        f"sur Fonds Propres, {pct_fadec} % FADeC et {pct_ptfs} % PTFs/Partenaires."
+        f"Le budget global s'élève à {_fmt(s['total_budget'])} F CFA, dont {_pct_s(s['total_rp'])} % "
+        f"sur Ressources Propres, {_pct_s(s['total_fa'])} % FADeC Affecté, "
+        f"{_pct_s(s['total_fn'])} % FADeC Non Affecté, {_pct_s(s['total_ap'])} % "
+        f"Appui Partenaires et {_pct_s(s['total_af'])} % Autres Financements."
     )
 
     # ════════════════════════════════════════════════════════
@@ -496,9 +522,11 @@ def _build_word_pai(annee, s, static_img_path, cibles=None, cibles_directions=No
     h1(doc, 'II. RÉPARTITION BUDGÉTAIRE PAR SOURCE DE FINANCEMENT')
 
     SRC_DATA = [
-        ('Fonds Propres (FP)',   s['total_fp'],    'EBF5FB'),
-        ('FADeC (FA + FNA)',     s['total_fadec'], 'D6EAF8'),
-        ('PTFs / Partenaires',   s['total_ptfs'],  'FEFDE7'),
+        ('Ressources Propres (RP)',       s['total_rp'], 'EBF5FB'),
+        ('FADeC Affecté (FA)',            s['total_fa'], 'D6EAF8'),
+        ('FADeC Non Affecté (FNA)',       s['total_fn'], 'D5F5E3'),
+        ('Appui Partenaires (AP)',        s['total_ap'], 'FEFDE7'),
+        ('Autres Financements (AF)',      s['total_af'], 'FDEBD0'),
     ]
     tbl_src = doc.add_table(rows=len(SRC_DATA) + 2, cols=3)
     borders(tbl_src)
@@ -518,7 +546,7 @@ def _build_word_pai(annee, s, static_img_path, cibles=None, cibles_directions=No
     for cell in tot_row.cells:
         shade(cell, 'AED6F1')
 
-    chart_src = _chart_sources_pai(s['total_fp'], s['total_fadec'], s['total_ptfs'])
+    chart_src = _chart_sources_pai(s['total_rp'], s['total_fa'], s['total_fn'], s['total_ap'], s['total_af'])
     if chart_src:
         doc.add_picture(chart_src, width=Cm(12))
         doc.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -786,15 +814,17 @@ def _build_excel_pai(annee, s):
     ws1 = wb.active; ws1.title = "Résumé général"
     _titre(ws1, f"STATISTIQUES PAI {annee.annee} — Mairie d'Adja-Ouèrè — Résumé")
     rows_resume = [
-        ("Budget total PAI",        f"{_fmt(s['total_budget'])} F CFA"),
-        ("",                        ""),
-        ("Fonds Propres (FP)",       f"{_fmt(s['total_fp'])} F CFA"),
-        ("FADeC (FA + FNA)",         f"{_fmt(s['total_fadec'])} F CFA"),
-        ("PTFs / Partenaires",       f"{_fmt(s['total_ptfs'])} F CFA"),
-        ("",                        ""),
-        ("Nombre de Programmes",    s['nb_programmes']),
-        ("Nombre de Projets",       s['nb_projets']),
-        ("Activités d'investissement", s['nb_activites']),
+        ("Budget total PAI",             f"{_fmt(s['total_budget'])} F CFA"),
+        ("",                             ""),
+        ("Ressources Propres (RP)",      f"{_fmt(s['total_rp'])} F CFA"),
+        ("FADeC Affecté (FA)",           f"{_fmt(s['total_fa'])} F CFA"),
+        ("FADeC Non Affecté (FNA)",      f"{_fmt(s['total_fn'])} F CFA"),
+        ("Appui Partenaires (AP)",       f"{_fmt(s['total_ap'])} F CFA"),
+        ("Autres Financements (AF)",     f"{_fmt(s['total_af'])} F CFA"),
+        ("",                             ""),
+        ("Nombre de Programmes",         s['nb_programmes']),
+        ("Nombre de Projets",            s['nb_projets']),
+        ("Activités d'investissement",   s['nb_activites']),
     ]
     r = 2
     for lbl, val in rows_resume:
@@ -875,7 +905,8 @@ def _build_excel_pai(annee, s):
     _titre(ws4, f"LISTE DES ACTIVITÉS D'INVESTISSEMENT — PAI {annee.annee}")
     cols4 = ["Code PAI", "Désignation", "Direction", "Localisation",
              "Période", "Poids (%)", "Indicateurs",
-             "FP (F CFA)", "FADeC (F CFA)", "PTFs (F CFA)", "Budget total (F CFA)"]
+             "RP (F CFA)", "FA (F CFA)", "FNA (F CFA)", "AP (F CFA)", "AF (F CFA)",
+             "Budget total (F CFA)"]
     next_r = _entete(ws4, cols4, row=2)
     for a in s['liste_activites']:
         _cell(ws4, next_r,  1, a['code_pai'],     None, align=ctr)
@@ -885,18 +916,22 @@ def _build_excel_pai(annee, s):
         _cell(ws4, next_r,  5, a['periode'],      None, align=ctr)
         _cell(ws4, next_r,  6, a['poids'],        None, align=ctr)
         _cell(ws4, next_r,  7, a['indicateurs'])
-        _cell(ws4, next_r,  8, _num(a['fp']),     None, align=ctr)
-        _cell(ws4, next_r,  9, _num(a['fadec']),  None, align=ctr)
-        _cell(ws4, next_r, 10, _num(a['ptfs']),   None, align=ctr)
-        _cell(ws4, next_r, 11, _num(a['budget']), None, bold=True, align=ctr)
+        _cell(ws4, next_r,  8, _num(a['rp']),     None, align=ctr)
+        _cell(ws4, next_r,  9, _num(a['fa']),     None, align=ctr)
+        _cell(ws4, next_r, 10, _num(a['fn']),     None, align=ctr)
+        _cell(ws4, next_r, 11, _num(a['ap']),     None, align=ctr)
+        _cell(ws4, next_r, 12, _num(a['af']),     None, align=ctr)
+        _cell(ws4, next_r, 13, _num(a['budget']), None, bold=True, align=ctr)
         next_r += 1
-    _cell(ws4, next_r,  1, "TOTAL",               F_TOTAL, bold=True, align=ctr)
+    _cell(ws4, next_r,  1, "TOTAL",                   F_TOTAL, bold=True, align=ctr)
     for ci in (2, 3, 4, 5, 6, 7): _cell(ws4, next_r, ci, '', F_TOTAL, align=ctr)
-    _cell(ws4, next_r,  8, _num(s['total_fp']),   F_TOTAL, bold=True, align=ctr)
-    _cell(ws4, next_r,  9, _num(s['total_fadec']),F_TOTAL, bold=True, align=ctr)
-    _cell(ws4, next_r, 10, _num(s['total_ptfs']), F_TOTAL, bold=True, align=ctr)
-    _cell(ws4, next_r, 11, _num(s['total_budget']),F_TOTAL, bold=True, align=ctr)
-    for i, w in enumerate([10, 40, 12, 22, 14, 9, 28, 16, 16, 14, 18], 1):
+    _cell(ws4, next_r,  8, _num(s['total_rp']),        F_TOTAL, bold=True, align=ctr)
+    _cell(ws4, next_r,  9, _num(s['total_fa']),        F_TOTAL, bold=True, align=ctr)
+    _cell(ws4, next_r, 10, _num(s['total_fn']),        F_TOTAL, bold=True, align=ctr)
+    _cell(ws4, next_r, 11, _num(s['total_ap']),        F_TOTAL, bold=True, align=ctr)
+    _cell(ws4, next_r, 12, _num(s['total_af']),        F_TOTAL, bold=True, align=ctr)
+    _cell(ws4, next_r, 13, _num(s['total_budget']),    F_TOTAL, bold=True, align=ctr)
+    for i, w in enumerate([10, 40, 12, 22, 14, 9, 28, 14, 14, 14, 14, 14, 18], 1):
         ws4.column_dimensions[get_column_letter(i)].width = w
     ws4.freeze_panes = 'A3'
 
@@ -915,7 +950,7 @@ def index():
     s                 = _compute_stats_pai(annee)
     cibles            = _compute_cibles_pai(s['pai_data'])
     cibles_directions = _compute_cibles_directions_pai(s['pai_data'])
-    chart_buf = _chart_sources_pai(s['total_fp'], s['total_fadec'], s['total_ptfs'])
+    chart_buf = _chart_sources_pai(s['total_rp'], s['total_fa'], s['total_fn'], s['total_ap'], s['total_af'])
     chart_sources_b64 = (base64.b64encode(chart_buf.read()).decode('utf-8')
                          if chart_buf else None)
     return render_template('statspai/index.html',

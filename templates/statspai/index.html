@@ -47,7 +47,8 @@
         <div class="text-muted small mb-1"><i class="fas fa-money-bill-wave me-1"></i>Budget total PAI</div>
         <div class="fw-bold fs-5 text-primary">{{ total_budget|milliers }} F CFA</div>
         <div class="text-muted" style="font-size:.75rem;">
-          FP : {{ total_fp|milliers }} | FADeC : {{ total_fadec|milliers }} | PTFs : {{ total_ptfs|milliers }}
+          RP : {{ total_rp|milliers }} | FA : {{ total_fa|milliers }} | FNA : {{ total_fn|milliers }}
+          | AP : {{ total_ap|milliers }} | AF : {{ total_af|milliers }}
         </div>
       </div>
     </div>
@@ -91,9 +92,11 @@
   </thead>
   <tbody>
     {% set srcs = [
-      ('Fonds Propres (FP)',    total_fp,    'D6EAF8'),
-      ('FADeC (FA + FNA)',      total_fadec, 'EBF5FB'),
-      ('PTFs / Partenaires',   total_ptfs,  'FEFDE7'),
+      ('Ressources Propres (RP)',   total_rp, 'D6EAF8'),
+      ('FADeC Affecté (FA)',        total_fa, 'EBF5FB'),
+      ('FADeC Non Affecté (FNA)',   total_fn, 'D5F5E3'),
+      ('Appui Partenaires (AP)',    total_ap, 'FEFDE7'),
+      ('Autres Financements (AF)', total_af, 'FDEBD0'),
     ] %}
     {% for lbl, val, bg in srcs %}
     <tr style="background:#{{ bg }};">
@@ -322,9 +325,11 @@
       <th>Dir.</th>
       <th>Période</th>
       <th>Poids</th>
-      <th>FP (F CFA)</th>
-      <th>FADeC (F CFA)</th>
-      <th>PTFs (F CFA)</th>
+      <th>RP (F CFA)</th>
+      <th>FA (F CFA)</th>
+      <th>FNA (F CFA)</th>
+      <th>AP (F CFA)</th>
+      <th>AF (F CFA)</th>
       <th>Total (F CFA)</th>
     </tr>
   </thead>
@@ -336,18 +341,22 @@
       <td class="text-center">{{ a.direction }}</td>
       <td class="text-center">{{ a.periode }}</td>
       <td class="text-center">{{ a.poids }}</td>
-      <td class="text-center">{{ a.fp|milliers }}</td>
-      <td class="text-center">{{ a.fadec|milliers }}</td>
-      <td class="text-center">{{ a.ptfs|milliers }}</td>
+      <td class="text-center">{{ a.rp|milliers }}</td>
+      <td class="text-center">{{ a.fa|milliers }}</td>
+      <td class="text-center">{{ a.fn|milliers }}</td>
+      <td class="text-center">{{ a.ap|milliers }}</td>
+      <td class="text-center">{{ a.af|milliers }}</td>
       <td class="text-center fw-semibold">{{ a.budget|milliers }}</td>
     </tr>
     {% endfor %}
     <tr class="row-total">
       <td class="text-center fw-bold">TOTAL</td>
       <td colspan="4"></td>
-      <td class="text-center fw-bold">{{ total_fp|milliers }}</td>
-      <td class="text-center fw-bold">{{ total_fadec|milliers }}</td>
-      <td class="text-center fw-bold">{{ total_ptfs|milliers }}</td>
+      <td class="text-center fw-bold">{{ total_rp|milliers }}</td>
+      <td class="text-center fw-bold">{{ total_fa|milliers }}</td>
+      <td class="text-center fw-bold">{{ total_fn|milliers }}</td>
+      <td class="text-center fw-bold">{{ total_ap|milliers }}</td>
+      <td class="text-center fw-bold">{{ total_af|milliers }}</td>
       <td class="text-center fw-bold">{{ total_budget|milliers }}</td>
     </tr>
   </tbody>

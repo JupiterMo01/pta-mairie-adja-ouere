@@ -33,10 +33,10 @@
 .tbl-pai .row-proj  { background:#FFFACD; }
 .tbl-pai .row-total { background:#AED6F1 !important; font-weight:700; }
 .tbl-pai .row-total td { background:#AED6F1 !important; }
-.cible-rouge  { background:#FADBD8; }
-.cible-orange { background:#FDEBD0; }
-.cible-bleu   { background:#D6EAF8; }
-.cible-vert   { background:#D5F5E3; }
+.cible-rouge  { background:#C0392B; color:#fff !important; }
+.cible-orange { background:#D35400; color:#fff !important; }
+.cible-bleu   { background:#2471A3; color:#fff !important; }
+.cible-vert   { background:#1E8449; color:#fff !important; }
 </style>
 
 {# ── Cartes de synthèse ─────────────────────────────────────────────────────── #}
@@ -219,20 +219,20 @@
 {# ── Cibles trimestrielles ──────────────────────────────────────────────────── #}
 {% macro cible_badge(v) %}
 {% set v = v|float %}
-<span class="badge px-2 py-1
-  {% if v < 25 %}cible-rouge text-danger
-  {% elif v < 50 %}cible-orange text-warning
-  {% elif v < 75 %}cible-bleu text-primary
-  {% else %}cible-vert text-success{% endif %}
-  fw-bold" style="font-size:.78rem;">{{ '%.2f'|format(v)|replace('.',',') }} %</span>
+<span class="badge px-2 py-1 fw-bold
+  {% if v < 25 %}cible-rouge
+  {% elif v < 50 %}cible-orange
+  {% elif v < 75 %}cible-bleu
+  {% else %}cible-vert{% endif %}"
+  style="font-size:.78rem;">{{ '%.2f'|format(v)|replace('.',',') }} %</span>
 {% endmacro %}
 
 <h5 class="fw-bold text-primary mt-3 mb-2"><i class="fas fa-calendar-check me-2"></i>Cibles trimestrielles d'exécution</h5>
 <p class="text-muted small mb-2">Pro-ratisation linéaire mensuelle sur la période de chaque activité, pondérée par poids PAI.
-  <span class="badge cible-rouge text-danger">< 25 %</span>
-  <span class="badge cible-orange text-warning ms-1">25–50 %</span>
-  <span class="badge cible-bleu text-primary ms-1">50–75 %</span>
-  <span class="badge cible-vert text-success ms-1">≥ 75 %</span>
+  <span class="badge cible-rouge ms-1">< 25 %</span>
+  <span class="badge cible-orange ms-1">25–50 %</span>
+  <span class="badge cible-bleu ms-1">50–75 %</span>
+  <span class="badge cible-vert ms-1">≥ 75 %</span>
 </p>
 
 {% if cibles %}

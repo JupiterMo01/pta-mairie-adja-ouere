@@ -1,90 +1,82 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8">
-<title>Exécution du Budget — {{ annee.annee }}</title>
+<meta charset="utf-8">
+<title>Exécution du Budget {{ annee.annee }} — Mairie d'Adja-Ouèrè</title>
 <style>
-  @page { size: A4 landscape; margin: 1.2cm; }
-  body  { font-family: Arial, sans-serif; font-size: 8pt; color: #000; }
-
-  /* En-tête institutionnel */
-  .header-table { width:100%; border-collapse:collapse; margin-bottom:6px; }
-  .header-table td { vertical-align:middle; padding:2px 6px; }
-  .header-bandeau { width:160px; }
-  .header-contact { text-align:center; font-size:7.5pt; line-height:1.4; }
-  .header-logo    { width:60px; text-align:right; }
-  .header-logo img { height:40px; }
-  .bandeau img    { height:42px; }
-
-  /* Titre section */
-  .section-title {
-    background:#1F4E79; color:#fff; font-weight:bold; font-size:9pt;
-    text-align:center; padding:5px 8px; margin:10px 0 4px;
-    border-radius:3px;
+  @page {
+    size: A4 landscape;
+    margin: 1.2cm 0.8cm 1.8cm 0.8cm;
+    @bottom-left  { content: "Mairie d'Adja-Ouèrè — Exécution du Budget {{ annee.annee }}"; font-size:6pt; color:#444; font-weight:bold; }
+    @bottom-right { content: "Page " counter(page) " / " counter(pages); font-size:6pt; color:#444; font-weight:bold; }
   }
+  *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
+  body { font-family:Arial,Helvetica,sans-serif; font-size:8pt; color:#000; background:#fff; }
 
-  /* Tableau budget */
-  table.bud { width:100%; border-collapse:collapse; margin-bottom:6px; }
-  table.bud th {
-    background:#1F4E79; color:#fff; font-weight:bold; font-size:7.5pt;
-    text-align:center; padding:4px 3px; border:1px solid #999;
-  }
-  table.bud td { border:1px solid #bbb; padding:3px 5px; font-size:8pt; }
-  .row-fct { background:#D6EAF8; font-weight:600; }
-  .row-inv { background:#D5F5E3; font-weight:600; }
-  .row-tot { background:#1F4E79; color:#fff; font-weight:bold; }
+  .screen-bar { background:#1a3a5c; color:#fff; padding:8px 16px; display:flex; align-items:center; gap:10px; }
+  .screen-bar span { font-size:13px; font-weight:bold; flex:1; }
+  .screen-bar button { padding:6px 16px; border:none; border-radius:4px; cursor:pointer; font-size:12px; font-weight:bold; }
+  .btn-p { background:#27ae60; color:#fff; }
+  .btn-c { background:#6c757d; color:#fff; }
+  @media print { .screen-bar { display:none !important; } }
+
+  .entete { display:flex; justify-content:space-between; align-items:center; margin-bottom:5px; border-bottom:2px solid #1a3a5c; padding-bottom:4px; }
+  .entete-gauche { width:38%; }
+  .entete-gauche img { height:60px; width:auto; }
+  .entete-centre { text-align:center; width:24%; font-size:7pt; line-height:1.9; }
+  .entete-droite { text-align:right; width:38%; }
+  .entete-droite img { height:60px; width:auto; }
+
+  .titre-bud { text-align:center; margin:5px 0 8px; border:2px solid #1a3a5c; border-radius:4px; padding:5px 0; background:#dbeeff; }
+  .titre-bud h1 { font-size:10pt; font-weight:bold; letter-spacing:1px; text-transform:uppercase; color:#1a3a5c; }
+  .titre-bud h2 { font-size:8pt; font-weight:bold; color:#1a3a5c; margin-top:2px; }
+
+  table { width:100%; border-collapse:collapse; }
+  th, td { border:0.5pt solid #aaa; padding:3pt 4pt; vertical-align:middle; }
+  thead th { background:#1F4E79 !important; color:#fff !important; font-size:7.5pt; text-align:center; font-weight:bold; }
+  .row-fct { background:#D6EAF8 !important; font-weight:bold; font-size:8pt; }
+  .row-inv { background:#D5F5E3 !important; font-weight:bold; font-size:8pt; }
+  .row-tot { background:#1F4E79 !important; color:#fff !important; font-weight:bold; font-size:8pt; }
   .row-tot td { color:#fff; border-color:#1F4E79; }
   .r { text-align:right; }
   .c { text-align:center; }
+  .l { text-align:left; }
 
-  /* Pied de page */
-  .footer { margin-top:12px; display:flex; justify-content:space-between;
-            font-size:7pt; color:#555; border-top:1px solid #ccc; padding-top:4px; }
-  @media print {
-    .no-print { display:none; }
-    .page-break { page-break-before: always; }
-  }
+  .pied { margin-top:10px; display:flex; justify-content:space-between; font-size:7pt; color:#555; border-top:1px solid #ccc; padding-top:4px; }
+  .page-break { page-break-before: always; }
 </style>
 </head>
 <body>
 
-{# Bouton impression (masqué à l'impression) #}
-<div class="no-print" style="margin-bottom:12px;">
-  <button onclick="window.print()" style="padding:6px 16px;font-size:11px;cursor:pointer;">
-    🖨 Imprimer
-  </button>
+<div class="screen-bar">
+  <span>Exécution du Budget {{ annee.annee }} — Mairie d'Adja-Ouèrè</span>
+  <button class="btn-p" onclick="window.print()">🖨 Imprimer</button>
+  <button class="btn-c" onclick="window.close()">✕ Fermer</button>
 </div>
 
 {% for sec in sections %}
 {% if not loop.first %}<div class="page-break"></div>{% endif %}
 
-{# ── En-tête institutionnel ─────────────────────────────────────────────── #}
-<table class="header-table">
-  <tr>
-    <td class="header-bandeau">
-      <img src="{{ url_for('static', filename='img/bandeau.png') }}" alt="bandeau"
-           onerror="this.style.display='none'">
-    </td>
-    <td class="header-contact">
-      <strong>Mairie d'Adja-Ouèrè</strong><br>
-      BP 02 Adja-Ouèrè — Tél : +229 01 61 91 96 12<br>
-      Email : contact.adjaouere@mairie.bj
-    </td>
-    <td class="header-logo">
-      <img src="{{ url_for('static', filename='img/logo_commune.png') }}" alt="logo"
-           onerror="this.style.display='none'">
-    </td>
-  </tr>
-</table>
-
-{# ── Titre ──────────────────────────────────────────────────────────────── #}
-<div class="section-title">
-  NIVEAU D'EXÉCUTION DES DÉPENSES BUDGÉTAIRES — Exercice {{ annee.annee }}
-  &nbsp;|&nbsp; Trimestre {{ sec.trimestre }}
+<div class="entete">
+  <div class="entete-gauche">
+    <img src="{{ url_for('static', filename='img/bandeau.png') }}" alt="Bandeau" onerror="this.style.display='none'">
+  </div>
+  <div class="entete-centre">
+    BP 02 Adja-Ouèrè<br>
+    Tél : +229 01 61 91 96 12<br>
+    Email : contact.adjaouere@mairie.bj
+  </div>
+  <div class="entete-droite">
+    <img src="{{ url_for('static', filename='img/logo_commune.png') }}" alt="Logo" onerror="this.style.display='none'">
+  </div>
 </div>
 
-{# ── Tableau ─────────────────────────────────────────────────────────────── #}
-<table class="bud">
+<div class="titre-bud">
+  <h1>Niveau d'exécution des dépenses budgétaires — Exercice {{ annee.annee }}</h1>
+  <h2>Au {{ sec.trimestre }}{% if sec.trimestre == 1 %}er{% else %}ème{% endif %} Trimestre</h2>
+</div>
+
+<table>
   <thead>
     <tr>
       <th style="width:30%;text-align:left;">Libellés</th>
@@ -101,7 +93,7 @@
     {% for type_key, css in [('fonctionnement','row-fct'),('investissement','row-inv')] %}
     {% set lg = sec.lignes[type_key] %}
     <tr class="{{ css }}">
-      <td>{{ LABELS[type_key] }}</td>
+      <td class="l">{{ LABELS[type_key] }}</td>
       <td class="r">{{ lg.previsions|fcfa }}</td>
       <td class="r">{{ lg.engage|fcfa }}</td>
       <td class="c">{{ lg.taux_eng|pct }}&nbsp;%</td>
@@ -113,7 +105,7 @@
     {% endfor %}
     {% set tl = sec.lignes.total %}
     <tr class="row-tot">
-      <td>TOTAL BUDGET</td>
+      <td class="l">TOTAL BUDGET</td>
       <td class="r">{{ tl.previsions|fcfa }}</td>
       <td class="r">{{ tl.engage|fcfa }}</td>
       <td class="c">{{ tl.taux_eng|pct }}&nbsp;%</td>
@@ -125,17 +117,21 @@
   </tbody>
 </table>
 
-{# ── Pied de page ───────────────────────────────────────────────────────── #}
-<div class="footer">
-  <span>Édité le <span id="dateNow{{ loop.index }}"></span></span>
+<div class="pied">
+  <span>Édité le <span class="date-now"></span></span>
   <span>Direction du Développement Local et de la Planification (DDLP)</span>
 </div>
-<script>
-  document.getElementById('dateNow{{ loop.index }}').textContent =
-    new Date().toLocaleDateString('fr-FR', {weekday:'long',year:'numeric',month:'long',day:'numeric'})
-    + ' à ' + new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
-</script>
 
 {% endfor %}
+
+<script>
+document.querySelectorAll('.date-now').forEach(function(el){
+  var now = new Date();
+  var jours = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
+  var mois  = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+  el.textContent = jours[now.getDay()] + ' ' + now.getDate() + ' ' + mois[now.getMonth()] + ' ' + now.getFullYear()
+                   + ' à ' + String(now.getHours()).padStart(2,'0') + 'h' + String(now.getMinutes()).padStart(2,'0');
+});
+</script>
 </body>
 </html>

@@ -648,17 +648,19 @@ def _build_word_pai(annee, s, static_img_path, cibles=None, cibles_directions=No
         switch_landscape(doc)
         h1(doc, "V. LISTE DÉTAILLÉE DES ACTIVITÉS D'INVESTISSEMENT")
         interp(doc,
-            f"Légende : FP = Fonds Propres | FADeC = FA + FNA | PTFs = Partenaires Techniques et Financiers. "
+            f"Légende : RP = Ressources Propres | FA = FADeC Affecté | FNA = FADeC Non Affecté | "
+            f"AP = Appui Partenaires | AF = Autres Financements. "
             f"Total : {_fmt(s['total_budget'])} F CFA pour {s['nb_activites']} activité(s)."
         )
         cols_det = ['Code PAI', 'Désignation', 'Dir.', 'Période', 'Poids\n(%)',
-                    'FP (F CFA)', 'FADeC (F CFA)', 'PTFs (F CFA)', 'Total (F CFA)']
+                    'RP (F CFA)', 'FA (F CFA)', 'FNA (F CFA)', 'AP (F CFA)', 'AF (F CFA)',
+                    'Total (F CFA)']
         tbl_det = doc.add_table(rows=len(s['liste_activites']) + 2, cols=len(cols_det))
         borders(tbl_det)
         repeat_hdr(tbl_det.rows[0])
         for ci, txt in enumerate(cols_det):
             hdr_cell(tbl_det.cell(0, ci), txt, bg='1A5276')
-        tot_fp = tot_fadec = tot_ptfs = tot_bud = 0
+        tot_rp = tot_fa = tot_fn = tot_ap = tot_af = tot_bud = 0
         for ri3, a in enumerate(s['liste_activites'], 1):
             col_bg = 'EBF5FB' if ri3 % 2 == 0 else 'F9F9F9'
             for ci, (val, al) in enumerate([
@@ -667,22 +669,22 @@ def _build_word_pai(annee, s, static_img_path, cibles=None, cibles_directions=No
                 (a['direction'],     'center'),
                 (a['periode'],       'center'),
                 (_fr(a['poids']),    'center'),
-                (_fmt(a['fp']),      'right'),
-                (_fmt(a['fadec']),   'right'),
-                (_fmt(a['ptfs']),    'right'),
+                (_fmt(a['rp']),      'right'),
+                (_fmt(a['fa']),      'right'),
+                (_fmt(a['fn']),      'right'),
+                (_fmt(a['ap']),      'right'),
+                (_fmt(a['af']),      'right'),
                 (_fmt(a['budget']),  'right'),
             ]):
                 data_cell(tbl_det.rows[ri3].cells[ci], val, align=al, size=8)
                 shade(tbl_det.rows[ri3].cells[ci], col_bg)
-            tot_fp    += a['fp']
-            tot_fadec += a['fadec']
-            tot_ptfs  += a['ptfs']
-            tot_bud   += a['budget']
+            tot_rp  += a['rp'];  tot_fa += a['fa'];  tot_fn += a['fn']
+            tot_ap  += a['ap'];  tot_af += a['af'];  tot_bud += a['budget']
         tot_r2 = tbl_det.rows[-1]
         for ci, (val, al) in enumerate([
             ('TOTAL', 'center'), ('', 'left'), ('', 'center'), ('', 'center'), ('', 'center'),
-            (_fmt(tot_fp), 'right'), (_fmt(tot_fadec), 'right'),
-            (_fmt(tot_ptfs), 'right'), (_fmt(tot_bud), 'right'),
+            (_fmt(tot_rp), 'right'), (_fmt(tot_fa), 'right'), (_fmt(tot_fn), 'right'),
+            (_fmt(tot_ap), 'right'), (_fmt(tot_af), 'right'), (_fmt(tot_bud), 'right'),
         ]):
             data_cell(tot_r2.cells[ci], val, align=al, bold=True, size=8)
             shade(tot_r2.cells[ci], 'AED6F1')

@@ -102,7 +102,7 @@
     <tr style="background:#{{ bg }};">
       <td class="fw-semibold">{{ lbl }}</td>
       <td class="text-end">{{ val|milliers }}</td>
-      <td class="text-center">{{ pct(val)|round(1) }} %</td>
+      <td class="text-center">{{ '%.2f'|format(pct(val))|replace('.',',') }} %</td>
     </tr>
     {% endfor %}
     <tr class="row-total">
@@ -224,7 +224,7 @@
   {% elif v < 50 %}cible-orange text-warning
   {% elif v < 75 %}cible-bleu text-primary
   {% else %}cible-vert text-success{% endif %}
-  fw-bold" style="font-size:.78rem;">{{ '%.1f'|format(v)|replace('.',',') }} %</span>
+  fw-bold" style="font-size:.78rem;">{{ '%.2f'|format(v)|replace('.',',') }} %</span>
 {% endmacro %}
 
 <h5 class="fw-bold text-primary mt-3 mb-2"><i class="fas fa-calendar-check me-2"></i>Cibles trimestrielles d'exécution</h5>

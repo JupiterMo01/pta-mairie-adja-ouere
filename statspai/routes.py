@@ -30,7 +30,7 @@ def _fmt(v):
         return '0'
 
 
-def _fr(v, d=1):
+def _fr(v, d=2):
     try:
         return ('{:.' + str(d) + 'f}').format(float(v or 0)).replace('.', ',')
     except (TypeError, ValueError):
@@ -74,7 +74,7 @@ def _compute_stats_pai(annee):
     total_rp, total_fa, total_fn, total_ap, total_af, _ = _src5(all_acts)
 
     def pct(val):
-        return round(val / total_global * 100, 1) if total_global else 0
+        return round(val / total_global * 100, 2) if total_global else 0
 
     # Stats par programme et projet
     stats_programmes = []
@@ -134,6 +134,7 @@ def _compute_stats_pai(annee):
     for d in dir_map.values():
         d['fadec'] = d['fa'] + d['fn']
         d['ptfs']  = d['ap'] + d['af']
+        d['fp']    = d['rp']             # alias rétrocompatible
     stats_directions = sorted(dir_map.values(), key=lambda x: x['code'])
 
     # Liste détaillée des activités
@@ -505,7 +506,7 @@ def _build_word_pai(annee, s, static_img_path, cibles=None, cibles_directions=No
     doc.add_paragraph()
 
     def _pct_s(v):
-        return _fr(round(v / s['total_budget'] * 100, 1)) if s['total_budget'] else '0,0'
+        return _fr(round(v / s['total_budget'] * 100, 2)) if s['total_budget'] else '0,00'
     interp(doc,
         f"Le PAI {annee.annee} comprend {s['nb_programmes']} programme(s) répartis en "
         f"{s['nb_projets']} projet(s) et {s['nb_activites']} activité(s) d'investissement. "
@@ -614,7 +615,7 @@ def _build_word_pai(annee, s, static_img_path, cibles=None, cibles_directions=No
     for i, txt in enumerate(['Code', 'Direction', 'Nb activités', 'Budget (F CFA)', 'FP / FADeC / PTFs']):
         hdr_cell(tbl_dir.cell(0, i), txt, bg='27AE60' if i >= 2 else '2C3E50')
     for ri2, d in enumerate(actifs, 1):
-        src_d = f"FP:{_fmt(d['fp'])} | FADeC:{_fmt(d['fadec'])} | PTFs:{_fmt(d['ptfs'])}"
+        src_d = f"RP:{_fmt(d['rp'])} | FA:{_fmt(d['fa'])} | FNA:{_fmt(d['fn'])} | AP:{_fmt(d['ap'])} | AF:{_fmt(d['af'])}"
         data_cell(tbl_dir.rows[ri2].cells[0], d['code'],            align='center', size=9)
         data_cell(tbl_dir.rows[ri2].cells[1], d['nom'],             align='left',   size=9)
         data_cell(tbl_dir.rows[ri2].cells[2], str(d['nb_activites']), align='center', bold=True, size=9)
@@ -892,7 +893,7 @@ def _build_excel_pai(annee, s):
         _cell(ws3, next_r, 2, d['nom'],             bg)
         _cell(ws3, next_r, 3, d['nb_activites'],   bg, bold=(d['nb_activites'] > 0), align=ctr)
         _cell(ws3, next_r, 4, _num(d['budget']),   bg, align=ctr)
-        _cell(ws3, next_r, 5, _num(d['fp']),       bg, align=ctr)
+        _cell(ws3, next_r, 5, _num(d['rp']),       bg, align=ctr)
         _cell(ws3, next_r, 6, _num(d['fadec']),    bg, align=ctr)
         _cell(ws3, next_r, 7, _num(d['ptfs']),     bg, align=ctr)
         next_r += 1

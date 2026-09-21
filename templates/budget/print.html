@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Exécution du Budget — {{ annee.annee }}</title>
+<style>
+  @page { size: A4 landscape; margin: 1.2cm; }
+  body  { font-family: Arial, sans-serif; font-size: 8pt; color: #000; }
+
+  /* En-tête institutionnel */
+  .header-table { width:100%; border-collapse:collapse; margin-bottom:6px; }
+  .header-table td { vertical-align:middle; padding:2px 6px; }
+  .header-bandeau { width:160px; }
+  .header-contact { text-align:center; font-size:7.5pt; line-height:1.4; }
+  .header-logo    { width:60px; text-align:right; }
+  .header-logo img { height:40px; }
+  .bandeau img    { height:42px; }
+
+  /* Titre section */
+  .section-title {
+    background:#1F4E79; color:#fff; font-weight:bold; font-size:9pt;
+    text-align:center; padding:5px 8px; margin:10px 0 4px;
+    border-radius:3px;
+  }
+
+  /* Tableau budget */
+  table.bud { width:100%; border-collapse:collapse; margin-bottom:6px; }
+  table.bud th {
+    background:#1F4E79; color:#fff; font-weight:bold; font-size:7.5pt;
+    text-align:center; padding:4px 3px; border:1px solid #999;
+  }
+  table.bud td { border:1px solid #bbb; padding:3px 5px; font-size:8pt; }
+  .row-fct { background:#D6EAF8; font-weight:600; }
+  .row-inv { background:#D5F5E3; font-weight:600; }
+  .row-tot { background:#1F4E79; color:#fff; font-weight:bold; }
+  .row-tot td { color:#fff; border-color:#1F4E79; }
+  .r { text-align:right; }
+  .c { text-align:center; }
+
+  /* Pied de page */
+  .footer { margin-top:12px; display:flex; justify-content:space-between;
+            font-size:7pt; color:#555; border-top:1px solid #ccc; padding-top:4px; }
+  @media print {
+    .no-print { display:none; }
+    .page-break { page-break-before: always; }
+  }
+</style>
+</head>
+<body>
+
+{# Bouton impression (masqué à l'impression) #}
+<div class="no-print" style="margin-bottom:12px;">
+  <button onclick="window.print()" style="padding:6px 16px;font-size:11px;cursor:pointer;">
+    🖨 Imprimer
+  </button>
+</div>
+
+{% for sec in sections %}
+{% if not loop.first %}<div class="page-break"></div>{% endif %}
+
+{# ── En-tête institutionnel ─────────────────────────────────────────────── #}
+<table class="header-table">
+  <tr>
+    <td class="header-bandeau">
+      <img src="{{ url_for('static', filename='img/bandeau.png') }}" alt="bandeau"
+           onerror="this.style.display='none'">
+    </td>
+    <td class="header-contact">
+      <strong>Mairie d'Adja-Ouèrè</strong><br>
+      BP 02 Adja-Ouèrè — Tél : +229 01 61 91 96 12<br>
+      Email : contact.adjaouere@mairie.bj
+    </td>
+    <td class="header-logo">
+      <img src="{{ url_for('static', filename='img/logo_commune.png') }}" alt="logo"
+           onerror="this.style.display='none'">
+    </td>
+  </tr>
+</table>
+
+{# ── Titre ──────────────────────────────────────────────────────────────── #}
+<div class="section-title">
+  NIVEAU D'EXÉCUTION DES DÉPENSES BUDGÉTAIRES — Exercice {{ annee.annee }}
+  &nbsp;|&nbsp; Trimestre {{ sec.trimestre }}
+</div>
+
+{# ── Tableau ─────────────────────────────────────────────────────────────── #}
+<table class="bud">
+  <thead>
+    <tr>
+      <th style="width:30%;text-align:left;">Libellés</th>
+      <th>Prévisions<br>(F CFA)</th>
+      <th>Engagements<br>(F CFA)</th>
+      <th>Taux<br>eng.</th>
+      <th>Mandatements<br>(F CFA)</th>
+      <th>Taux<br>mand.</th>
+      <th>Paiement<br>(F CFA)</th>
+      <th>Taux<br>pmt</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for type_key, css in [('fonctionnement','row-fct'),('investissement','row-inv')] %}
+    {% set lg = sec.lignes[type_key] %}
+    <tr class="{{ css }}">
+      <td>{{ LABELS[type_key] }}</td>
+      <td class="r">{{ lg.previsions|fcfa }}</td>
+      <td class="r">{{ lg.engage|fcfa }}</td>
+      <td class="c">{{ lg.taux_eng|pct }}&nbsp;%</td>
+      <td class="r">{{ lg.mandate|fcfa }}</td>
+      <td class="c">{{ lg.taux_mand|pct }}&nbsp;%</td>
+      <td class="r">{{ lg.paye|fcfa }}</td>
+      <td class="c">{{ lg.taux_pay|pct }}&nbsp;%</td>
+    </tr>
+    {% endfor %}
+    {% set tl = sec.lignes.total %}
+    <tr class="row-tot">
+      <td>TOTAL BUDGET</td>
+      <td class="r">{{ tl.previsions|fcfa }}</td>
+      <td class="r">{{ tl.engage|fcfa }}</td>
+      <td class="c">{{ tl.taux_eng|pct }}&nbsp;%</td>
+      <td class="r">{{ tl.mandate|fcfa }}</td>
+      <td class="c">{{ tl.taux_mand|pct }}&nbsp;%</td>
+      <td class="r">{{ tl.paye|fcfa }}</td>
+      <td class="c">{{ tl.taux_pay|pct }}&nbsp;%</td>
+    </tr>
+  </tbody>
+</table>
+
+{# ── Pied de page ───────────────────────────────────────────────────────── #}
+<div class="footer">
+  <span>Édité le <span id="dateNow{{ loop.index }}"></span></span>
+  <span>Direction du Développement Local et de la Planification (DDLP)</span>
+</div>
+<script>
+  document.getElementById('dateNow{{ loop.index }}').textContent =
+    new Date().toLocaleDateString('fr-FR', {weekday:'long',year:'numeric',month:'long',day:'numeric'})
+    + ' à ' + new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+</script>
+
+{% endfor %}
+</body>
+</html>

@@ -75,6 +75,12 @@
           <i class="fas fa-chart-bar me-2 fa-fw"></i>Point d'exécution PAI
         </a>
       </li>
+      <li class="nav-item">
+        <a class="nav-link text-white py-2 px-3 {% if request.blueprint == 'budget' %}active-link{% endif %}"
+           href="{{ url_for('budget.index') }}">
+          <i class="fas fa-coins me-2 fa-fw"></i>Exécution du Budget
+        </a>
+      </li>
       {% endif %}
 
       {# ── Menus admin uniquement ── #}
@@ -120,6 +126,12 @@
         <a class="nav-link text-white py-2 px-3 {% if request.blueprint == 'pei' %}active-link{% endif %}"
            href="{{ url_for('pei.index') }}">
           <i class="fas fa-chart-bar me-2 fa-fw"></i>Point d'exécution PAI
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link text-white py-2 px-3 {% if request.blueprint == 'budget' %}active-link{% endif %}"
+           href="{{ url_for('budget.index') }}">
+          <i class="fas fa-coins me-2 fa-fw"></i>Exécution du Budget
         </a>
       </li>
       <li><hr class="border-secondary my-1"></li>

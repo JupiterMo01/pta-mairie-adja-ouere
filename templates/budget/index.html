@@ -1,0 +1,356 @@
+{% extends "base.html" %}
+{% block title %}Exécution du Budget — {{ annee.annee }}{% endblock %}
+{% block page_title %}
+  <i class="fas fa-coins me-2 text-warning"></i>Exécution du Budget
+  {% if annee %}<span class="badge bg-warning text-dark ms-1">{{ annee.annee }}</span>{% endif %}
+{% endblock %}
+
+{% block content %}
+{% if not annee %}
+<div class="alert alert-warning">Aucune année active.</div>
+{% else %}
+
+<style>
+.bud-table th  { background:#1F4E79; color:#fff; font-size:.78rem; text-align:center; vertical-align:middle; }
+.bud-table td  { font-size:.82rem; vertical-align:middle; }
+.bud-table .row-fct  { background:#D6EAF8; }
+.bud-table .row-inv  { background:#D5F5E3; }
+.bud-table .row-tot  { background:#1F4E79; color:#fff; font-weight:700; }
+.bud-table .row-tot td { color:#fff; }
+.taux-badge { font-size:.72rem; padding:2px 6px; border-radius:4px; }
+.taux-ok  { background:#d4edda; color:#155724; }
+.taux-mid { background:#fff3cd; color:#856404; }
+.taux-low { background:#f8d7da; color:#721c24; }
+.btn-edit-row { font-size:.72rem; padding:1px 8px; }
+</style>
+
+{# ── Onglets trimestre ─────────────────────────────────────────────────────── #}
+<ul class="nav nav-tabs mb-3" id="triTabs">
+  {% for t in [1,2,3,4] %}
+  <li class="nav-item">
+    <a class="nav-link {% if trimestre == t %}active fw-bold{% endif %}"
+       href="{{ url_for('budget.index', t=t) }}">Trimestre {{ t }}</a>
+  </li>
+  {% endfor %}
+</ul>
+
+{# ── Tableau principal ─────────────────────────────────────────────────────── #}
+<div class="table-responsive">
+<table class="table table-bordered bud-table mb-3">
+  <thead>
+    <tr>
+      <th style="width:30%">Libellés</th>
+      <th>Prévisions<br><small class="fw-normal">(F CFA)</small></th>
+      <th>Engagements<br><small class="fw-normal">(F CFA)</small></th>
+      <th>Taux<br><small class="fw-normal">eng.</small></th>
+      <th>Mandatements<br><small class="fw-normal">(F CFA)</small></th>
+      <th>Taux<br><small class="fw-normal">mand.</small></th>
+      <th>Paiement<br><small class="fw-normal">(F CFA)</small></th>
+      <th>Taux<br><small class="fw-normal">pmt</small></th>
+      {% if peut_editer %}<th style="width:70px"></th>{% endif %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for type_key, css_class in [('fonctionnement','row-fct'),('investissement','row-inv')] %}
+    {% set lg = lignes[type_key] %}
+    <tr class="{{ css_class }}"
+        data-type="{{ type_key }}"
+        data-previsions="{{ lg.previsions }}"
+        data-engage="{{ lg.engage }}"
+        data-mandate="{{ lg.mandate }}"
+        data-paye="{{ lg.paye }}"
+        data-pv-lock="{{ 'true' if lg.previsions_verrouillees else 'false' }}">
+      <td class="fw-semibold">{{ LABELS[type_key] }}</td>
+      <td class="text-end" data-field="previsions">{{ lg.previsions|fcfa }}</td>
+      <td class="text-end" data-field="engage">{{ lg.engage|fcfa }}</td>
+      <td class="text-center" data-field="taux_eng">
+        <span class="taux-badge {% if lg.taux_eng >= 75 %}taux-ok{% elif lg.taux_eng >= 40 %}taux-mid{% else %}taux-low{% endif %}">
+          {{ lg.taux_eng|pct }}&nbsp;%
+        </span>
+      </td>
+      <td class="text-end" data-field="mandate">{{ lg.mandate|fcfa }}</td>
+      <td class="text-center" data-field="taux_mand">
+        <span class="taux-badge {% if lg.taux_mand >= 75 %}taux-ok{% elif lg.taux_mand >= 40 %}taux-mid{% else %}taux-low{% endif %}">
+          {{ lg.taux_mand|pct }}&nbsp;%
+        </span>
+      </td>
+      <td class="text-end" data-field="paye">{{ lg.paye|fcfa }}</td>
+      <td class="text-center" data-field="taux_pay">
+        <span class="taux-badge {% if lg.taux_pay >= 75 %}taux-ok{% elif lg.taux_pay >= 40 %}taux-mid{% else %}taux-low{% endif %}">
+          {{ lg.taux_pay|pct }}&nbsp;%
+        </span>
+      </td>
+      {% if peut_editer %}
+      <td class="text-center">
+        <button class="btn btn-sm btn-outline-primary btn-edit-row"
+                onclick="openEdit(this.closest('tr'))">
+          <i class="fas fa-pen"></i>
+        </button>
+      </td>
+      {% endif %}
+    </tr>
+    {% endfor %}
+
+    {# Total #}
+    {% set tl = lignes.total %}
+    <tr class="row-tot">
+      <td>TOTAL BUDGET</td>
+      <td class="text-end" id="tot-previsions">{{ tl.previsions|fcfa }}</td>
+      <td class="text-end" id="tot-engage">{{ tl.engage|fcfa }}</td>
+      <td class="text-center" id="tot-taux-eng">{{ tl.taux_eng|pct }}&nbsp;%</td>
+      <td class="text-end" id="tot-mandate">{{ tl.mandate|fcfa }}</td>
+      <td class="text-center" id="tot-taux-mand">{{ tl.taux_mand|pct }}&nbsp;%</td>
+      <td class="text-end" id="tot-paye">{{ tl.paye|fcfa }}</td>
+      <td class="text-center" id="tot-taux-pay">{{ tl.taux_pay|pct }}&nbsp;%</td>
+      {% if peut_editer %}<td></td>{% endif %}
+    </tr>
+  </tbody>
+</table>
+</div>
+
+{# ── Actions ───────────────────────────────────────────────────────────────── #}
+<div class="d-flex flex-wrap gap-2 mb-4">
+  <a href="{{ url_for('budget.print_view', t=trimestre) }}" target="_blank"
+     class="btn btn-outline-secondary btn-sm">
+    <i class="fas fa-print me-1"></i>Imprimer T{{ trimestre }}
+  </a>
+  <a href="{{ url_for('budget.export_excel', t=trimestre) }}"
+     class="btn btn-success btn-sm">
+    <i class="fas fa-file-excel me-1"></i>Excel T{{ trimestre }}
+  </a>
+  <button class="btn btn-outline-info btn-sm" type="button"
+          data-bs-toggle="collapse" data-bs-target="#multiExport">
+    <i class="fas fa-layer-group me-1"></i>Export multi-trimestres
+  </button>
+</div>
+
+<div class="collapse" id="multiExport">
+  <div class="card card-body mb-4" style="max-width:500px;">
+    <p class="fw-semibold small mb-2">Sélectionner les trimestres à exporter :</p>
+    <div class="d-flex gap-3 mb-3">
+      {% for t in [1,2,3,4] %}
+      <div class="form-check">
+        <input class="form-check-input" type="checkbox" name="multi_t" value="{{ t }}"
+               id="chk{{ t }}" {% if t == trimestre %}checked{% endif %}>
+        <label class="form-check-label" for="chk{{ t }}">T{{ t }}</label>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="d-flex gap-2">
+      <button type="button" class="btn btn-outline-secondary btn-sm"
+              onclick="multiAction('print')">
+        <i class="fas fa-print me-1"></i>Imprimer
+      </button>
+      <button type="button" class="btn btn-success btn-sm"
+              onclick="multiAction('excel')">
+        <i class="fas fa-file-excel me-1"></i>Excel
+      </button>
+    </div>
+  </div>
+</div>
+
+{# ── Modal édition ─────────────────────────────────────────────────────────── #}
+{% if peut_editer %}
+<div class="modal fade" id="editModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="editModalTitle">Saisie des montants</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="editType">
+        <div class="mb-3">
+          <label class="form-label fw-semibold small">Prévisions (F CFA)</label>
+          <input type="number" id="inpPrev" class="form-control form-control-sm"
+                 min="0" step="1">
+          <div class="form-text text-warning" id="pvLockMsg" style="display:none;">
+            <i class="fas fa-lock me-1"></i>Prévisions verrouillées — seul l'admin peut les modifier.
+          </div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold small">Montant engagé (F CFA)</label>
+          <input type="number" id="inpEng" class="form-control form-control-sm" min="0" step="1">
+          {% if not is_admin %}
+          <div class="form-text text-muted">Ne peut pas diminuer par rapport à la valeur actuelle.</div>
+          {% endif %}
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold small">Montant mandaté (F CFA)</label>
+          <input type="number" id="inpMand" class="form-control form-control-sm" min="0" step="1">
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold small">Montant payé (F CFA)</label>
+          <input type="number" id="inpPaye" class="form-control form-control-sm" min="0" step="1">
+        </div>
+        {# Aperçu taux en temps réel #}
+        <div class="bg-light rounded p-2 small" id="tauxPreview">
+          <div class="row text-center">
+            <div class="col">Taux eng.<br><strong id="prvTauxEng">—</strong></div>
+            <div class="col">Taux mand.<br><strong id="prvTauxMand">—</strong></div>
+            <div class="col">Taux pmt<br><strong id="prvTauxPay">—</strong></div>
+          </div>
+        </div>
+        <div class="alert alert-danger mt-2 py-1 small" id="editErr" style="display:none;"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Annuler</button>
+        <button type="button" class="btn btn-primary btn-sm" id="saveBtn" onclick="saveEdit()">
+          <i class="fas fa-save me-1"></i>Enregistrer
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% endif %}{# annee #}
+{% endblock %}
+
+{% block scripts %}
+<script>
+var CSRF = '{{ csrf_token }}';
+var TRI  = {{ trimestre }};
+
+// ── Formatage ─────────────────────────────────────────────────────────────────
+function fmt(n) {
+  return Math.round(n).toLocaleString('fr-FR').replace(/ /g,' ').replace(/,/g,' ');
+}
+function pct(n) { return n.toFixed(2).replace('.', ',') + ' %'; }
+function taux(num, denom) { return denom ? num / denom * 100 : 0; }
+
+// ── Multi-trimestre ───────────────────────────────────────────────────────────
+function multiAction(type) {
+  var checked = Array.from(document.querySelectorAll('input[name="multi_t"]:checked'))
+                     .map(function(c){ return c.value; });
+  if (!checked.length) { alert('Cochez au moins un trimestre.'); return; }
+  var qs = checked.map(function(v){ return 't=' + v; }).join('&');
+  var base = type === 'print'
+    ? '{{ url_for("budget.print_view") }}'
+    : '{{ url_for("budget.export_excel") }}';
+  var url = base + '?' + qs;
+  if (type === 'print') window.open(url, '_blank');
+  else window.location = url;
+}
+
+{% if peut_editer %}
+// ── Edit modal ────────────────────────────────────────────────────────────────
+var _editRow = null;
+
+function openEdit(row) {
+  _editRow = row;
+  var type    = row.dataset.type;
+  var pvLock  = row.dataset.pvLock === 'true';
+  var labels  = { fonctionnement: 'Dépenses de Fonctionnement',
+                  investissement: "Dépenses d'Investissement" };
+
+  document.getElementById('editModalTitle').textContent = 'Saisie — ' + labels[type];
+  document.getElementById('editType').value = type;
+
+  var inpPrev = document.getElementById('inpPrev');
+  inpPrev.value = parseFloat(row.dataset.previsions) || 0;
+  {% if not is_admin %}
+  inpPrev.disabled = pvLock;
+  document.getElementById('pvLockMsg').style.display = pvLock ? '' : 'none';
+  {% else %}
+  inpPrev.disabled = false;
+  document.getElementById('pvLockMsg').style.display = 'none';
+  {% endif %}
+
+  document.getElementById('inpEng').value  = parseFloat(row.dataset.engage)  || 0;
+  document.getElementById('inpMand').value = parseFloat(row.dataset.mandate) || 0;
+  document.getElementById('inpPaye').value = parseFloat(row.dataset.paye)    || 0;
+  document.getElementById('editErr').style.display = 'none';
+  updatePreview();
+  new bootstrap.Modal(document.getElementById('editModal')).show();
+}
+
+function updatePreview() {
+  var prev = parseFloat(document.getElementById('inpPrev').value)  || 0;
+  var eng  = parseFloat(document.getElementById('inpEng').value)   || 0;
+  var mand = parseFloat(document.getElementById('inpMand').value)  || 0;
+  var paye = parseFloat(document.getElementById('inpPaye').value)  || 0;
+  document.getElementById('prvTauxEng').textContent  = pct(taux(eng,  prev));
+  document.getElementById('prvTauxMand').textContent = pct(taux(mand, eng));
+  document.getElementById('prvTauxPay').textContent  = pct(taux(paye, mand));
+}
+['inpPrev','inpEng','inpMand','inpPaye'].forEach(function(id){
+  document.getElementById(id).addEventListener('input', updatePreview);
+});
+
+function saveEdit() {
+  var type  = document.getElementById('editType').value;
+  var prev  = parseFloat(document.getElementById('inpPrev').value)  || 0;
+  var eng   = parseFloat(document.getElementById('inpEng').value)   || 0;
+  var mand  = parseFloat(document.getElementById('inpMand').value)  || 0;
+  var paye  = parseFloat(document.getElementById('inpPaye').value)  || 0;
+
+  var errEl = document.getElementById('editErr');
+  var btn   = document.getElementById('saveBtn');
+  errEl.style.display = 'none';
+  btn.disabled = true;
+
+  var fd = new FormData();
+  fd.append('_csrf_token',   CSRF);
+  fd.append('trimestre',     TRI);
+  fd.append('type_depense',  type);
+  fd.append('previsions',    prev);
+  fd.append('montant_engage',  eng);
+  fd.append('montant_mandate', mand);
+  fd.append('montant_paye',    paye);
+
+  fetch('{{ url_for("budget.edit") }}', { method: 'POST', body: fd })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      btn.disabled = false;
+      if (!d.ok) {
+        errEl.textContent = d.error;
+        errEl.style.display = '';
+        return;
+      }
+      // Mettre à jour la ligne
+      var row = _editRow;
+      row.dataset.previsions = d.previsions;
+      row.dataset.engage     = d.engage;
+      row.dataset.mandate    = d.mandate;
+      row.dataset.paye       = d.paye;
+      row.dataset.pvLock     = d.previsions_verrouillees ? 'true' : 'false';
+
+      row.querySelector('[data-field="previsions"]').textContent = fmt(d.previsions);
+      row.querySelector('[data-field="engage"]').textContent     = fmt(d.engage);
+      row.querySelector('[data-field="mandate"]').textContent    = fmt(d.mandate);
+      row.querySelector('[data-field="paye"]').textContent       = fmt(d.paye);
+
+      function setTaux(field, val) {
+        var el  = row.querySelector('[data-field="' + field + '"] .taux-badge');
+        el.textContent = val.toFixed(2).replace('.', ',') + ' %';
+        el.className = 'taux-badge ' + (val >= 75 ? 'taux-ok' : val >= 40 ? 'taux-mid' : 'taux-low');
+      }
+      setTaux('taux_eng',  d.taux_eng);
+      setTaux('taux_mand', d.taux_mand);
+      setTaux('taux_pay',  d.taux_pay);
+
+      // Recalcul total
+      var rows  = document.querySelectorAll('tr[data-type]');
+      var totP  = 0, totE = 0, totM = 0, totPa = 0;
+      rows.forEach(function(r){
+        totP  += parseFloat(r.dataset.previsions) || 0;
+        totE  += parseFloat(r.dataset.engage)     || 0;
+        totM  += parseFloat(r.dataset.mandate)    || 0;
+        totPa += parseFloat(r.dataset.paye)       || 0;
+      });
+      document.getElementById('tot-previsions').textContent = fmt(totP);
+      document.getElementById('tot-engage').textContent     = fmt(totE);
+      document.getElementById('tot-mandate').textContent    = fmt(totM);
+      document.getElementById('tot-paye').textContent       = fmt(totPa);
+      document.getElementById('tot-taux-eng').textContent   = pct(taux(totE, totP));
+      document.getElementById('tot-taux-mand').textContent  = pct(taux(totM, totE));
+      document.getElementById('tot-taux-pay').textContent   = pct(taux(totPa, totM));
+
+      bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
+    })
+    .catch(function(){ btn.disabled = false; errEl.textContent = 'Erreur réseau.'; errEl.style.display = ''; });
+}
+{% endif %}
+</script>
+{% endblock %}

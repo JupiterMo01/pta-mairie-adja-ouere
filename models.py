@@ -560,3 +560,22 @@ class PeiActivite(db.Model):
     observations       = db.Column(db.Text)
 
     activite = db.relationship('Activite', backref=db.backref('pei_extra', uselist=False))
+
+
+class BudgetExecution(db.Model):
+    """Exécution budgétaire trimestrielle (Fonctionnement / Investissement)."""
+    __tablename__ = 'budget_executions'
+    id              = db.Column(db.Integer, primary_key=True)
+    annee_id        = db.Column(db.Integer, db.ForeignKey('annees.id'), nullable=False)
+    trimestre       = db.Column(db.Integer, nullable=False)     # 1 | 2 | 3 | 4
+    type_depense    = db.Column(db.String(20), nullable=False)  # 'fonctionnement' | 'investissement'
+    previsions      = db.Column(db.Float, default=0.0)
+    montant_engage  = db.Column(db.Float, default=0.0)
+    montant_mandate = db.Column(db.Float, default=0.0)
+    montant_paye    = db.Column(db.Float, default=0.0)
+    previsions_verrouillees = db.Column(db.Boolean, default=False)
+
+    annee = db.relationship('Annee', backref='budget_executions')
+    __table_args__ = (
+        db.UniqueConstraint('annee_id', 'trimestre', 'type_depense', name='uq_budget_exec'),
+    )

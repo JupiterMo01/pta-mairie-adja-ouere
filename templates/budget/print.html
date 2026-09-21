@@ -94,24 +94,24 @@
     {% set lg = sec.lignes[type_key] %}
     <tr class="{{ css }}">
       <td class="l">{{ LABELS[type_key] }}</td>
-      <td class="r">{{ lg.previsions|fcfa }}</td>
-      <td class="r">{{ lg.engage|fcfa }}</td>
+      <td class="c">{{ lg.previsions|fcfa }}</td>
+      <td class="c">{{ lg.engage|fcfa }}</td>
       <td class="c">{{ lg.taux_eng|pct }}&nbsp;%</td>
-      <td class="r">{{ lg.mandate|fcfa }}</td>
+      <td class="c">{{ lg.mandate|fcfa }}</td>
       <td class="c">{{ lg.taux_mand|pct }}&nbsp;%</td>
-      <td class="r">{{ lg.paye|fcfa }}</td>
+      <td class="c">{{ lg.paye|fcfa }}</td>
       <td class="c">{{ lg.taux_pay|pct }}&nbsp;%</td>
     </tr>
     {% endfor %}
     {% set tl = sec.lignes.total %}
     <tr class="row-tot">
       <td class="l">TOTAL BUDGET</td>
-      <td class="r">{{ tl.previsions|fcfa }}</td>
-      <td class="r">{{ tl.engage|fcfa }}</td>
+      <td class="c">{{ tl.previsions|fcfa }}</td>
+      <td class="c">{{ tl.engage|fcfa }}</td>
       <td class="c">{{ tl.taux_eng|pct }}&nbsp;%</td>
-      <td class="r">{{ tl.mandate|fcfa }}</td>
+      <td class="c">{{ tl.mandate|fcfa }}</td>
       <td class="c">{{ tl.taux_mand|pct }}&nbsp;%</td>
-      <td class="r">{{ tl.paye|fcfa }}</td>
+      <td class="c">{{ tl.paye|fcfa }}</td>
       <td class="c">{{ tl.taux_pay|pct }}&nbsp;%</td>
     </tr>
   </tbody>

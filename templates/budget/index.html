@@ -39,7 +39,7 @@
 <table class="table table-bordered bud-table mb-3">
   <thead>
     <tr>
-      <th style="width:30%">Libellés</th>
+      <th style="width:30%;text-align:left;">Libellés</th>
       <th>Prévisions<br><small class="fw-normal">(F CFA)</small></th>
       <th>Engagements<br><small class="fw-normal">(F CFA)</small></th>
       <th>Taux<br><small class="fw-normal">eng.</small></th>
@@ -61,20 +61,20 @@
         data-paye="{{ lg.paye }}"
         data-pv-lock="{{ 'true' if lg.previsions_verrouillees else 'false' }}">
       <td class="fw-semibold">{{ LABELS[type_key] }}</td>
-      <td class="text-end" data-field="previsions">{{ lg.previsions|fcfa }}</td>
-      <td class="text-end" data-field="engage">{{ lg.engage|fcfa }}</td>
+      <td class="text-center" data-field="previsions">{{ lg.previsions|fcfa }}</td>
+      <td class="text-center" data-field="engage">{{ lg.engage|fcfa }}</td>
       <td class="text-center" data-field="taux_eng">
         <span class="taux-badge {% if lg.taux_eng >= 75 %}taux-ok{% elif lg.taux_eng >= 40 %}taux-mid{% else %}taux-low{% endif %}">
           {{ lg.taux_eng|pct }}&nbsp;%
         </span>
       </td>
-      <td class="text-end" data-field="mandate">{{ lg.mandate|fcfa }}</td>
+      <td class="text-center" data-field="mandate">{{ lg.mandate|fcfa }}</td>
       <td class="text-center" data-field="taux_mand">
         <span class="taux-badge {% if lg.taux_mand >= 75 %}taux-ok{% elif lg.taux_mand >= 40 %}taux-mid{% else %}taux-low{% endif %}">
           {{ lg.taux_mand|pct }}&nbsp;%
         </span>
       </td>
-      <td class="text-end" data-field="paye">{{ lg.paye|fcfa }}</td>
+      <td class="text-center" data-field="paye">{{ lg.paye|fcfa }}</td>
       <td class="text-center" data-field="taux_pay">
         <span class="taux-badge {% if lg.taux_pay >= 75 %}taux-ok{% elif lg.taux_pay >= 40 %}taux-mid{% else %}taux-low{% endif %}">
           {{ lg.taux_pay|pct }}&nbsp;%
@@ -95,12 +95,12 @@
     {% set tl = lignes.total %}
     <tr class="row-tot">
       <td>TOTAL BUDGET</td>
-      <td class="text-end" id="tot-previsions">{{ tl.previsions|fcfa }}</td>
-      <td class="text-end" id="tot-engage">{{ tl.engage|fcfa }}</td>
+      <td class="text-center" id="tot-previsions">{{ tl.previsions|fcfa }}</td>
+      <td class="text-center" id="tot-engage">{{ tl.engage|fcfa }}</td>
       <td class="text-center" id="tot-taux-eng">{{ tl.taux_eng|pct }}&nbsp;%</td>
-      <td class="text-end" id="tot-mandate">{{ tl.mandate|fcfa }}</td>
+      <td class="text-center" id="tot-mandate">{{ tl.mandate|fcfa }}</td>
       <td class="text-center" id="tot-taux-mand">{{ tl.taux_mand|pct }}&nbsp;%</td>
-      <td class="text-end" id="tot-paye">{{ tl.paye|fcfa }}</td>
+      <td class="text-center" id="tot-paye">{{ tl.paye|fcfa }}</td>
       <td class="text-center" id="tot-taux-pay">{{ tl.taux_pay|pct }}&nbsp;%</td>
       {% if peut_editer %}<td></td>{% endif %}
     </tr>

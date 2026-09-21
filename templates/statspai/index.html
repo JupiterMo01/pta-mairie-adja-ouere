@@ -1,0 +1,350 @@
+{% extends "base.html" %}
+
+{% block title %}Statistiques PAI {{ annee.annee if annee }} — Mairie d'Adja-Ouèrè{% endblock %}
+
+{% block page_title %}
+  <i class="fas fa-chart-bar me-2 text-warning"></i>
+  Statistiques PAI {% if annee %}<span class="badge bg-warning text-dark ms-1">{{ annee.annee }}</span>{% endif %}
+  {% if annee %}
+  <div class="d-inline-flex flex-wrap gap-2 ms-3 align-items-center">
+    <a href="{{ url_for('statspai.rapport_word') }}" class="btn btn-sm btn-success">
+      <i class="fas fa-file-word me-1"></i>Rapport Word
+    </a>
+    <a href="{{ url_for('statspai.rapport_excel') }}" class="btn btn-sm btn-outline-success">
+      <i class="fas fa-file-excel me-1"></i>Exporter Excel
+    </a>
+    <a href="{{ url_for('pai.print_view') }}" target="_blank" class="btn btn-sm btn-outline-secondary">
+      <i class="fas fa-print me-1"></i>Imprimer PAI
+    </a>
+  </div>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+{% if not annee %}
+  <div class="alert alert-warning">Aucune année active.</div>
+{% else %}
+
+<style>
+.stat-card  { border-left: 4px solid #1F4E79 !important; }
+.tbl-pai th { background:#1F4E79; color:#fff; font-size:.78rem; text-align:center; vertical-align:middle; }
+.tbl-pai td { font-size:.8rem; vertical-align:middle; }
+.tbl-pai .row-prog  { background:#F4B183; font-weight:700; }
+.tbl-pai .row-proj  { background:#FFFACD; }
+.tbl-pai .row-total { background:#AED6F1 !important; font-weight:700; }
+.tbl-pai .row-total td { background:#AED6F1 !important; }
+.cible-rouge  { background:#FADBD8; }
+.cible-orange { background:#FDEBD0; }
+.cible-bleu   { background:#D6EAF8; }
+.cible-vert   { background:#D5F5E3; }
+</style>
+
+{# ── Cartes de synthèse ─────────────────────────────────────────────────────── #}
+<div class="row g-3 mb-4">
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="card border-0 shadow-sm h-100 stat-card">
+      <div class="card-body">
+        <div class="text-muted small mb-1"><i class="fas fa-money-bill-wave me-1"></i>Budget total PAI</div>
+        <div class="fw-bold fs-5 text-primary">{{ total_budget|milliers }} F CFA</div>
+        <div class="text-muted" style="font-size:.75rem;">
+          FP : {{ total_fp|milliers }} | FADeC : {{ total_fadec|milliers }} | PTFs : {{ total_ptfs|milliers }}
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-sm-3 col-xl-2">
+    <div class="card border-0 shadow-sm h-100 text-center">
+      <div class="card-body">
+        <div class="text-muted small mb-1"><i class="fas fa-layer-group me-1"></i>Programmes</div>
+        <div class="fw-bold fs-4">{{ nb_programmes }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-sm-3 col-xl-2">
+    <div class="card border-0 shadow-sm h-100 text-center">
+      <div class="card-body">
+        <div class="text-muted small mb-1"><i class="fas fa-project-diagram me-1"></i>Projets</div>
+        <div class="fw-bold fs-4">{{ nb_projets }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-sm-3 col-xl-2">
+    <div class="card border-0 shadow-sm h-100 text-center" style="border-top:3px solid #C0392B;">
+      <div class="card-body">
+        <div class="text-muted small mb-1"><i class="fas fa-tasks me-1"></i>Activités invest.</div>
+        <div class="fw-bold fs-4 text-danger">{{ nb_activites }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ── Sources de financement ─────────────────────────────────────────────────── #}
+<h5 class="fw-bold text-primary mt-2 mb-2"><i class="fas fa-wallet me-2"></i>Répartition par source de financement</h5>
+<div class="table-responsive mb-4">
+<table class="table table-bordered tbl-pai" style="max-width:600px;">
+  <thead>
+    <tr>
+      <th class="text-start">Source</th>
+      <th>Montant (F CFA)</th>
+      <th>Part (%)</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% set srcs = [
+      ('Fonds Propres (FP)',    total_fp,    'D6EAF8'),
+      ('FADeC (FA + FNA)',      total_fadec, 'EBF5FB'),
+      ('PTFs / Partenaires',   total_ptfs,  'FEFDE7'),
+    ] %}
+    {% for lbl, val, bg in srcs %}
+    <tr style="background:#{{ bg }};">
+      <td class="fw-semibold">{{ lbl }}</td>
+      <td class="text-end">{{ val|milliers }}</td>
+      <td class="text-center">{{ pct(val)|round(1) }} %</td>
+    </tr>
+    {% endfor %}
+    <tr class="row-total">
+      <td class="fw-bold">TOTAL</td>
+      <td class="text-end fw-bold">{{ total_budget|milliers }}</td>
+      <td class="text-center fw-bold">100 %</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+{# ── Par Programme / Projet ─────────────────────────────────────────────────── #}
+<h5 class="fw-bold text-primary mt-3 mb-2"><i class="fas fa-layer-group me-2"></i>Par Programme et par Projet</h5>
+<div class="table-responsive mb-4">
+<table class="table table-bordered tbl-pai">
+  <thead>
+    <tr>
+      <th class="text-start" style="width:35%">Intitulé</th>
+      <th>Activités</th>
+      <th>Poids (%)</th>
+      <th>Budget (F CFA)</th>
+      <th>FP (F CFA)</th>
+      <th>FADeC (F CFA)</th>
+      <th>PTFs (F CFA)</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for prog in stats_programmes %}
+    <tr class="row-prog">
+      <td>Programme {{ prog.num }} : {{ prog.nom }}</td>
+      <td class="text-center">{{ prog.nb_activites }}</td>
+      <td class="text-center">{{ prog.poids }}</td>
+      <td class="text-center">{{ prog.budget|milliers }}</td>
+      <td class="text-center">{{ prog.fp|milliers }}</td>
+      <td class="text-center">{{ prog.fadec|milliers }}</td>
+      <td class="text-center">{{ prog.ptfs|milliers }}</td>
+    </tr>
+    {% for proj in prog.projets %}
+    <tr class="row-proj">
+      <td class="ps-4"><i class="fas fa-chevron-right fa-xs text-muted me-1"></i>Projet {{ proj.code }} : {{ proj.nom }}</td>
+      <td class="text-center">{{ proj.nb_activites }}</td>
+      <td class="text-center">{{ proj.poids }}</td>
+      <td class="text-center">{{ proj.budget|milliers }}</td>
+      <td class="text-center">{{ proj.fp|milliers }}</td>
+      <td class="text-center">{{ proj.fadec|milliers }}</td>
+      <td class="text-center">{{ proj.ptfs|milliers }}</td>
+    </tr>
+    {% endfor %}
+    {% endfor %}
+    <tr class="row-total">
+      <td class="fw-bold">TOTAL PAI</td>
+      <td class="text-center fw-bold">{{ nb_activites }}</td>
+      <td class="text-center">—</td>
+      <td class="text-center fw-bold">{{ total_budget|milliers }}</td>
+      <td class="text-center fw-bold">{{ total_fp|milliers }}</td>
+      <td class="text-center fw-bold">{{ total_fadec|milliers }}</td>
+      <td class="text-center fw-bold">{{ total_ptfs|milliers }}</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+{# ── Par Direction ─────────────────────────────────────────────────────────── #}
+<h5 class="fw-bold text-primary mt-3 mb-2"><i class="fas fa-building me-2"></i>Par Direction responsable</h5>
+<div class="table-responsive mb-4">
+<table class="table table-bordered tbl-pai" style="max-width:800px;">
+  <thead>
+    <tr>
+      <th>Code</th>
+      <th class="text-start">Direction</th>
+      <th>Nb activités</th>
+      <th>Budget (F CFA)</th>
+      <th>FP (F CFA)</th>
+      <th>FADeC (F CFA)</th>
+      <th>PTFs (F CFA)</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for d in stats_directions %}
+    {% if d.nb_activites > 0 %}
+    <tr>
+      <td class="text-center fw-semibold">{{ d.code }}</td>
+      <td>{{ d.nom }}</td>
+      <td class="text-center fw-bold">{{ d.nb_activites }}</td>
+      <td class="text-center">{{ d.budget|milliers }}</td>
+      <td class="text-center">{{ d.fp|milliers }}</td>
+      <td class="text-center">{{ d.fadec|milliers }}</td>
+      <td class="text-center">{{ d.ptfs|milliers }}</td>
+    </tr>
+    {% endif %}
+    {% endfor %}
+    <tr class="row-total">
+      <td class="text-center">—</td>
+      <td class="fw-bold">TOTAL</td>
+      <td class="text-center fw-bold">{{ nb_activites }}</td>
+      <td class="text-center fw-bold">{{ total_budget|milliers }}</td>
+      <td class="text-center fw-bold">{{ total_fp|milliers }}</td>
+      <td class="text-center fw-bold">{{ total_fadec|milliers }}</td>
+      <td class="text-center fw-bold">{{ total_ptfs|milliers }}</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+{# ── Cibles trimestrielles ──────────────────────────────────────────────────── #}
+{% macro cible_badge(v) %}
+{% set v = v|float %}
+<span class="badge px-2 py-1
+  {% if v < 25 %}cible-rouge text-danger
+  {% elif v < 50 %}cible-orange text-warning
+  {% elif v < 75 %}cible-bleu text-primary
+  {% else %}cible-vert text-success{% endif %}
+  fw-bold" style="font-size:.78rem;">{{ '%.1f'|format(v)|replace('.',',') }} %</span>
+{% endmacro %}
+
+<h5 class="fw-bold text-primary mt-3 mb-2"><i class="fas fa-calendar-check me-2"></i>Cibles trimestrielles d'exécution</h5>
+<p class="text-muted small mb-2">Pro-ratisation linéaire mensuelle sur la période de chaque activité, pondérée par poids PAI.
+  <span class="badge cible-rouge text-danger">< 25 %</span>
+  <span class="badge cible-orange text-warning ms-1">25–50 %</span>
+  <span class="badge cible-bleu text-primary ms-1">50–75 %</span>
+  <span class="badge cible-vert text-success ms-1">≥ 75 %</span>
+</p>
+
+{% if cibles %}
+<div class="table-responsive mb-4">
+<table class="table table-bordered tbl-pai">
+  <thead>
+    <tr>
+      <th class="text-start" style="width:40%">Niveau</th>
+      <th>T1 (fin Mars)</th>
+      <th>T2 (fin Juin)</th>
+      <th>T3 (fin Sept.)</th>
+      <th>T4 (fin Déc.)</th>
+    </tr>
+  </thead>
+  <tbody>
+    {# Ligne PAI Global #}
+    <tr style="background:#F4B183;">
+      <td class="fw-bold">PAI Global</td>
+      {% for t in [1,2,3,4] %}
+      <td class="text-center">{{ cible_badge(cibles.global[t]) }}</td>
+      {% endfor %}
+    </tr>
+    {% for prog in cibles.programmes %}
+    <tr style="background:#D4E6F1;">
+      <td class="fw-semibold ps-2">Programme {{ prog.code }} — {{ prog.nom }}</td>
+      {% for t in [1,2,3,4] %}
+      <td class="text-center">{{ cible_badge(prog.cibles[t]) }}</td>
+      {% endfor %}
+    </tr>
+    {% for proj in prog.projets %}
+    <tr style="background:#EBF5FB;">
+      <td class="ps-4 text-muted"><i class="fas fa-chevron-right fa-xs me-1"></i>Projet {{ proj.code }} — {{ proj.nom }}</td>
+      {% for t in [1,2,3,4] %}
+      <td class="text-center">{{ cible_badge(proj.cibles[t]) }}</td>
+      {% endfor %}
+    </tr>
+    {% endfor %}
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endif %}
+
+{% if cibles_directions %}
+<h6 class="fw-bold mt-3 mb-2 text-secondary">Cibles par direction</h6>
+<div class="table-responsive mb-4">
+<table class="table table-bordered tbl-pai" style="max-width:900px;">
+  <thead>
+    <tr>
+      <th>Code</th>
+      <th class="text-start">Direction</th>
+      <th>Nb act.</th>
+      <th>T1 (fin Mars)</th>
+      <th>T2 (fin Juin)</th>
+      <th>T3 (fin Sept.)</th>
+      <th>T4 (fin Déc.)</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for d in cibles_directions %}
+    <tr>
+      <td class="text-center fw-semibold">{{ d.code }}</td>
+      <td>{{ d.nom }}</td>
+      <td class="text-center">{{ d.nb_activites }}</td>
+      {% for t in [1,2,3,4] %}
+      <td class="text-center">{{ cible_badge(d.cibles[t]) }}</td>
+      {% endfor %}
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endif %}
+
+{# ── Liste détaillée (collapsible) ─────────────────────────────────────────── #}
+<h5 class="fw-bold text-primary mt-3 mb-2">
+  <i class="fas fa-list-ul me-2"></i>Liste détaillée des activités
+  <button class="btn btn-sm btn-outline-secondary ms-2" type="button"
+          data-bs-toggle="collapse" data-bs-target="#listeActs">
+    <i class="fas fa-chevron-down fa-xs"></i> Afficher / Masquer
+  </button>
+</h5>
+<div class="collapse" id="listeActs">
+<div class="table-responsive mb-4">
+<table class="table table-bordered table-hover tbl-pai">
+  <thead>
+    <tr>
+      <th>Code PAI</th>
+      <th class="text-start">Désignation</th>
+      <th>Dir.</th>
+      <th>Période</th>
+      <th>Poids</th>
+      <th>FP (F CFA)</th>
+      <th>FADeC (F CFA)</th>
+      <th>PTFs (F CFA)</th>
+      <th>Total (F CFA)</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for a in liste_activites %}
+    <tr>
+      <td class="text-center fw-semibold">{{ a.code_pai }}</td>
+      <td>{{ a.nom }}</td>
+      <td class="text-center">{{ a.direction }}</td>
+      <td class="text-center">{{ a.periode }}</td>
+      <td class="text-center">{{ a.poids }}</td>
+      <td class="text-center">{{ a.fp|milliers }}</td>
+      <td class="text-center">{{ a.fadec|milliers }}</td>
+      <td class="text-center">{{ a.ptfs|milliers }}</td>
+      <td class="text-center fw-semibold">{{ a.budget|milliers }}</td>
+    </tr>
+    {% endfor %}
+    <tr class="row-total">
+      <td class="text-center fw-bold">TOTAL</td>
+      <td colspan="4"></td>
+      <td class="text-center fw-bold">{{ total_fp|milliers }}</td>
+      <td class="text-center fw-bold">{{ total_fadec|milliers }}</td>
+      <td class="text-center fw-bold">{{ total_ptfs|milliers }}</td>
+      <td class="text-center fw-bold">{{ total_budget|milliers }}</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+</div>
+
+{% endif %}{# annee #}
+{% endblock %}

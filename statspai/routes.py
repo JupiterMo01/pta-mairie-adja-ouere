@@ -95,6 +95,7 @@ def _compute_stats_pai(annee):
                 'rp': rp_pj, 'fa': fa_pj, 'fn': fn_pj,
                 'ap': ap_pj, 'af': af_pj, 'budget': bud_pj,
                 'fadec': fa_pj + fn_pj, 'ptfs': ap_pj + af_pj,
+                'fp': rp_pj,
             })
         stats_programmes.append({
             'num':  pg_d['prog_num'],
@@ -106,6 +107,7 @@ def _compute_stats_pai(annee):
             'rp': rp_pg, 'fa': fa_pg, 'fn': fn_pg,
             'ap': ap_pg, 'af': af_pg, 'budget': bud_pg,
             'fadec': fa_pg + fn_pg, 'ptfs': ap_pg + af_pg,
+            'fp': rp_pg,
             'projets': projets_data,
         })
 

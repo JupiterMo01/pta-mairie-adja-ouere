@@ -451,6 +451,29 @@ class PTABackup(db.Model):
     annee = db.relationship('Annee', foreign_keys=[annee_id])
 
 
+# ─── Tableau de suivi pluriannuel ────────────────────────────────────────────
+
+class BudgetPluriannuel(db.Model):
+    __tablename__ = 'budget_pluriannuel'
+    id              = db.Column(db.Integer, primary_key=True)
+    annee           = db.Column(db.Integer, nullable=False, unique=True)
+    budget_primitif = db.Column(db.Float,   nullable=False, default=0.0)
+    budget_collectif= db.Column(db.Float,   nullable=False, default=0.0)
+    date_maj        = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    modified_by_id  = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    modified_by     = db.relationship('User', foreign_keys=[modified_by_id])
+
+    @property
+    def ecart(self):
+        return (self.budget_collectif or 0) - (self.budget_primitif or 0)
+
+    @property
+    def variation_pct(self):
+        if not self.budget_primitif:
+            return None
+        return round(self.ecart / self.budget_primitif * 100, 2)
+
+
 # ─── Journal d'audit ─────────────────────────────────────────────────────────
 
 class AuditLog(db.Model):

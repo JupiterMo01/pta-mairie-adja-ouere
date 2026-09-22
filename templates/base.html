@@ -60,6 +60,14 @@
       </li>
       {% endif %}
 
+      {# ── Suivi Pluriannuel : tous les utilisateurs connectés ── #}
+      <li class="nav-item">
+        <a class="nav-link text-white py-2 px-3 {% if request.blueprint == 'pluriannuel' %}active-link{% endif %}"
+           href="{{ url_for('pluriannuel.index') }}">
+          <i class="fas fa-calendar-alt me-2 fa-fw"></i>Suivi Pluriannuel
+        </a>
+      </li>
+
       {# ── PAI + PEI : tous les utilisateurs, uniquement quand une année active existe ── #}
       {# (pour les admins, les liens sont aussi présents dans leur section ci-dessous) #}
       {% if annee_active_id and current_user.role not in ('admin_editeur', 'admin_lecteur') %}

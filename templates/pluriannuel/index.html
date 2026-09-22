@@ -1,0 +1,272 @@
+{% extends "base.html" %}
+
+{% block title %}Suivi Pluriannuel — Mairie d'Adja-Ouèrè{% endblock %}
+
+{% block page_title %}
+  <i class="fas fa-calendar-alt me-2 text-warning"></i>Tableau de suivi pluriannuel
+{% endblock %}
+
+{% block content %}
+<style>
+.pluri-card   { border-left: 4px solid #1F4E79 !important; }
+.pluri-table th { background:#1F4E79; color:#fff; font-size:.8rem; text-align:center; vertical-align:middle; }
+.pluri-table td { font-size:.82rem; vertical-align:middle; }
+.pluri-table .row-total { background:#AED6F1 !important; font-weight:700; }
+.variation-pos { color:#1E8449; font-weight:600; }
+.variation-neg { color:#C0392B; font-weight:600; }
+.variation-neu { color:#666; }
+</style>
+
+{# ════════════════════════════════════════════════════════════════════════════ #}
+{# I. SECTION BUDGET — EVOLUTION                                                #}
+{# ════════════════════════════════════════════════════════════════════════════ #}
+
+<h5 class="fw-bold text-primary mt-3 mb-3">
+  <i class="fas fa-chart-line me-2"></i>I. Évolution du budget municipal
+</h5>
+
+{# ── Formulaire ajout (admin éditeur uniquement) ── #}
+{% if current_user.role == 'admin_editeur' %}
+<div class="card border-0 shadow-sm mb-4 pluri-card">
+  <div class="card-body py-2">
+    <h6 class="fw-bold text-primary mb-2"><i class="fas fa-plus-circle me-1"></i>Ajouter une année</h6>
+    <form method="post" action="{{ url_for('pluriannuel.add') }}" class="row g-2 align-items-end">
+      <div class="col-6 col-sm-3 col-md-2">
+        <label class="form-label small mb-1">Année</label>
+        <input type="number" name="annee" class="form-control form-control-sm"
+               placeholder="2026" min="2000" max="2100" required>
+      </div>
+      <div class="col-6 col-sm-4 col-md-3">
+        <label class="form-label small mb-1">Budget primitif (F CFA)</label>
+        <input type="text" name="budget_primitif" class="form-control form-control-sm"
+               placeholder="0" required>
+      </div>
+      <div class="col-6 col-sm-4 col-md-3">
+        <label class="form-label small mb-1">Budget collectif (F CFA)</label>
+        <input type="text" name="budget_collectif" class="form-control form-control-sm"
+               placeholder="0">
+      </div>
+      <div class="col-6 col-sm-auto">
+        <button type="submit" class="btn btn-primary btn-sm w-100">
+          <i class="fas fa-plus me-1"></i>Ajouter
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{# ── Tableau ── #}
+{% if annees %}
+<div class="table-responsive mb-4">
+<table class="table table-bordered pluri-table" style="max-width:860px;">
+  <thead>
+    <tr>
+      <th class="text-start" style="width:12%">Année</th>
+      <th>Budget Primitif (F CFA)</th>
+      <th>Budget Collectif (F CFA)</th>
+      <th>Écart (F CFA)</th>
+      <th>Variation (%)</th>
+      {% if current_user.role == 'admin_editeur' %}<th style="width:10%">Actions</th>{% endif %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in annees %}
+    <tr>
+      <td class="fw-bold text-center">{{ row.annee }}</td>
+      <td class="text-end">{{ row.budget_primitif|milliers }}</td>
+      <td class="text-end">{{ row.budget_collectif|milliers }}</td>
+      <td class="text-end
+        {% if row.ecart > 0 %}variation-pos{% elif row.ecart < 0 %}variation-neg{% else %}variation-neu{% endif %}">
+        {% if row.ecart > 0 %}+{% endif %}{{ row.ecart|milliers }}
+      </td>
+      <td class="text-center
+        {% if row.variation_pct and row.variation_pct > 0 %}variation-pos
+        {% elif row.variation_pct and row.variation_pct < 0 %}variation-neg
+        {% else %}variation-neu{% endif %}">
+        {% if row.variation_pct is not none %}
+          {% if row.variation_pct > 0 %}+{% endif %}{{ '%.2f'|format(row.variation_pct)|replace('.',',') }} %
+        {% else %}—{% endif %}
+      </td>
+      {% if current_user.role == 'admin_editeur' %}
+      <td class="text-center">
+        <button type="button" class="btn btn-outline-primary btn-sm py-0 px-1"
+                data-bs-toggle="modal" data-bs-target="#editModal{{ row.id }}"
+                title="Modifier">
+          <i class="fas fa-pencil-alt fa-xs"></i>
+        </button>
+        <form method="post" action="{{ url_for('pluriannuel.delete', row_id=row.id) }}"
+              style="display:inline;"
+              onsubmit="return confirm('Supprimer l\'année {{ row.annee }} ?');">
+          <button type="submit" class="btn btn-outline-danger btn-sm py-0 px-1" title="Supprimer">
+            <i class="fas fa-trash fa-xs"></i>
+          </button>
+        </form>
+      </td>
+      {% endif %}
+    </tr>
+    {% endfor %}
+
+    {# Ligne TOTAL #}
+    {% set tot_prim  = annees | sum(attribute='budget_primitif') %}
+    {% set tot_coll  = annees | sum(attribute='budget_collectif') %}
+    {% set tot_ecart = tot_coll - tot_prim %}
+    <tr class="row-total">
+      <td class="text-center fw-bold">TOTAL</td>
+      <td class="text-end fw-bold">{{ tot_prim|milliers }}</td>
+      <td class="text-end fw-bold">{{ tot_coll|milliers }}</td>
+      <td class="text-end fw-bold {% if tot_ecart > 0 %}variation-pos{% elif tot_ecart < 0 %}variation-neg{% endif %}">
+        {% if tot_ecart > 0 %}+{% endif %}{{ tot_ecart|milliers }}
+      </td>
+      <td class="text-center">—</td>
+      {% if current_user.role == 'admin_editeur' %}<td></td>{% endif %}
+    </tr>
+  </tbody>
+</table>
+</div>
+
+{# ── Graphique ── #}
+<h6 class="fw-bold text-secondary mt-3 mb-2">
+  <i class="fas fa-chart-area me-1"></i>Évolution graphique
+</h6>
+{# Largeur minimale : 80px par année, minimum 500px #}
+{% set chart_min_w = [annees|length * 90, 500]|max %}
+<div style="overflow-x:auto;">
+  <div style="min-width:{{ chart_min_w }}px; height:320px; position:relative;">
+    <canvas id="chartBudget"></canvas>
+  </div>
+</div>
+
+{# Modals d'édition (admin éditeur uniquement) #}
+{% if current_user.role == 'admin_editeur' %}
+{% for row in annees %}
+<div class="modal fade" id="editModal{{ row.id }}" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header py-2">
+        <h6 class="modal-title fw-bold"><i class="fas fa-pencil-alt me-1"></i>Modifier {{ row.annee }}</h6>
+        <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="{{ url_for('pluriannuel.edit', row_id=row.id) }}">
+        <div class="modal-body py-2">
+          <div class="mb-2">
+            <label class="form-label small mb-1">Budget primitif (F CFA)</label>
+            <input type="text" name="budget_primitif" class="form-control form-control-sm"
+                   value="{{ row.budget_primitif|int }}" required>
+          </div>
+          <div class="mb-2">
+            <label class="form-label small mb-1">Budget collectif (F CFA)</label>
+            <input type="text" name="budget_collectif" class="form-control form-control-sm"
+                   value="{{ row.budget_collectif|int }}">
+          </div>
+        </div>
+        <div class="modal-footer py-2">
+          <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-sm btn-primary">Enregistrer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endfor %}
+{% endif %}
+
+{% else %}
+<div class="alert alert-info">
+  <i class="fas fa-info-circle me-2"></i>
+  Aucune donnée saisie.
+  {% if current_user.role == 'admin_editeur' %}
+    Utilisez le formulaire ci-dessus pour commencer par l'année 2022.
+  {% endif %}
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+{% if annees %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+  var labels  = {{ annees | map(attribute='annee') | list | tojson }};
+  var prim    = {{ annees | map(attribute='budget_primitif') | list | tojson }};
+  var coll    = {{ annees | map(attribute='budget_collectif') | list | tojson }};
+
+  function fmt(v) {
+    return new Intl.NumberFormat('fr-BJ', {maximumFractionDigits:0}).format(v) + ' F';
+  }
+
+  var ctx = document.getElementById('chartBudget').getContext('2d');
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'Budget Primitif',
+          data: prim,
+          borderColor: '#1F4E79',
+          backgroundColor: 'rgba(31,78,121,0.10)',
+          pointBackgroundColor: '#1F4E79',
+          pointRadius: 5,
+          pointHoverRadius: 7,
+          borderWidth: 2.5,
+          fill: false,
+          tension: 0.3,
+        },
+        {
+          label: 'Budget Collectif',
+          data: coll,
+          borderColor: '#E67E22',
+          backgroundColor: 'rgba(230,126,34,0.10)',
+          pointBackgroundColor: '#E67E22',
+          pointRadius: 5,
+          pointHoverRadius: 7,
+          borderWidth: 2.5,
+          fill: false,
+          tension: 0.3,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          position: 'top',
+          labels: { font: { size: 12 }, padding: 16 }
+        },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              return ' ' + ctx.dataset.label + ' : ' + fmt(ctx.parsed.y);
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { font: { size: 11 } }
+        },
+        y: {
+          beginAtZero: false,
+          grid: { color: 'rgba(0,0,0,0.06)' },
+          ticks: {
+            font: { size: 10 },
+            callback: function(v) {
+              if (v >= 1e9) return (v/1e9).toFixed(1) + ' Mrd';
+              if (v >= 1e6) return (v/1e6).toFixed(1) + ' M';
+              if (v >= 1e3) return (v/1e3).toFixed(0) + ' k';
+              return v;
+            }
+          }
+        }
+      }
+    }
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}

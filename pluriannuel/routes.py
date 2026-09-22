@@ -4,7 +4,8 @@ from flask import render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required, current_user
 
 from models import db, BudgetPluriannuel, MontantPluriannuelPTA, MontantPluriannuelPAI, \
-                   TauxExecPTA, TauxExecPAI, TauxFinPTA, TauxFinPAI
+                   TauxExecPTA, TauxExecPAI, TauxFinPTA, TauxFinPAI, \
+                   TauxEfficacitePTA, TauxEfficacitePAI, TauxEfficiencePTA, TauxEfficiencePAI
 from pluriannuel import pluriannuel_bp
 from utils import log_audit
 
@@ -66,12 +67,20 @@ def index():
     pai_annees      = MontantPluriannuelPAI.query.order_by(MontantPluriannuelPAI.annee).all()
     pta_exec_annees = TauxExecPTA.query.order_by(TauxExecPTA.annee).all()
     pai_exec_annees = TauxExecPAI.query.order_by(TauxExecPAI.annee).all()
-    pta_fin_annees  = TauxFinPTA.query.order_by(TauxFinPTA.annee).all()
-    pai_fin_annees  = TauxFinPAI.query.order_by(TauxFinPAI.annee).all()
+    pta_fin_annees        = TauxFinPTA.query.order_by(TauxFinPTA.annee).all()
+    pai_fin_annees        = TauxFinPAI.query.order_by(TauxFinPAI.annee).all()
+    pta_efficacite_annees = TauxEfficacitePTA.query.order_by(TauxEfficacitePTA.annee).all()
+    pai_efficacite_annees = TauxEfficacitePAI.query.order_by(TauxEfficacitePAI.annee).all()
+    pta_efficience_annees = TauxEfficiencePTA.query.order_by(TauxEfficiencePTA.annee).all()
+    pai_efficience_annees = TauxEfficiencePAI.query.order_by(TauxEfficiencePAI.annee).all()
     return render_template('pluriannuel/index.html',
                            annees=annees, pta_annees=pta_annees, pai_annees=pai_annees,
                            pta_exec_annees=pta_exec_annees, pai_exec_annees=pai_exec_annees,
-                           pta_fin_annees=pta_fin_annees, pai_fin_annees=pai_fin_annees)
+                           pta_fin_annees=pta_fin_annees, pai_fin_annees=pai_fin_annees,
+                           pta_efficacite_annees=pta_efficacite_annees,
+                           pai_efficacite_annees=pai_efficacite_annees,
+                           pta_efficience_annees=pta_efficience_annees,
+                           pai_efficience_annees=pai_efficience_annees)
 
 
 # ── Ajouter une année ─────────────────────────────────────────────────────────
@@ -512,3 +521,226 @@ def delete_pai_fin(row_id):
     log_audit('pluriannuel_pai_fin_delete', f"Taux fin PAI {annee_val} supprimé")
     flash(f"Taux financiers PAI {annee_val} supprimés.", 'warning')
     return _redir('#section-pai-fin')
+
+
+# ════════════════════════════════════════════════════════════════
+# Sections VIII/IX — Taux d'efficacité (PTA et PAI)
+# ════════════════════════════════════════════════════════════════
+
+def _crud_simple(Model, annee_val, label, anchor):
+    """Helper CRUD pour les modèles à 4 trimestres simples."""
+    t1 = _parse_taux(request.form.get('t1'))
+    t2 = _parse_taux(request.form.get('t2'))
+    t3 = _parse_taux(request.form.get('t3'))
+    t4 = _parse_taux(request.form.get('t4'))
+    return t1, t2, t3, t4
+
+
+@pluriannuel_bp.route('/pta-efficacite/add', methods=['POST'])
+@editeur_only
+def add_pta_efficacite():
+    try:
+        annee_val = int(request.form.get('annee', 0))
+    except (TypeError, ValueError):
+        flash("Année invalide.", 'danger')
+        return _redir('#section-pta-efficacite')
+    if annee_val < 2000 or annee_val > 2100:
+        flash("Année hors plage.", 'danger')
+        return _redir('#section-pta-efficacite')
+    if TauxEfficacitePTA.query.filter_by(annee=annee_val).first():
+        flash(f"L'année {annee_val} existe déjà (efficacité PTA).", 'warning')
+        return _redir('#section-pta-efficacite')
+    t1 = _parse_taux(request.form.get('t1'))
+    t2 = _parse_taux(request.form.get('t2'))
+    t3 = _parse_taux(request.form.get('t3'))
+    t4 = _parse_taux(request.form.get('t4'))
+    db.session.add(TauxEfficacitePTA(annee=annee_val, t1=t1, t2=t2, t3=t3, t4=t4,
+                                     date_maj=datetime.now(timezone.utc), modified_by_id=current_user.id))
+    db.session.commit()
+    log_audit('pluriannuel_pta_efficacite_add', f"Efficacité PTA {annee_val} ajouté")
+    flash(f"Efficacité PTA {annee_val} ajoutée.", 'success')
+    return _redir('#section-pta-efficacite')
+
+
+@pluriannuel_bp.route('/pta-efficacite/edit/<int:row_id>', methods=['POST'])
+@editeur_only
+def edit_pta_efficacite(row_id):
+    row = db.get_or_404(TauxEfficacitePTA, row_id)
+    row.t1 = _parse_taux(request.form.get('t1'))
+    row.t2 = _parse_taux(request.form.get('t2'))
+    row.t3 = _parse_taux(request.form.get('t3'))
+    row.t4 = _parse_taux(request.form.get('t4'))
+    row.date_maj = datetime.now(timezone.utc)
+    row.modified_by_id = current_user.id
+    db.session.commit()
+    log_audit('pluriannuel_pta_efficacite_edit', f"Efficacité PTA {row.annee} modifié")
+    flash(f"Efficacité PTA {row.annee} mise à jour.", 'success')
+    return _redir('#section-pta-efficacite')
+
+
+@pluriannuel_bp.route('/pta-efficacite/delete/<int:row_id>', methods=['POST'])
+@editeur_only
+def delete_pta_efficacite(row_id):
+    row = db.get_or_404(TauxEfficacitePTA, row_id)
+    a = row.annee
+    db.session.delete(row)
+    db.session.commit()
+    log_audit('pluriannuel_pta_efficacite_delete', f"Efficacité PTA {a} supprimé")
+    flash(f"Efficacité PTA {a} supprimée.", 'warning')
+    return _redir('#section-pta-efficacite')
+
+
+@pluriannuel_bp.route('/pai-efficacite/add', methods=['POST'])
+@editeur_only
+def add_pai_efficacite():
+    try:
+        annee_val = int(request.form.get('annee', 0))
+    except (TypeError, ValueError):
+        flash("Année invalide.", 'danger')
+        return _redir('#section-pai-efficacite')
+    if annee_val < 2000 or annee_val > 2100:
+        flash("Année hors plage.", 'danger')
+        return _redir('#section-pai-efficacite')
+    if TauxEfficacitePAI.query.filter_by(annee=annee_val).first():
+        flash(f"L'année {annee_val} existe déjà (efficacité PAI).", 'warning')
+        return _redir('#section-pai-efficacite')
+    t1 = _parse_taux(request.form.get('t1'))
+    t2 = _parse_taux(request.form.get('t2'))
+    t3 = _parse_taux(request.form.get('t3'))
+    t4 = _parse_taux(request.form.get('t4'))
+    db.session.add(TauxEfficacitePAI(annee=annee_val, t1=t1, t2=t2, t3=t3, t4=t4,
+                                     date_maj=datetime.now(timezone.utc), modified_by_id=current_user.id))
+    db.session.commit()
+    log_audit('pluriannuel_pai_efficacite_add', f"Efficacité PAI {annee_val} ajouté")
+    flash(f"Efficacité PAI {annee_val} ajoutée.", 'success')
+    return _redir('#section-pai-efficacite')
+
+
+@pluriannuel_bp.route('/pai-efficacite/edit/<int:row_id>', methods=['POST'])
+@editeur_only
+def edit_pai_efficacite(row_id):
+    row = db.get_or_404(TauxEfficacitePAI, row_id)
+    row.t1 = _parse_taux(request.form.get('t1'))
+    row.t2 = _parse_taux(request.form.get('t2'))
+    row.t3 = _parse_taux(request.form.get('t3'))
+    row.t4 = _parse_taux(request.form.get('t4'))
+    row.date_maj = datetime.now(timezone.utc)
+    row.modified_by_id = current_user.id
+    db.session.commit()
+    log_audit('pluriannuel_pai_efficacite_edit', f"Efficacité PAI {row.annee} modifié")
+    flash(f"Efficacité PAI {row.annee} mise à jour.", 'success')
+    return _redir('#section-pai-efficacite')
+
+
+@pluriannuel_bp.route('/pai-efficacite/delete/<int:row_id>', methods=['POST'])
+@editeur_only
+def delete_pai_efficacite(row_id):
+    row = db.get_or_404(TauxEfficacitePAI, row_id)
+    a = row.annee
+    db.session.delete(row)
+    db.session.commit()
+    log_audit('pluriannuel_pai_efficacite_delete', f"Efficacité PAI {a} supprimé")
+    flash(f"Efficacité PAI {a} supprimée.", 'warning')
+    return _redir('#section-pai-efficacite')
+
+
+# ════════════════════════════════════════════════════════════════
+# Sections X/XI — Taux d'efficience (PTA et PAI)
+# ════════════════════════════════════════════════════════════════
+
+@pluriannuel_bp.route('/pta-efficience/add', methods=['POST'])
+@editeur_only
+def add_pta_efficience():
+    try:
+        annee_val = int(request.form.get('annee', 0))
+    except (TypeError, ValueError):
+        flash("Année invalide.", 'danger')
+        return _redir('#section-pta-efficience')
+    if annee_val < 2000 or annee_val > 2100:
+        flash("Année hors plage.", 'danger')
+        return _redir('#section-pta-efficience')
+    if TauxEfficiencePTA.query.filter_by(annee=annee_val).first():
+        flash(f"L'année {annee_val} existe déjà (efficience PTA).", 'warning')
+        return _redir('#section-pta-efficience')
+    vals = _lire_fin(request.form)
+    db.session.add(TauxEfficiencePTA(annee=annee_val, date_maj=datetime.now(timezone.utc),
+                                     modified_by_id=current_user.id, **vals))
+    db.session.commit()
+    log_audit('pluriannuel_pta_efficience_add', f"Efficience PTA {annee_val} ajouté")
+    flash(f"Efficience PTA {annee_val} ajoutée.", 'success')
+    return _redir('#section-pta-efficience')
+
+
+@pluriannuel_bp.route('/pta-efficience/edit/<int:row_id>', methods=['POST'])
+@editeur_only
+def edit_pta_efficience(row_id):
+    row = db.get_or_404(TauxEfficiencePTA, row_id)
+    for c, v in _lire_fin(request.form).items():
+        setattr(row, c, v)
+    row.date_maj = datetime.now(timezone.utc)
+    row.modified_by_id = current_user.id
+    db.session.commit()
+    log_audit('pluriannuel_pta_efficience_edit', f"Efficience PTA {row.annee} modifié")
+    flash(f"Efficience PTA {row.annee} mise à jour.", 'success')
+    return _redir('#section-pta-efficience')
+
+
+@pluriannuel_bp.route('/pta-efficience/delete/<int:row_id>', methods=['POST'])
+@editeur_only
+def delete_pta_efficience(row_id):
+    row = db.get_or_404(TauxEfficiencePTA, row_id)
+    a = row.annee
+    db.session.delete(row)
+    db.session.commit()
+    log_audit('pluriannuel_pta_efficience_delete', f"Efficience PTA {a} supprimé")
+    flash(f"Efficience PTA {a} supprimée.", 'warning')
+    return _redir('#section-pta-efficience')
+
+
+@pluriannuel_bp.route('/pai-efficience/add', methods=['POST'])
+@editeur_only
+def add_pai_efficience():
+    try:
+        annee_val = int(request.form.get('annee', 0))
+    except (TypeError, ValueError):
+        flash("Année invalide.", 'danger')
+        return _redir('#section-pai-efficience')
+    if annee_val < 2000 or annee_val > 2100:
+        flash("Année hors plage.", 'danger')
+        return _redir('#section-pai-efficience')
+    if TauxEfficiencePAI.query.filter_by(annee=annee_val).first():
+        flash(f"L'année {annee_val} existe déjà (efficience PAI).", 'warning')
+        return _redir('#section-pai-efficience')
+    vals = _lire_fin(request.form)
+    db.session.add(TauxEfficiencePAI(annee=annee_val, date_maj=datetime.now(timezone.utc),
+                                     modified_by_id=current_user.id, **vals))
+    db.session.commit()
+    log_audit('pluriannuel_pai_efficience_add', f"Efficience PAI {annee_val} ajouté")
+    flash(f"Efficience PAI {annee_val} ajoutée.", 'success')
+    return _redir('#section-pai-efficience')
+
+
+@pluriannuel_bp.route('/pai-efficience/edit/<int:row_id>', methods=['POST'])
+@editeur_only
+def edit_pai_efficience(row_id):
+    row = db.get_or_404(TauxEfficiencePAI, row_id)
+    for c, v in _lire_fin(request.form).items():
+        setattr(row, c, v)
+    row.date_maj = datetime.now(timezone.utc)
+    row.modified_by_id = current_user.id
+    db.session.commit()
+    log_audit('pluriannuel_pai_efficience_edit', f"Efficience PAI {row.annee} modifié")
+    flash(f"Efficience PAI {row.annee} mise à jour.", 'success')
+    return _redir('#section-pai-efficience')
+
+
+@pluriannuel_bp.route('/pai-efficience/delete/<int:row_id>', methods=['POST'])
+@editeur_only
+def delete_pai_efficience(row_id):
+    row = db.get_or_404(TauxEfficiencePAI, row_id)
+    a = row.annee
+    db.session.delete(row)
+    db.session.commit()
+    log_audit('pluriannuel_pai_efficience_delete', f"Efficience PAI {a} supprimé")
+    flash(f"Efficience PAI {a} supprimée.", 'warning')
+    return _redir('#section-pai-efficience')

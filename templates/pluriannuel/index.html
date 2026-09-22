@@ -1,7 +1,8 @@
 {% extends "base.html" %}
 
 {# ── Macro : section taux financiers (PTA ou PAI) ──────────────────────────── #}
-{% macro section_taux_fin(titre, num_section, couleur, rows, ep_add, ep_edit, ep_delete, prefixe) %}
+{% macro section_taux_fin(titre, num_section, couleur, rows, ep_add, ep_edit, ep_delete, prefixe, canvas_id=none) %}
+{%- set _cid = canvas_id if canvas_id else 'chartFin' ~ prefixe -%}
 <h5 id="section-{{ prefixe|lower }}-fin" class="fw-bold text-primary mt-5 mb-3">
   <i class="fas fa-coins me-2"></i>{{ num_section }}. {{ titre }}
 </h5>
@@ -106,7 +107,7 @@
 {% set chart_min_w = [rows|length * 90, 500]|max %}
 <div style="overflow-x:auto;">
   <div style="min-width:{{ chart_min_w }}px; height:300px; position:relative;">
-    <canvas id="chartFin{{ prefixe }}"></canvas>
+    <canvas id="{{ _cid }}"></canvas>
   </div>
 </div>
 
@@ -162,6 +163,141 @@
 <div class="alert alert-info py-2">
   <i class="fas fa-info-circle me-2"></i>Aucun taux financier {{ prefixe }} saisi.
   {% if current_user.role == 'admin_editeur' %}Utilisez le formulaire ci-dessus pour commencer.{% endif %}
+</div>
+{% endif %}
+{% endmacro %}
+
+{# ── Macro : section taux simples T1-T4 (efficacité, sans validation) ────── #}
+{% macro section_taux_eff(titre, num_section, couleur, rows, ep_add, ep_edit, ep_delete, prefixe) %}
+{%- set sid = 'section-' ~ prefixe|lower ~ '-efficacite' -%}
+{%- set cid = 'chartEfficacite' ~ prefixe -%}
+<h5 id="{{ sid }}" class="fw-bold text-primary mt-5 mb-3">
+  <i class="fas fa-star-half-alt me-2"></i>{{ num_section }}. {{ titre }}
+</h5>
+
+{% if current_user.role == 'admin_editeur' %}
+<div class="card border-0 shadow-sm mb-4" style="border-left:4px solid {{ couleur }} !important;">
+  <div class="card-body py-2">
+    <h6 class="fw-bold mb-2" style="color:{{ couleur }};"><i class="fas fa-plus-circle me-1"></i>Ajouter une année</h6>
+    <small class="text-muted d-block mb-2">Valeurs comprises entre 0 et 100 %. Laisser vide si non disponible.</small>
+    <form method="post" action="{{ url_for(ep_add) }}" class="row g-2 align-items-end">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+      <div class="col-6 col-sm-2 col-md-2">
+        <label class="form-label small mb-1">Année</label>
+        <input type="number" name="annee" class="form-control form-control-sm"
+               placeholder="2026" min="2000" max="2100" required>
+      </div>
+      {% for q in ['t1','t2','t3','t4'] %}
+      <div class="col-6 col-sm-2">
+        <label class="form-label small mb-1">{{ q|upper }} (%)</label>
+        <input type="number" name="{{ q }}" class="form-control form-control-sm"
+               placeholder="—" min="0" max="100" step="0.01">
+      </div>
+      {% endfor %}
+      <div class="col-12 col-sm-auto">
+        <button type="submit" class="btn btn-sm" style="background:{{ couleur }};color:#fff;">
+          <i class="fas fa-plus me-1"></i>Ajouter
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{% if rows %}
+<div class="table-responsive mb-4">
+<table class="table table-bordered pluri-table" style="max-width:780px;">
+  <thead>
+    <tr>
+      <th class="text-start" style="width:13%;background:{{ couleur }};">Année</th>
+      <th style="background:{{ couleur }};">T1 (%)</th>
+      <th style="background:{{ couleur }};">T2 (%)</th>
+      <th style="background:{{ couleur }};">T3 (%)</th>
+      <th style="background:{{ couleur }};">T4 (%)</th>
+      {% if current_user.role == 'admin_editeur' %}<th style="width:10%;background:{{ couleur }};">Actions</th>{% endif %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in rows %}
+    <tr>
+      <td class="fw-bold text-center">{{ row.annee }}</td>
+      {% for v in [row.t1, row.t2, row.t3, row.t4] %}
+      <td class="text-center">
+        {% if v is not none %}{{ '%.2f'|format(v)|replace('.',',') }} %{% else %}—{% endif %}
+      </td>
+      {% endfor %}
+      {% if current_user.role == 'admin_editeur' %}
+      <td class="text-center">
+        <button type="button" class="btn btn-sm py-0 px-1"
+                style="border:1px solid {{ couleur }};color:{{ couleur }};"
+                data-bs-toggle="modal" data-bs-target="#editEffacModal{{ prefixe }}{{ row.id }}"
+                title="Modifier">
+          <i class="fas fa-pencil-alt fa-xs"></i>
+        </button>
+        <form method="post" action="{{ url_for(ep_delete, row_id=row.id) }}" style="display:inline;"
+              onsubmit="return confirm('Supprimer {{ row.annee }} ?');">
+          <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+          <button type="submit" class="btn btn-outline-danger btn-sm py-0 px-1" title="Supprimer">
+            <i class="fas fa-trash fa-xs"></i>
+          </button>
+        </form>
+      </td>
+      {% endif %}
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+
+<h6 class="fw-bold text-secondary mt-3 mb-2">
+  <i class="fas fa-chart-area me-1"></i>Évolution graphique
+</h6>
+{% set cmw = [rows|length * 90, 500]|max %}
+<div style="overflow-x:auto;">
+  <div style="min-width:{{ cmw }}px; height:300px; position:relative;">
+    <canvas id="{{ cid }}"></canvas>
+  </div>
+</div>
+
+{% if current_user.role == 'admin_editeur' %}
+{% for row in rows %}
+<div class="modal fade" id="editEffacModal{{ prefixe }}{{ row.id }}" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header py-2">
+        <h6 class="modal-title fw-bold" style="color:{{ couleur }};">
+          <i class="fas fa-pencil-alt me-1"></i>{{ prefixe }} Efficacité — {{ row.annee }}
+        </h6>
+        <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="{{ url_for(ep_edit, row_id=row.id) }}">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        <div class="modal-body py-2">
+          <small class="text-muted">0 – 100 %. Vider = non disponible.</small>
+          {% for q, v in [('t1', row.t1), ('t2', row.t2), ('t3', row.t3), ('t4', row.t4)] %}
+          <div class="mb-2 mt-2">
+            <label class="form-label small mb-1">{{ q|upper }} (%)</label>
+            <input type="number" name="{{ q }}" class="form-control form-control-sm"
+                   value="{{ '%.2f'|format(v) if v is not none else '' }}"
+                   min="0" max="100" step="0.01" placeholder="—">
+          </div>
+          {% endfor %}
+        </div>
+        <div class="modal-footer py-2">
+          <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-sm" style="background:{{ couleur }};color:#fff;">Enregistrer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endfor %}
+{% endif %}
+
+{% else %}
+<div class="alert alert-info py-2">
+  <i class="fas fa-info-circle me-2"></i>Aucun taux d'efficacité {{ prefixe }} saisi.
+  {% if current_user.role == 'admin_editeur' %}Utilisez le formulaire ci-dessus.{% endif %}
 </div>
 {% endif %}
 {% endmacro %}
@@ -954,6 +1090,44 @@
      "PAI"
 ) }}
 
+{{ section_taux_eff(
+     "Taux d'efficacité du PTA", "VIII", "#1A5276",
+     pta_efficacite_annees,
+     'pluriannuel.add_pta_efficacite',
+     'pluriannuel.edit_pta_efficacite',
+     'pluriannuel.delete_pta_efficacite',
+     "PTA"
+) }}
+
+{{ section_taux_eff(
+     "Taux d'efficacité du PAI", "IX", "#6C3483",
+     pai_efficacite_annees,
+     'pluriannuel.add_pai_efficacite',
+     'pluriannuel.edit_pai_efficacite',
+     'pluriannuel.delete_pai_efficacite',
+     "PAI"
+) }}
+
+{{ section_taux_fin(
+     "Taux d'efficience du PTA", "X", "#922B21",
+     pta_efficience_annees,
+     'pluriannuel.add_pta_efficience',
+     'pluriannuel.edit_pta_efficience',
+     'pluriannuel.delete_pta_efficience',
+     "PTA",
+     canvas_id="chartEfficientePTA"
+) }}
+
+{{ section_taux_fin(
+     "Taux d'efficience du PAI", "XI", "#117A65",
+     pai_efficience_annees,
+     'pluriannuel.add_pai_efficience',
+     'pluriannuel.edit_pai_efficience',
+     'pluriannuel.delete_pai_efficience',
+     "PAI",
+     canvas_id="chartEfficientePAI"
+) }}
+
 {% endblock %}
 
 {% block scripts %}
@@ -1187,6 +1361,66 @@ function validerTaux(formEl, errId) {
     {{ pai_fin_annees | map(attribute='t4_mand') | list | tojson }},
     {{ pai_fin_annees | map(attribute='t4_pmt') | list | tojson }},
     '#2471A3', '#5DADE2', '#154360'
+  );
+  {% endif %}
+
+  {% if pta_efficacite_annees %}
+  makeChartTaux('chartEfficacitePTA',
+    {{ pta_efficacite_annees | map(attribute='annee') | list | tojson }},
+    [
+      { label: 'T1', data: {{ pta_efficacite_annees | map(attribute='t1') | list | tojson }},
+        borderColor: '#AED6F1', pointBackgroundColor: '#AED6F1',
+        pointRadius: 5, pointHoverRadius: 7, borderWidth: 2.5, fill: false, tension: 0.3, spanGaps: true },
+      { label: 'T2', data: {{ pta_efficacite_annees | map(attribute='t2') | list | tojson }},
+        borderColor: '#5DADE2', pointBackgroundColor: '#5DADE2',
+        pointRadius: 5, pointHoverRadius: 7, borderWidth: 2.5, fill: false, tension: 0.3, spanGaps: true },
+      { label: 'T3', data: {{ pta_efficacite_annees | map(attribute='t3') | list | tojson }},
+        borderColor: '#2471A3', pointBackgroundColor: '#2471A3',
+        pointRadius: 5, pointHoverRadius: 7, borderWidth: 2.5, fill: false, tension: 0.3, spanGaps: true },
+      { label: 'T4', data: {{ pta_efficacite_annees | map(attribute='t4') | list | tojson }},
+        borderColor: '#1A5276', pointBackgroundColor: '#1A5276',
+        pointRadius: 5, pointHoverRadius: 7, borderWidth: 2.5, fill: false, tension: 0.3, spanGaps: true }
+    ]
+  );
+  {% endif %}
+
+  {% if pai_efficacite_annees %}
+  makeChartTaux('chartEfficacitePAI',
+    {{ pai_efficacite_annees | map(attribute='annee') | list | tojson }},
+    [
+      { label: 'T1', data: {{ pai_efficacite_annees | map(attribute='t1') | list | tojson }},
+        borderColor: '#D7BDE2', pointBackgroundColor: '#D7BDE2',
+        pointRadius: 5, pointHoverRadius: 7, borderWidth: 2.5, fill: false, tension: 0.3, spanGaps: true },
+      { label: 'T2', data: {{ pai_efficacite_annees | map(attribute='t2') | list | tojson }},
+        borderColor: '#A569BD', pointBackgroundColor: '#A569BD',
+        pointRadius: 5, pointHoverRadius: 7, borderWidth: 2.5, fill: false, tension: 0.3, spanGaps: true },
+      { label: 'T3', data: {{ pai_efficacite_annees | map(attribute='t3') | list | tojson }},
+        borderColor: '#7D3C98', pointBackgroundColor: '#7D3C98',
+        pointRadius: 5, pointHoverRadius: 7, borderWidth: 2.5, fill: false, tension: 0.3, spanGaps: true },
+      { label: 'T4', data: {{ pai_efficacite_annees | map(attribute='t4') | list | tojson }},
+        borderColor: '#6C3483', pointBackgroundColor: '#6C3483',
+        pointRadius: 5, pointHoverRadius: 7, borderWidth: 2.5, fill: false, tension: 0.3, spanGaps: true }
+    ]
+  );
+  {% endif %}
+
+  {% if pta_efficience_annees %}
+  makeChartFin('chartEfficientePTA',
+    {{ pta_efficience_annees | map(attribute='annee') | list | tojson }},
+    {{ pta_efficience_annees | map(attribute='t4_eng') | list | tojson }},
+    {{ pta_efficience_annees | map(attribute='t4_mand') | list | tojson }},
+    {{ pta_efficience_annees | map(attribute='t4_pmt') | list | tojson }},
+    '#E74C3C', '#C0392B', '#922B21'
+  );
+  {% endif %}
+
+  {% if pai_efficience_annees %}
+  makeChartFin('chartEfficientePAI',
+    {{ pai_efficience_annees | map(attribute='annee') | list | tojson }},
+    {{ pai_efficience_annees | map(attribute='t4_eng') | list | tojson }},
+    {{ pai_efficience_annees | map(attribute='t4_mand') | list | tojson }},
+    {{ pai_efficience_annees | map(attribute='t4_pmt') | list | tojson }},
+    '#1ABC9C', '#17A589', '#117A65'
   );
   {% endif %}
 

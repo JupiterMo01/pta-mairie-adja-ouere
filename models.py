@@ -584,6 +584,74 @@ class TauxExecPAI(db.Model):
     modified_by    = db.relationship('User', foreign_keys=[modified_by_id])
 
 
+class TauxEfficacitePTA(db.Model):
+    __tablename__ = 'taux_efficacite_pta'
+    id             = db.Column(db.Integer, primary_key=True)
+    annee          = db.Column(db.Integer, nullable=False, unique=True)
+    t1             = db.Column(db.Float, nullable=True)
+    t2             = db.Column(db.Float, nullable=True)
+    t3             = db.Column(db.Float, nullable=True)
+    t4             = db.Column(db.Float, nullable=True)
+    date_maj       = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    modified_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    modified_by    = db.relationship('User', foreign_keys=[modified_by_id])
+
+
+class TauxEfficacitePAI(db.Model):
+    __tablename__ = 'taux_efficacite_pai'
+    id             = db.Column(db.Integer, primary_key=True)
+    annee          = db.Column(db.Integer, nullable=False, unique=True)
+    t1             = db.Column(db.Float, nullable=True)
+    t2             = db.Column(db.Float, nullable=True)
+    t3             = db.Column(db.Float, nullable=True)
+    t4             = db.Column(db.Float, nullable=True)
+    date_maj       = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    modified_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    modified_by    = db.relationship('User', foreign_keys=[modified_by_id])
+
+
+class TauxEfficiencePTA(db.Model):
+    __tablename__ = 'taux_efficience_pta'
+    id             = db.Column(db.Integer, primary_key=True)
+    annee          = db.Column(db.Integer, nullable=False, unique=True)
+    t1_eng         = db.Column(db.Float, nullable=True)
+    t1_mand        = db.Column(db.Float, nullable=True)
+    t1_pmt         = db.Column(db.Float, nullable=True)
+    t2_eng         = db.Column(db.Float, nullable=True)
+    t2_mand        = db.Column(db.Float, nullable=True)
+    t2_pmt         = db.Column(db.Float, nullable=True)
+    t3_eng         = db.Column(db.Float, nullable=True)
+    t3_mand        = db.Column(db.Float, nullable=True)
+    t3_pmt         = db.Column(db.Float, nullable=True)
+    t4_eng         = db.Column(db.Float, nullable=True)
+    t4_mand        = db.Column(db.Float, nullable=True)
+    t4_pmt         = db.Column(db.Float, nullable=True)
+    date_maj       = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    modified_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    modified_by    = db.relationship('User', foreign_keys=[modified_by_id])
+
+
+class TauxEfficiencePAI(db.Model):
+    __tablename__ = 'taux_efficience_pai'
+    id             = db.Column(db.Integer, primary_key=True)
+    annee          = db.Column(db.Integer, nullable=False, unique=True)
+    t1_eng         = db.Column(db.Float, nullable=True)
+    t1_mand        = db.Column(db.Float, nullable=True)
+    t1_pmt         = db.Column(db.Float, nullable=True)
+    t2_eng         = db.Column(db.Float, nullable=True)
+    t2_mand        = db.Column(db.Float, nullable=True)
+    t2_pmt         = db.Column(db.Float, nullable=True)
+    t3_eng         = db.Column(db.Float, nullable=True)
+    t3_mand        = db.Column(db.Float, nullable=True)
+    t3_pmt         = db.Column(db.Float, nullable=True)
+    t4_eng         = db.Column(db.Float, nullable=True)
+    t4_mand        = db.Column(db.Float, nullable=True)
+    t4_pmt         = db.Column(db.Float, nullable=True)
+    date_maj       = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    modified_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    modified_by    = db.relationship('User', foreign_keys=[modified_by_id])
+
+
 # ─── Journal d'audit ─────────────────────────────────────────────────────────
 
 class AuditLog(db.Model):

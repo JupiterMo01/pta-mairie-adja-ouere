@@ -493,6 +493,270 @@
 </div>
 {% endif %}
 
+
+{# ════════════════════════════════════════════════════════════════════════════ #}
+{# IV. TAUX D'EXÉCUTION PHYSIQUE — PTA                                          #}
+{# ════════════════════════════════════════════════════════════════════════════ #}
+
+<h5 class="fw-bold text-primary mt-5 mb-3">
+  <i class="fas fa-percent me-2"></i>IV. Taux d'exécution physique du PTA
+</h5>
+
+{% if current_user.role == 'admin_editeur' %}
+<div class="card border-0 shadow-sm mb-4" style="border-left:4px solid #1E8449 !important;">
+  <div class="card-body py-2">
+    <h6 class="fw-bold mb-2" style="color:#1E8449;"><i class="fas fa-plus-circle me-1"></i>Ajouter une année</h6>
+    <small class="text-muted d-block mb-2">Les taux sont cumulatifs : T1 ≤ T2 ≤ T3 ≤ T4. Laisser vide si le trimestre n'est pas encore terminé.</small>
+    <form method="post" action="{{ url_for('pluriannuel.add_pta_exec') }}" class="row g-2 align-items-end">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+      <div class="col-6 col-sm-2 col-md-2">
+        <label class="form-label small mb-1">Année</label>
+        <input type="number" name="annee" class="form-control form-control-sm"
+               placeholder="2026" min="2000" max="2100" required>
+      </div>
+      {% for q in ['t1','t2','t3','t4'] %}
+      <div class="col-6 col-sm-2">
+        <label class="form-label small mb-1">{{ q|upper }} (%)</label>
+        <input type="number" name="{{ q }}" class="form-control form-control-sm"
+               placeholder="—" min="0" max="100" step="0.01">
+      </div>
+      {% endfor %}
+      <div class="col-12 col-sm-auto">
+        <button type="submit" class="btn btn-sm" style="background:#1E8449;color:#fff;">
+          <i class="fas fa-plus me-1"></i>Ajouter
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{% if pta_exec_annees %}
+<div class="table-responsive mb-4">
+<table class="table table-bordered pluri-table" style="max-width:780px;">
+  <thead>
+    <tr>
+      <th class="text-start" style="width:13%;background:#1E8449;">Année</th>
+      <th style="background:#1E8449;">T1 (%)</th>
+      <th style="background:#1E8449;">T2 (%)</th>
+      <th style="background:#1E8449;">T3 (%)</th>
+      <th style="background:#1E8449;">T4 (%)</th>
+      {% if current_user.role == 'admin_editeur' %}<th style="width:10%;background:#1E8449;">Actions</th>{% endif %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in pta_exec_annees %}
+    <tr>
+      <td class="fw-bold text-center">{{ row.annee }}</td>
+      {% for v in [row.t1, row.t2, row.t3, row.t4] %}
+      <td class="text-center">
+        {% if v is not none %}{{ '%.2f'|format(v)|replace('.',',') }} %{% else %}—{% endif %}
+      </td>
+      {% endfor %}
+      {% if current_user.role == 'admin_editeur' %}
+      <td class="text-center">
+        <button type="button" class="btn btn-outline-success btn-sm py-0 px-1"
+                data-bs-toggle="modal" data-bs-target="#editPtaExecModal{{ row.id }}" title="Modifier">
+          <i class="fas fa-pencil-alt fa-xs"></i>
+        </button>
+        <form method="post" action="{{ url_for('pluriannuel.delete_pta_exec', row_id=row.id) }}"
+              style="display:inline;"
+              onsubmit="return confirm('Supprimer {{ row.annee }} (taux exec PTA) ?');">
+          <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+          <button type="submit" class="btn btn-outline-danger btn-sm py-0 px-1" title="Supprimer">
+            <i class="fas fa-trash fa-xs"></i>
+          </button>
+        </form>
+      </td>
+      {% endif %}
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+
+<h6 class="fw-bold text-secondary mt-3 mb-2">
+  <i class="fas fa-chart-area me-1"></i>Évolution graphique
+</h6>
+{% set chart_min_w4 = [pta_exec_annees|length * 90, 500]|max %}
+<div style="overflow-x:auto;">
+  <div style="min-width:{{ chart_min_w4 }}px; height:320px; position:relative;">
+    <canvas id="chartPtaExec"></canvas>
+  </div>
+</div>
+
+{% if current_user.role == 'admin_editeur' %}
+{% for row in pta_exec_annees %}
+<div class="modal fade" id="editPtaExecModal{{ row.id }}" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header py-2">
+        <h6 class="modal-title fw-bold"><i class="fas fa-pencil-alt me-1"></i>Taux PTA — {{ row.annee }}</h6>
+        <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="{{ url_for('pluriannuel.edit_pta_exec', row_id=row.id) }}">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        <div class="modal-body py-2">
+          <small class="text-muted">Taux cumulatifs : T1 ≤ T2 ≤ T3 ≤ T4. Vider = trimestre non disponible.</small>
+          {% for q, v in [('t1', row.t1), ('t2', row.t2), ('t3', row.t3), ('t4', row.t4)] %}
+          <div class="mb-2 mt-2">
+            <label class="form-label small mb-1">{{ q|upper }} (%)</label>
+            <input type="number" name="{{ q }}" class="form-control form-control-sm"
+                   value="{{ '%.2f'|format(v) if v is not none else '' }}"
+                   min="0" max="100" step="0.01" placeholder="—">
+          </div>
+          {% endfor %}
+        </div>
+        <div class="modal-footer py-2">
+          <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-sm" style="background:#1E8449;color:#fff;">Enregistrer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endfor %}
+{% endif %}
+
+{% else %}
+<div class="alert alert-info">
+  <i class="fas fa-info-circle me-2"></i>Aucun taux d'exécution PTA saisi.
+  {% if current_user.role == 'admin_editeur' %}Utilisez le formulaire ci-dessus pour commencer.{% endif %}
+</div>
+{% endif %}
+
+
+{# ════════════════════════════════════════════════════════════════════════════ #}
+{# V. TAUX D'EXÉCUTION PHYSIQUE — PAI                                           #}
+{# ════════════════════════════════════════════════════════════════════════════ #}
+
+<h5 class="fw-bold text-primary mt-5 mb-3">
+  <i class="fas fa-percent me-2"></i>V. Taux d'exécution physique du PAI
+</h5>
+
+{% if current_user.role == 'admin_editeur' %}
+<div class="card border-0 shadow-sm mb-4" style="border-left:4px solid #7D3C98 !important;">
+  <div class="card-body py-2">
+    <h6 class="fw-bold mb-2" style="color:#7D3C98;"><i class="fas fa-plus-circle me-1"></i>Ajouter une année</h6>
+    <small class="text-muted d-block mb-2">Les taux sont cumulatifs : T1 ≤ T2 ≤ T3 ≤ T4. Laisser vide si le trimestre n'est pas encore terminé.</small>
+    <form method="post" action="{{ url_for('pluriannuel.add_pai_exec') }}" class="row g-2 align-items-end">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+      <div class="col-6 col-sm-2 col-md-2">
+        <label class="form-label small mb-1">Année</label>
+        <input type="number" name="annee" class="form-control form-control-sm"
+               placeholder="2026" min="2000" max="2100" required>
+      </div>
+      {% for q in ['t1','t2','t3','t4'] %}
+      <div class="col-6 col-sm-2">
+        <label class="form-label small mb-1">{{ q|upper }} (%)</label>
+        <input type="number" name="{{ q }}" class="form-control form-control-sm"
+               placeholder="—" min="0" max="100" step="0.01">
+      </div>
+      {% endfor %}
+      <div class="col-12 col-sm-auto">
+        <button type="submit" class="btn btn-sm" style="background:#7D3C98;color:#fff;">
+          <i class="fas fa-plus me-1"></i>Ajouter
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{% if pai_exec_annees %}
+<div class="table-responsive mb-4">
+<table class="table table-bordered pluri-table" style="max-width:780px;">
+  <thead>
+    <tr>
+      <th class="text-start" style="width:13%;background:#7D3C98;">Année</th>
+      <th style="background:#7D3C98;">T1 (%)</th>
+      <th style="background:#7D3C98;">T2 (%)</th>
+      <th style="background:#7D3C98;">T3 (%)</th>
+      <th style="background:#7D3C98;">T4 (%)</th>
+      {% if current_user.role == 'admin_editeur' %}<th style="width:10%;background:#7D3C98;">Actions</th>{% endif %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in pai_exec_annees %}
+    <tr>
+      <td class="fw-bold text-center">{{ row.annee }}</td>
+      {% for v in [row.t1, row.t2, row.t3, row.t4] %}
+      <td class="text-center">
+        {% if v is not none %}{{ '%.2f'|format(v)|replace('.',',') }} %{% else %}—{% endif %}
+      </td>
+      {% endfor %}
+      {% if current_user.role == 'admin_editeur' %}
+      <td class="text-center">
+        <button type="button" class="btn btn-sm py-0 px-1" style="border:1px solid #7D3C98;color:#7D3C98;"
+                data-bs-toggle="modal" data-bs-target="#editPaiExecModal{{ row.id }}" title="Modifier">
+          <i class="fas fa-pencil-alt fa-xs"></i>
+        </button>
+        <form method="post" action="{{ url_for('pluriannuel.delete_pai_exec', row_id=row.id) }}"
+              style="display:inline;"
+              onsubmit="return confirm('Supprimer {{ row.annee }} (taux exec PAI) ?');">
+          <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+          <button type="submit" class="btn btn-outline-danger btn-sm py-0 px-1" title="Supprimer">
+            <i class="fas fa-trash fa-xs"></i>
+          </button>
+        </form>
+      </td>
+      {% endif %}
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+
+<h6 class="fw-bold text-secondary mt-3 mb-2">
+  <i class="fas fa-chart-area me-1"></i>Évolution graphique
+</h6>
+{% set chart_min_w5 = [pai_exec_annees|length * 90, 500]|max %}
+<div style="overflow-x:auto;">
+  <div style="min-width:{{ chart_min_w5 }}px; height:320px; position:relative;">
+    <canvas id="chartPaiExec"></canvas>
+  </div>
+</div>
+
+{% if current_user.role == 'admin_editeur' %}
+{% for row in pai_exec_annees %}
+<div class="modal fade" id="editPaiExecModal{{ row.id }}" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header py-2">
+        <h6 class="modal-title fw-bold"><i class="fas fa-pencil-alt me-1"></i>Taux PAI — {{ row.annee }}</h6>
+        <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="{{ url_for('pluriannuel.edit_pai_exec', row_id=row.id) }}">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        <div class="modal-body py-2">
+          <small class="text-muted">Taux cumulatifs : T1 ≤ T2 ≤ T3 ≤ T4. Vider = trimestre non disponible.</small>
+          {% for q, v in [('t1', row.t1), ('t2', row.t2), ('t3', row.t3), ('t4', row.t4)] %}
+          <div class="mb-2 mt-2">
+            <label class="form-label small mb-1">{{ q|upper }} (%)</label>
+            <input type="number" name="{{ q }}" class="form-control form-control-sm"
+                   value="{{ '%.2f'|format(v) if v is not none else '' }}"
+                   min="0" max="100" step="0.01" placeholder="—">
+          </div>
+          {% endfor %}
+        </div>
+        <div class="modal-footer py-2">
+          <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-sm" style="background:#7D3C98;color:#fff;">Enregistrer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endfor %}
+{% endif %}
+
+{% else %}
+<div class="alert alert-info">
+  <i class="fas fa-info-circle me-2"></i>Aucun taux d'exécution PAI saisi.
+  {% if current_user.role == 'admin_editeur' %}Utilisez le formulaire ci-dessus pour commencer.{% endif %}
+</div>
+{% endif %}
+
 {% endblock %}
 
 {% block scripts %}
@@ -569,6 +833,84 @@
     {{ pai_annees | map(attribute='annee') | list | tojson }},
     'PAI', {{ pai_annees | map(attribute='montant_pai') | list | tojson }}, '#7D3C98',
     'PAI Révisé', {{ pai_annees | map(attribute='montant_pai_rev') | list | tojson }}, '#D2B4DE'
+  );
+  {% endif %}
+
+  // ── Graphiques taux (4 courbes, axe Y 0–100 %) ──────────────────────────────
+  function makeChartTaux(canvasId, labels, datasets) {
+    var ctx = document.getElementById(canvasId);
+    if (!ctx) return;
+    new Chart(ctx.getContext('2d'), {
+      type: 'line',
+      data: { labels: labels, datasets: datasets },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        spanGaps: true,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { position: 'top', labels: { font: { size: 12 }, padding: 14 } },
+          tooltip: {
+            callbacks: {
+              label: function(c) {
+                if (c.parsed.y === null) return null;
+                return ' ' + c.dataset.label + ' : ' + c.parsed.y.toFixed(2).replace('.', ',') + ' %';
+              }
+            }
+          }
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+          y: {
+            min: 0, max: 100,
+            grid: { color: 'rgba(0,0,0,0.06)' },
+            ticks: {
+              font: { size: 10 },
+              callback: function(v) { return v + ' %'; },
+              stepSize: 20
+            }
+          }
+        }
+      }
+    });
+  }
+
+  {% if pta_exec_annees %}
+  makeChartTaux('chartPtaExec',
+    {{ pta_exec_annees | map(attribute='annee') | list | tojson }},
+    [
+      { label: 'T1', data: {{ pta_exec_annees | map(attribute='t1') | list | tojson }},
+        borderColor: '#A9DFBF', pointBackgroundColor: '#A9DFBF',
+        pointRadius: 5, pointHoverRadius: 7, borderWidth: 2.5, fill: false, tension: 0.3 },
+      { label: 'T2', data: {{ pta_exec_annees | map(attribute='t2') | list | tojson }},
+        borderColor: '#52BE80', pointBackgroundColor: '#52BE80',
+        pointRadius: 5, pointHoverRadius: 7, borderWidth: 2.5, fill: false, tension: 0.3 },
+      { label: 'T3', data: {{ pta_exec_annees | map(attribute='t3') | list | tojson }},
+        borderColor: '#1E8449', pointBackgroundColor: '#1E8449',
+        pointRadius: 5, pointHoverRadius: 7, borderWidth: 2.5, fill: false, tension: 0.3 },
+      { label: 'T4', data: {{ pta_exec_annees | map(attribute='t4') | list | tojson }},
+        borderColor: '#145A32', pointBackgroundColor: '#145A32',
+        pointRadius: 5, pointHoverRadius: 7, borderWidth: 2.5, fill: false, tension: 0.3 },
+    ]
+  );
+  {% endif %}
+
+  {% if pai_exec_annees %}
+  makeChartTaux('chartPaiExec',
+    {{ pai_exec_annees | map(attribute='annee') | list | tojson }},
+    [
+      { label: 'T1', data: {{ pai_exec_annees | map(attribute='t1') | list | tojson }},
+        borderColor: '#D2B4DE', pointBackgroundColor: '#D2B4DE',
+        pointRadius: 5, pointHoverRadius: 7, borderWidth: 2.5, fill: false, tension: 0.3 },
+      { label: 'T2', data: {{ pai_exec_annees | map(attribute='t2') | list | tojson }},
+        borderColor: '#A569BD', pointBackgroundColor: '#A569BD',
+        pointRadius: 5, pointHoverRadius: 7, borderWidth: 2.5, fill: false, tension: 0.3 },
+      { label: 'T3', data: {{ pai_exec_annees | map(attribute='t3') | list | tojson }},
+        borderColor: '#7D3C98', pointBackgroundColor: '#7D3C98',
+        pointRadius: 5, pointHoverRadius: 7, borderWidth: 2.5, fill: false, tension: 0.3 },
+      { label: 'T4', data: {{ pai_exec_annees | map(attribute='t4') | list | tojson }},
+        borderColor: '#4A235A', pointBackgroundColor: '#4A235A',
+        pointRadius: 5, pointHoverRadius: 7, borderWidth: 2.5, fill: false, tension: 0.3 },
+    ]
   );
   {% endif %}
 

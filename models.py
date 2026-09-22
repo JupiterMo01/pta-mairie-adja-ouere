@@ -516,6 +516,32 @@ class MontantPluriannuelPAI(db.Model):
         return round(self.ecart / self.montant_pai * 100, 2)
 
 
+class TauxExecPTA(db.Model):
+    __tablename__ = 'taux_exec_pta'
+    id             = db.Column(db.Integer, primary_key=True)
+    annee          = db.Column(db.Integer, nullable=False, unique=True)
+    t1             = db.Column(db.Float, nullable=True)
+    t2             = db.Column(db.Float, nullable=True)
+    t3             = db.Column(db.Float, nullable=True)
+    t4             = db.Column(db.Float, nullable=True)
+    date_maj       = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    modified_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    modified_by    = db.relationship('User', foreign_keys=[modified_by_id])
+
+
+class TauxExecPAI(db.Model):
+    __tablename__ = 'taux_exec_pai'
+    id             = db.Column(db.Integer, primary_key=True)
+    annee          = db.Column(db.Integer, nullable=False, unique=True)
+    t1             = db.Column(db.Float, nullable=True)
+    t2             = db.Column(db.Float, nullable=True)
+    t3             = db.Column(db.Float, nullable=True)
+    t4             = db.Column(db.Float, nullable=True)
+    date_maj       = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    modified_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    modified_by    = db.relationship('User', foreign_keys=[modified_by_id])
+
+
 # ─── Journal d'audit ─────────────────────────────────────────────────────────
 
 class AuditLog(db.Model):

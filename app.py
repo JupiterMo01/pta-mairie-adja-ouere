@@ -161,6 +161,7 @@ def create_app(test_config=None):
             spec = importlib.util.spec_from_file_location('backup_pta', script)
             mod  = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(mod)
+            mod.run()
             return jsonify({'status': 'ok', 'message': 'Sauvegarde effectuée'})
         except Exception as e:
             return jsonify({'status': 'erreur', 'message': str(e)}), 500

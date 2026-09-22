@@ -45,14 +45,17 @@ def _renorm(items, src='original_poids', dst='new_poids'):
 def valider_mdp(mdp):
     """Valide la robustesse d'un mot de passe.
     Retourne None si le mot de passe est valide, sinon un message d'erreur (str).
-    Règles : 8 caractères minimum, au moins 1 chiffre, au moins 1 majuscule.
+    Règles : 10 caractères minimum, au moins 1 chiffre, 1 majuscule, 1 caractère spécial.
     """
-    if len(mdp) < 8:
-        return 'Le mot de passe doit contenir au moins 8 caractères.'
+    _SPECIAUX = set('!@#$%^&*()_+-=[]{}|;:\'",.<>?/`~\\')
+    if len(mdp) < 10:
+        return 'Le mot de passe doit contenir au moins 10 caractères.'
     if not any(c.isdigit() for c in mdp):
         return 'Le mot de passe doit contenir au moins un chiffre (0-9).'
     if not any(c.isupper() for c in mdp):
         return 'Le mot de passe doit contenir au moins une lettre majuscule.'
+    if not any(c in _SPECIAUX for c in mdp):
+        return 'Le mot de passe doit contenir au moins un caractère spécial (!@#$%^&*…).'
     return None   # valide
 
 

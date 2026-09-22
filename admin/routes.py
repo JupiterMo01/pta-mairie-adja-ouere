@@ -120,7 +120,12 @@ def user_add():
         flash(f"L'identifiant « {login_val} » est déjà utilisé.", 'danger')
         return redirect(url_for('admin.users'))
 
-    email_val = request.form.get('email', '').strip() or None
+    import re as _re
+    email_raw = request.form.get('email', '').strip()
+    if email_raw and not _re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', email_raw):
+        flash("Format d'adresse email invalide.", 'danger')
+        return redirect(url_for('admin.users'))
+    email_val = email_raw or None
 
     user = User(
         nom=nom, prenom=prenom, login=login_val, role=role,
@@ -173,7 +178,12 @@ def user_edit(user_id):
             flash('Identifiant de direction ou service invalide.', 'danger')
             return redirect(url_for('admin.user_edit', user_id=user_id))
         user.actif = ('actif' in request.form)
-        user.email = request.form.get('email', '').strip() or None
+        import re as _re2
+        email_edit = request.form.get('email', '').strip()
+        if email_edit and not _re2.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', email_edit):
+            flash("Format d'adresse email invalide.", 'danger')
+            return redirect(url_for('admin.user_edit', user_id=user_id))
+        user.email = email_edit or None
         new_pw = request.form.get('password', '').strip()
         if new_pw:
             erreur_mdp = valider_mdp(new_pw)
@@ -891,8 +901,8 @@ _COPIES_FIXES_DEFAUT = ['jupiter.gboyou@mairie.bj']
 
 
 def _lire_cfg_smtp():
-    """Lit GMAIL_USER / GMAIL_APP_PASSWORD (et optionnellement ADMIN_CC)
-    depuis ~/.pta_backup_config.
+    """Lit GMAIL_USER / GMAIL_APP_PASSWORD (et optionnellement ADMIN_CC,
+    EXPEDITEUR_NOM, EXPEDITEUR_EMAIL) depuis ~/.pta_backup_config.
     Lève FileNotFoundError si le fichier n'existe pas, ValueError si clé manquante,
     OSError si le fichier est illisible (permissions)."""
     import os
@@ -906,6 +916,9 @@ def _lire_cfg_smtp():
     for cle in ('GMAIL_USER', 'GMAIL_APP_PASSWORD'):
         if cle not in cfg:
             raise ValueError(f"Clé manquante dans config : {cle}")
+    # Valeurs par défaut si non renseignées dans le fichier config
+    cfg.setdefault('EXPEDITEUR_NOM',   'Jupiter GBOYOU')
+    cfg.setdefault('EXPEDITEUR_EMAIL', 'jupiter.gboyou@mairie.bj')
     return cfg
 
 
@@ -1017,8 +1030,8 @@ def rappel_saisie():
   <tr><td style="background:#f9fafb;padding:16px 32px;border-top:1px solid #e5e7eb;">
     <p style="margin:0;color:#9ca3af;font-size:11px;line-height:1.7;">
       Ce message a été envoyé depuis le Système PTA de la Mairie d'Adja-Ouèrè.<br>
-      Émis par : <strong>Jupiter GBOYOU</strong> ·
-      <a href="mailto:jupiter.gboyou@mairie.bj" style="color:#1e3a5f;">jupiter.gboyou@mairie.bj</a>
+      Émis par : <strong>{cfg['EXPEDITEUR_NOM']}</strong> ·
+      <a href="mailto:{cfg['EXPEDITEUR_EMAIL']}" style="color:#1e3a5f;">{cfg['EXPEDITEUR_EMAIL']}</a>
     </p>
     <p style="margin:6px 0 0;color:#9ca3af;font-size:11px;">
       &#x1F1E7;&#x1F1EF; République du Bénin &nbsp;·&nbsp; Mairie d'Adja-Ouèrè
@@ -1048,7 +1061,7 @@ def rappel_saisie():
     msg['Cc']       = ', '.join(destinataires)    # users visibles (voient qui a reçu)
     msg['Bcc']      = ', '.join(copies_fixes)     # copie silencieuse (voit la liste CC)
     msg['Subject']  = sujet
-    msg['Reply-To'] = 'jupiter.gboyou@mairie.bj'
+    msg['Reply-To'] = cfg['EXPEDITEUR_EMAIL']
     msg.attach(MIMEText(texte_brut, 'plain', 'utf-8'))
     msg.attach(MIMEText(html_body,  'html',  'utf-8'))
 
@@ -1336,8 +1349,8 @@ def bilan_pta():
   <tr><td style="background:#f9fafb;padding:16px 32px;border-top:1px solid #e5e7eb;">
     <p style="margin:0;color:#9ca3af;font-size:11px;line-height:1.7;">
       Message envoyé automatiquement depuis le Système PTA de la Mairie d'Adja-Ouèrè.<br>
-      Émis par : <strong>Jupiter GBOYOU</strong> ·
-      <a href="mailto:jupiter.gboyou@mairie.bj" style="color:#1e3a5f;">jupiter.gboyou@mairie.bj</a>
+      Émis par : <strong>{cfg['EXPEDITEUR_NOM']}</strong> ·
+      <a href="mailto:{cfg['EXPEDITEUR_EMAIL']}" style="color:#1e3a5f;">{cfg['EXPEDITEUR_EMAIL']}</a>
     </p>
     <p style="margin:6px 0 0;color:#9ca3af;font-size:11px;">
       &#x1F1E7;&#x1F1EF; République du Bénin &nbsp;·&nbsp; Mairie d'Adja-Ouèrè
@@ -1378,7 +1391,7 @@ def bilan_pta():
     msg['Cc']       = ', '.join(destinataires)    # users visibles (voient qui a reçu)
     msg['Bcc']      = ', '.join(copies_fixes)      # copie silencieuse (voit la liste CC)
     msg['Subject']  = sujet
-    msg['Reply-To'] = 'jupiter.gboyou@mairie.bj'
+    msg['Reply-To'] = cfg['EXPEDITEUR_EMAIL']
     msg.attach(MIMEText(texte_brut, 'plain', 'utf-8'))
     msg.attach(MIMEText(html_body,  'html',  'utf-8'))
 
@@ -1483,8 +1496,8 @@ def notifier_pta_pai():
   <tr><td style="background:#f9fafb;padding:16px 32px;border-top:1px solid #e5e7eb;">
     <p style="margin:0;color:#9ca3af;font-size:11px;line-height:1.7;">
       Message envoyé automatiquement depuis le Système PTA de la Mairie d'Adja-Ouèrè.<br>
-      Émis par : <strong>Jupiter GBOYOU</strong> ·
-      <a href="mailto:jupiter.gboyou@mairie.bj" style="color:#1e3a5f;">jupiter.gboyou@mairie.bj</a>
+      Émis par : <strong>{cfg['EXPEDITEUR_NOM']}</strong> ·
+      <a href="mailto:{cfg['EXPEDITEUR_EMAIL']}" style="color:#1e3a5f;">{cfg['EXPEDITEUR_EMAIL']}</a>
     </p>
     <p style="margin:6px 0 0;color:#9ca3af;font-size:11px;">
       &#x1F1E7;&#x1F1EF; République du Bénin &nbsp;·&nbsp; Mairie d'Adja-Ouèrè
@@ -1508,7 +1521,7 @@ def notifier_pta_pai():
     msg['Cc']       = ', '.join(destinataires)
     msg['Bcc']      = ', '.join(copies_fixes)
     msg['Subject']  = sujet
-    msg['Reply-To'] = 'jupiter.gboyou@mairie.bj'
+    msg['Reply-To'] = cfg['EXPEDITEUR_EMAIL']
     msg.attach(MIMEText(texte_brut, 'plain', 'utf-8'))
     msg.attach(MIMEText(html_body,  'html',  'utf-8'))
 

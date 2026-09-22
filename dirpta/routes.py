@@ -415,6 +415,8 @@ def index():
         direction  = current_user.direction
         directions = []
     else:
+        if current_user.role == 'service':
+            abort(403)
         directions = Direction.query.order_by(Direction.nom).all()
         dir_id     = request.args.get('direction_id', type=int)
         direction  = db.session.get(Direction, dir_id) if dir_id else None

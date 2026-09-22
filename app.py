@@ -121,15 +121,46 @@ def create_app(test_config=None):
 
     @app.after_request
     def secure_headers(response):
-        # En-têtes de sécurité HTTP — protection contre clickjacking, sniffing MIME, etc.
         response.headers['X-Frame-Options'] = 'DENY'
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+        response.headers['Content-Security-Policy'] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' cdn.jsdelivr.net cdnjs.cloudflare.com; "
+            "style-src 'self' 'unsafe-inline' cdn.jsdelivr.net cdnjs.cloudflare.com; "
+            "font-src 'self' cdnjs.cloudflare.com data:; "
+            "img-src 'self' data: blob:; "
+            "connect-src 'self'; "
+            "object-src 'none'; "
+            "frame-ancestors 'none';"
+        )
         return response
 
     @app.before_request
+    def sync_annee_session():
+        """Synchronise l'année en session si l'admin a changé l'année active."""
+        from flask_login import current_user as _cu
+        from models import Annee as _A
+        from flask import flash as _flash
+        if _cu.is_authenticated and request.blueprint != 'auth':
+            try:
+                active = _A.query.filter_by(actif=True).first()
+                if active and session.get('annee_id') != active.id:
+                    old = session.get('annee')
+                    session['annee_id'] = active.id
+                    session['annee'] = active.annee
+                    if old and old != active.annee:
+                        _flash(
+                            f"L'année PTA active a changé ({old} → {active.annee}). "
+                            "Votre session a été mise à jour.",
+                            'info'
+                        )
+            except Exception:
+                pass
+
+    @app.before_request
     def check_csrf():
-        if request.method == 'POST' and request.blueprint != 'auth':
+        if request.method == 'POST' and request.blueprint != 'auth' and request.endpoint != 'api_backup':
             token = session.get('_csrf_token')
             # Accepte le token via formulaire HTML ou via header X-CSRF-Token (AJAX JSON)
             form_token = request.form.get('_csrf_token') or request.headers.get('X-CSRF-Token')
@@ -137,14 +168,15 @@ def create_app(test_config=None):
                 abort(403)
 
     # ── Route de déclenchement de la sauvegarde (appelée par cron-job.org) ──────
-    @app.route('/api/backup')
+    # Méthode POST : token dans le corps (form: token=XXX ou JSON: {"token":"XXX"})
+    # Configurer cron-job.org : méthode POST, body "token=VOTRE_TOKEN"
+    @app.route('/api/backup', methods=['POST'])
     def api_backup():
         import os
         import hmac
         from flask import jsonify
-        # Vérification du token secret (comparaison en temps constant pour éviter
-        # les timing attacks — bonne pratique même si le réseau masque la latence)
-        token_recu    = request.args.get('token', '')
+        payload    = request.get_json(silent=True) or {}
+        token_recu = request.form.get('token', '') or payload.get('token', '')
         config_path   = os.path.expanduser('~/.pta_backup_config')
         token_attendu = ''
         if os.path.exists(config_path):

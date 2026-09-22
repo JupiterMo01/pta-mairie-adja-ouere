@@ -66,6 +66,12 @@ def mdp_oublie():
 @login_required
 def change_password():
     if request.method == 'POST':
+        # Vérification CSRF explicite (blueprint auth exclu du middleware global)
+        tok = session.get('_csrf_token')
+        form_tok = request.form.get('_csrf_token')
+        if not tok or tok != form_tok:
+            from flask import abort
+            abort(403)
         ancien = request.form.get('ancien_mdp', '').strip()
         nouveau = request.form.get('nouveau_mdp', '').strip()
         confirm = request.form.get('confirm_mdp', '').strip()

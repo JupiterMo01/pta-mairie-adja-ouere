@@ -424,6 +424,8 @@ def index():
         directions = Direction.query.order_by(Direction.nom).all()
         svc_id  = request.args.get('service_id', type=int)
         service = db.session.get(Service, svc_id) if svc_id else None
+        if current_user.role == 'direction' and service and service.direction_id != current_user.direction_id:
+            abort(403)
 
     data = []
     if annee and service:

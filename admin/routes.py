@@ -895,39 +895,54 @@ def backup_restore(backup_id):
 
 # ─── Emails PTA (rappel saisie + bilan) ──────────────────────────────────────
 
-# Adresse de copie fixe par défaut (fallback si ADMIN_CC absent de ~/.pta_backup_config)
-# Pour changer sans toucher au code : ajouter ADMIN_CC=email@domaine.bj dans le fichier config.
-_COPIES_FIXES_DEFAUT = ['jupiter.gboyou@mairie.bj']
+# Pas de fallback hardcodé : si ADMIN_CC n'est pas configuré, aucune copie supplémentaire.
+# Pour activer les copies : ajouter ADMIN_CC=email@domaine.bj dans ~/.pta_backup_config
+# ou définir la variable d'environnement PTA_ADMIN_CC sur PythonAnywhere.
+_COPIES_FIXES_DEFAUT = []
 
 
 def _lire_cfg_smtp():
-    """Lit GMAIL_USER / GMAIL_APP_PASSWORD (et optionnellement ADMIN_CC,
-    EXPEDITEUR_NOM, EXPEDITEUR_EMAIL) depuis ~/.pta_backup_config.
-    Lève FileNotFoundError si le fichier n'existe pas, ValueError si clé manquante,
-    OSError si le fichier est illisible (permissions)."""
+    """Lit la config SMTP depuis les variables d'environnement en priorité,
+    puis depuis ~/.pta_backup_config en complément.
+    Variables d'env reconnues : PTA_GMAIL_USER, PTA_GMAIL_APP_PASSWORD,
+    PTA_ADMIN_CC, PTA_EXPEDITEUR_NOM, PTA_EXPEDITEUR_EMAIL.
+    Lève ValueError si GMAIL_USER ou GMAIL_APP_PASSWORD manque partout."""
     import os
     cfg = {}
-    with open(os.path.expanduser('~/.pta_backup_config'), encoding='utf-8') as f:
-        for ligne in f:
-            ligne = ligne.strip()
-            if '=' in ligne and not ligne.startswith('#'):
-                cle, val = ligne.split('=', 1)
-                cfg[cle.strip()] = val.strip()
+    # 1. Lire le fichier config (base)
+    config_path = os.path.expanduser('~/.pta_backup_config')
+    if os.path.exists(config_path):
+        with open(config_path, encoding='utf-8') as f:
+            for ligne in f:
+                ligne = ligne.strip()
+                if '=' in ligne and not ligne.startswith('#'):
+                    cle, val = ligne.split('=', 1)
+                    cfg[cle.strip()] = val.strip()
+    # 2. Les variables d'environnement écrasent le fichier (plus sécurisé sur PythonAnywhere)
+    _env_map = {
+        'PTA_GMAIL_USER':           'GMAIL_USER',
+        'PTA_GMAIL_APP_PASSWORD':   'GMAIL_APP_PASSWORD',
+        'PTA_ADMIN_CC':             'ADMIN_CC',
+        'PTA_EXPEDITEUR_NOM':       'EXPEDITEUR_NOM',
+        'PTA_EXPEDITEUR_EMAIL':     'EXPEDITEUR_EMAIL',
+    }
+    for env_var, cfg_key in _env_map.items():
+        val = os.environ.get(env_var, '').strip()
+        if val:
+            cfg[cfg_key] = val
     for cle in ('GMAIL_USER', 'GMAIL_APP_PASSWORD'):
-        if cle not in cfg:
-            raise ValueError(f"Clé manquante dans config : {cle}")
-    # Valeurs par défaut si non renseignées dans le fichier config
+        if not cfg.get(cle):
+            raise ValueError(f"Clé manquante dans config SMTP : {cle}")
     cfg.setdefault('EXPEDITEUR_NOM',   'Jupiter GBOYOU')
     cfg.setdefault('EXPEDITEUR_EMAIL', 'jupiter.gboyou@mairie.bj')
     return cfg
 
 
 def _get_copies_fixes(cfg):
-    """Retourne la liste des adresses de copie fixe.
-    Lit ADMIN_CC depuis le fichier config si disponible, sinon utilise la valeur par défaut."""
+    """Retourne la liste des adresses de copie fixe (ADMIN_CC).
+    Vide si non configuré — pas de fallback hardcodé."""
     admin_cc = cfg.get('ADMIN_CC', '').strip()
     if admin_cc:
-        # Plusieurs adresses séparées par des virgules ou espaces sont acceptées
         return [a.strip() for a in admin_cc.replace(',', ' ').split() if a.strip()]
     return list(_COPIES_FIXES_DEFAUT)
 

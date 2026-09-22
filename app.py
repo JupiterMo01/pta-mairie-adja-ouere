@@ -138,11 +138,19 @@ def create_app(test_config=None):
 
     @app.before_request
     def sync_annee_session():
-        """Synchronise l'année en session si l'admin a changé l'année active."""
-        from flask_login import current_user as _cu
+        """Synchronise l'année en session. Déconnecte immédiatement les comptes désactivés."""
+        from flask_login import current_user as _cu, logout_user as _lo
         from models import Annee as _A
         from flask import flash as _flash
-        if _cu.is_authenticated and request.blueprint != 'auth':
+        if not _cu.is_authenticated:
+            return
+        # VUL-06 : invalider immédiatement tout compte désactivé par l'admin
+        if not _cu.actif:
+            _lo()
+            session.clear()
+            _flash('Votre compte a été désactivé. Contactez l\'administrateur.', 'warning')
+            return redirect(url_for('auth.login'))
+        if request.blueprint != 'auth':
             try:
                 active = _A.query.filter_by(actif=True).first()
                 if active and session.get('annee_id') != active.id:

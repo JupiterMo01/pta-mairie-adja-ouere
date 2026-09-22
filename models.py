@@ -474,6 +474,48 @@ class BudgetPluriannuel(db.Model):
         return round(self.ecart / self.budget_primitif * 100, 2)
 
 
+class MontantPluriannuelPTA(db.Model):
+    __tablename__ = 'montant_pluriannuel_pta'
+    id               = db.Column(db.Integer, primary_key=True)
+    annee            = db.Column(db.Integer, nullable=False, unique=True)
+    montant_pta      = db.Column(db.Float,   nullable=False, default=0.0)
+    montant_pta_rev  = db.Column(db.Float,   nullable=False, default=0.0)
+    date_maj         = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    modified_by_id   = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    modified_by      = db.relationship('User', foreign_keys=[modified_by_id])
+
+    @property
+    def ecart(self):
+        return (self.montant_pta_rev or 0) - (self.montant_pta or 0)
+
+    @property
+    def variation_pct(self):
+        if not self.montant_pta:
+            return None
+        return round(self.ecart / self.montant_pta * 100, 2)
+
+
+class MontantPluriannuelPAI(db.Model):
+    __tablename__ = 'montant_pluriannuel_pai'
+    id               = db.Column(db.Integer, primary_key=True)
+    annee            = db.Column(db.Integer, nullable=False, unique=True)
+    montant_pai      = db.Column(db.Float,   nullable=False, default=0.0)
+    montant_pai_rev  = db.Column(db.Float,   nullable=False, default=0.0)
+    date_maj         = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    modified_by_id   = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    modified_by      = db.relationship('User', foreign_keys=[modified_by_id])
+
+    @property
+    def ecart(self):
+        return (self.montant_pai_rev or 0) - (self.montant_pai or 0)
+
+    @property
+    def variation_pct(self):
+        if not self.montant_pai:
+            return None
+        return round(self.ecart / self.montant_pai * 100, 2)
+
+
 # ─── Journal d'audit ─────────────────────────────────────────────────────────
 
 class AuditLog(db.Model):

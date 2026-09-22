@@ -2,7 +2,7 @@
 
 {# ── Macro : section taux financiers (PTA ou PAI) ──────────────────────────── #}
 {% macro section_taux_fin(titre, num_section, couleur, rows, ep_add, ep_edit, ep_delete, prefixe) %}
-<h5 class="fw-bold text-primary mt-5 mb-3">
+<h5 id="section-{{ prefixe|lower }}-fin" class="fw-bold text-primary mt-5 mb-3">
   <i class="fas fa-coins me-2"></i>{{ num_section }}. {{ titre }}
 </h5>
 
@@ -187,7 +187,7 @@
 {# I. SECTION BUDGET — EVOLUTION                                                #}
 {# ════════════════════════════════════════════════════════════════════════════ #}
 
-<h5 class="fw-bold text-primary mt-3 mb-3">
+<h5 id="section-budget" class="fw-bold text-primary mt-3 mb-3">
   <i class="fas fa-chart-line me-2"></i>I. Évolution du budget municipal
 </h5>
 
@@ -356,7 +356,7 @@
 {# II. SECTION PTA — MONTANTS                                                   #}
 {# ════════════════════════════════════════════════════════════════════════════ #}
 
-<h5 class="fw-bold text-primary mt-5 mb-3">
+<h5 id="section-pta" class="fw-bold text-primary mt-5 mb-3">
   <i class="fas fa-file-alt me-2"></i>II. Évolution des montants du PTA
 </h5>
 
@@ -510,7 +510,7 @@
 {# III. SECTION PAI — MONTANTS                                                  #}
 {# ════════════════════════════════════════════════════════════════════════════ #}
 
-<h5 class="fw-bold text-primary mt-5 mb-3">
+<h5 id="section-pai" class="fw-bold text-primary mt-5 mb-3">
   <i class="fas fa-file-invoice me-2"></i>III. Évolution des montants du PAI
 </h5>
 
@@ -664,7 +664,7 @@
 {# IV. TAUX D'EXÉCUTION PHYSIQUE — PTA                                          #}
 {# ════════════════════════════════════════════════════════════════════════════ #}
 
-<h5 class="fw-bold text-primary mt-5 mb-3">
+<h5 id="section-pta-exec" class="fw-bold text-primary mt-5 mb-3">
   <i class="fas fa-percent me-2"></i>IV. Taux d'exécution physique du PTA
 </h5>
 
@@ -796,7 +796,7 @@
 {# V. TAUX D'EXÉCUTION PHYSIQUE — PAI                                           #}
 {# ════════════════════════════════════════════════════════════════════════════ #}
 
-<h5 class="fw-bold text-primary mt-5 mb-3">
+<h5 id="section-pai-exec" class="fw-bold text-primary mt-5 mb-3">
   <i class="fas fa-percent me-2"></i>V. Taux d'exécution physique du PAI
 </h5>
 

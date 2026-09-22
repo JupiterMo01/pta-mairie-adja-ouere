@@ -1500,47 +1500,50 @@
 <div class="modal fade" id="modalExportExcel" tabindex="-1">
   <div class="modal-dialog modal-dialog-scrollable">
     <div class="modal-content">
-      <div class="modal-header py-2">
-        <h6 class="modal-title fw-bold text-success">
-          <i class="fas fa-file-excel me-2"></i>Exporter en Excel
-        </h6>
-        <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body py-2">
-        <p class="small text-muted mb-2">Chaque tableau sélectionné devient un onglet dans le fichier.</p>
-        <div class="d-flex gap-2 mb-3">
-          <button class="btn btn-sm btn-outline-secondary" type="button" onclick="selectAllExport(true)">Tout cocher</button>
-          <button class="btn btn-sm btn-outline-secondary" type="button" onclick="selectAllExport(false)">Tout décocher</button>
+      <form method="POST" action="{{ url_for('pluriannuel.export_excel') }}">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        <div class="modal-header py-2">
+          <h6 class="modal-title fw-bold text-success">
+            <i class="fas fa-file-excel me-2"></i>Exporter en Excel
+          </h6>
+          <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal"></button>
         </div>
-        {% set export_sections = [
-          ('tbl-pluri-i',       'I. Évolution du budget municipal'),
-          ('tbl-pluri-ii',      'II. Montants du PTA'),
-          ('tbl-pluri-iii',     'III. Montants du PAI'),
-          ('tbl-pluri-iv',      'IV. Taux exéc. physique PTA'),
-          ('tbl-pluri-v',       'V. Taux exéc. physique PAI'),
-          ('tbl-pluri-vi-pta',  'VI. Taux financiers PTA'),
-          ('tbl-pluri-vii-pai', 'VII. Taux financiers PAI'),
-          ('tbl-pluri-viii-pta','VIII. Taux efficacité PTA'),
-          ('tbl-pluri-ix-pai',  'IX. Taux efficacité PAI'),
-          ('tbl-pluri-x-pta',   'X. Taux efficience PTA'),
-          ('tbl-pluri-xi-pai',  'XI. Taux efficience PAI'),
-          ('tbl-pluri-xii',     'XII. Exéc. par direction'),
-          ('tbl-pluri-xiii',    'XIII. Exéc. par service'),
-        ] %}
-        {% for tbl_id, tbl_label in export_sections %}
-        <div class="form-check mb-1">
-          <input class="form-check-input export-check" type="checkbox"
-                 id="exp-{{ tbl_id }}" value="{{ tbl_id }}" checked>
-          <label class="form-check-label small" for="exp-{{ tbl_id }}">{{ tbl_label }}</label>
+        <div class="modal-body py-2">
+          <p class="small text-muted mb-2">Chaque section sélectionnée devient un onglet dans le fichier, avec en-tête institutionnel et mise en forme.</p>
+          <div class="d-flex gap-2 mb-3">
+            <button class="btn btn-sm btn-outline-secondary" type="button" onclick="selectAllExport(true)">Tout cocher</button>
+            <button class="btn btn-sm btn-outline-secondary" type="button" onclick="selectAllExport(false)">Tout décocher</button>
+          </div>
+          {% set export_sections = [
+            ('I',    'I. Évolution du budget municipal PTA'),
+            ('II',   'II. Évolution du budget municipal PAI'),
+            ('III',  "III. Taux d'exécution financière PTA"),
+            ('IV',   "IV. Taux d'exécution financière PAI"),
+            ('V',    'V. Évolution du budget général'),
+            ('VI',   'VI. Taux de financement PTA'),
+            ('VII',  'VII. Taux de financement PAI'),
+            ('VIII', "VIII. Taux d'efficacité PTA"),
+            ('IX',   "IX. Taux d'efficacité PAI"),
+            ('X',    "X. Taux d'efficience PTA"),
+            ('XI',   "XI. Taux d'efficience PAI"),
+            ('XII',  "XII. Taux d'exécution physique par Direction"),
+            ('XIII', "XIII. Taux d'exécution physique par Service"),
+          ] %}
+          {% for sec_code, sec_label in export_sections %}
+          <div class="form-check mb-1">
+            <input class="form-check-input export-check" type="checkbox"
+                   name="sections" id="exp-{{ sec_code }}" value="{{ sec_code }}" checked>
+            <label class="form-check-label small" for="exp-{{ sec_code }}">{{ sec_label }}</label>
+          </div>
+          {% endfor %}
         </div>
-        {% endfor %}
-      </div>
-      <div class="modal-footer py-2">
-        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Annuler</button>
-        <button type="button" class="btn btn-sm btn-success" onclick="exporterExcel()">
-          <i class="fas fa-download me-1"></i>Télécharger le fichier
-        </button>
-      </div>
+        <div class="modal-footer py-2">
+          <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-sm btn-success">
+            <i class="fas fa-download me-1"></i>Télécharger le fichier
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 </div>
@@ -1549,7 +1552,6 @@
 
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 // ── Validation côté client T1 ≤ T2 ≤ T3 ≤ T4 ──────────────────────────────
 function validerTaux(formEl, errId) {
@@ -1961,32 +1963,9 @@ document.addEventListener('DOMContentLoaded', function() {
   initFiltre(svcExecAllData, filtrerSvcExec, 'svc-year-btn');
 });
 
-// ── Export Excel via SheetJS ─────────────────────────────────────────────────
+// ── Export Excel ─────────────────────────────────────────────────────────────
 function selectAllExport(state) {
   document.querySelectorAll('.export-check').forEach(function(cb) { cb.checked = state; });
-}
-
-function exporterExcel() {
-  if (typeof XLSX === 'undefined') {
-    alert('La bibliothèque Excel n\'est pas encore chargée. Réessayez dans quelques secondes.');
-    return;
-  }
-  var wb = XLSX.utils.book_new();
-  var added = 0;
-  document.querySelectorAll('.export-check:checked').forEach(function(cb) {
-    var tbl = document.getElementById(cb.value);
-    if (!tbl) return;
-    var ws = XLSX.utils.table_to_sheet(tbl);
-    var label = document.querySelector('label[for="exp-' + cb.value + '"]').textContent.trim();
-    var sheetName = label.substring(0, 31).replace(/[:\\\/\?\*\[\]]/g, '');
-    XLSX.utils.book_append_sheet(wb, ws, sheetName);
-    added++;
-  });
-  if (!added) { alert('Veuillez sélectionner au moins un tableau.'); return; }
-  var fname = 'Suivi_Pluriannuel_' + new Date().getFullYear() + '.xlsx';
-  XLSX.writeFile(wb, fname);
-  var m = bootstrap.Modal.getInstance(document.getElementById('modalExportExcel'));
-  if (m) m.hide();
 }
 </script>
 {% endblock %}

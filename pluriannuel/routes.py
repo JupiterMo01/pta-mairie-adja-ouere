@@ -1,6 +1,6 @@
 ﻿from datetime import datetime, timezone
 from functools import wraps
-from flask import render_template, request, redirect, url_for, flash, jsonify
+from flask import render_template, request, redirect, url_for, flash, jsonify, send_file
 from flask_login import login_required, current_user
 
 from models import db, Direction, Service, \
@@ -909,3 +909,401 @@ def delete_svc_exec(row_id):
     log_audit('pluriannuel_svc_exec_delete', f"Exec svc {info} supprimé")
     flash("Taux supprimé.", 'warning')
     return _redir('#section-svc-exec')
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  EXPORT EXCEL SUIVI PLURIANNUEL — openpyxl avec en-tête institutionnel
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _pluri_header(ws, titre_section, nc):
+    """En-tête institutionnel (bandeau + logo + contacts) + titre section."""
+    from openpyxl.styles import Font, PatternFill, Alignment
+    from openpyxl.utils import get_column_letter
+    import os as _os, io as _io
+    from flask import current_app
+
+    lc = get_column_letter(nc)
+    b_end   = max(nc // 4, 2)
+    l_w     = max(nc // 4, 1)
+    l_start = nc - l_w + 1
+    c_end   = l_start - 1
+
+    for rn, h in [(1, 22), (2, 8), (3, 22)]:
+        ws.row_dimensions[rn].height = h
+
+    ws.merge_cells(f'A1:{get_column_letter(b_end)}3')
+    ws.merge_cells(f'{get_column_letter(b_end+1)}1:{get_column_letter(c_end)}3')
+    if l_start <= nc:
+        ws.merge_cells(f'{get_column_letter(l_start)}1:{lc}3')
+
+    c = ws.cell(row=1, column=b_end + 1)
+    c.value = "BP 02 Adja-Ouèrè\nTél : +229 01 61 91 96 12\nEmail : contact.adjaouere@mairie.bj"
+    c.font = Font(bold=True, size=9)
+    c.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+
+    try:
+        from openpyxl.drawing.image import Image as _XIm
+        from PIL import Image as _PI
+        _img = _os.path.join(current_app.root_path, 'static', 'img')
+        _H = 52
+        for _path, _at_a1 in [
+            (_os.path.join(_img, 'bandeau.png'),     True),
+            (_os.path.join(_img, 'logo_commune.png'), False),
+        ]:
+            if not _os.path.exists(_path):
+                continue
+            _buf = _io.BytesIO()
+            with _PI.open(_path) as _p:
+                _ow, _oh = _p.size
+                _p.save(_buf, 'PNG')
+            _buf.seek(0)
+            _xi = _XIm(_buf)
+            _xi.height = _H
+            _xi.width = int(_ow * _H / _oh)
+            if _at_a1:
+                ws.add_image(_xi, 'A1')
+            else:
+                try:
+                    from openpyxl.drawing.spreadsheet_drawing import OneCellAnchor, AnchorMarker
+                    from openpyxl.drawing.xdr import XDRPositiveSize2D
+                    _a = OneCellAnchor()
+                    _a._from = AnchorMarker(col=nc - 1, colOff=-int(_xi.width * 9525),
+                                            row=0, rowOff=0)
+                    _a.ext = XDRPositiveSize2D(int(_xi.width * 9525), int(_H * 9525))
+                    _xi.anchor = _a
+                    ws.add_image(_xi)
+                except Exception:
+                    ws.add_image(_xi, f'{get_column_letter(max(nc - 1, 1))}1')
+    except Exception:
+        pass
+
+    ws.merge_cells(f'A4:{lc}4')
+    c4 = ws['A4']
+    c4.value = titre_section
+    c4.font = Font(bold=True, size=13, color='FFFFFF')
+    c4.alignment = Alignment(horizontal='center', vertical='center')
+    c4.fill = PatternFill('solid', fgColor='1F4E79')
+    ws.row_dimensions[4].height = 26
+    return 5
+
+
+def _pluri_footer(ws, nc):
+    """Pied de page : date export + nom du service."""
+    from openpyxl.styles import Font, Alignment
+    from openpyxl.utils import get_column_letter
+    from datetime import datetime as _dt
+    lc  = get_column_letter(nc)
+    row = ws.max_row + 1
+    mid = max(nc // 2 + 1, 4)
+    ws.merge_cells(f'A{row}:{get_column_letter(min(mid - 1, nc))}{row}')
+    c = ws.cell(row=row, column=1,
+                value=f"Exporté le {_dt.now().strftime('%d/%m/%Y à %H:%M')}")
+    c.font = Font(bold=True, size=8)
+    c.alignment = Alignment(horizontal='left', vertical='center')
+    ws.merge_cells(f'{get_column_letter(mid)}{row}:{lc}{row}')
+    c2 = ws.cell(row=row, column=mid,
+                 value='Direction du Développement Local et de la Planification (DDLP)')
+    c2.font = Font(bold=True, size=8)
+    c2.alignment = Alignment(horizontal='right', vertical='center')
+
+
+def _wr_p(ws, row, values, fill, bold, brd, ctr, lft, num_cols=None):
+    """Écrit une ligne dans la feuille courante."""
+    from openpyxl.styles import Font
+    num_cols = num_cols or set()
+    for col, v in enumerate(values, 1):
+        c = ws.cell(row=row, column=col, value=v)
+        c.fill = fill
+        c.font = Font(bold=bold, size=9)
+        c.border = brd
+        c.alignment = lft if col <= 2 else ctr
+        if col in num_cols and isinstance(v, (int, float)):
+            c.number_format = '#,##0'
+
+
+# ── Sections I / II : budget pluriannuel PTA / PAI ───────────────────────────
+
+def _write_budget_pta_sheet(ws, rows):
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    NC = 5
+    thin = Side(style='thin')
+    brd  = Border(left=thin, right=thin, top=thin, bottom=thin)
+    ctr  = Alignment(horizontal='center', vertical='center', wrap_text=True)
+    lft  = Alignment(horizontal='left',   vertical='center', wrap_text=True)
+    hdr  = PatternFill('solid', fgColor='BDD7EE')
+    alt1 = PatternFill('solid', fgColor='EBF5FB')
+    alt2 = PatternFill('solid', fgColor='FFFFFF')
+    sr = _pluri_header(ws, 'I — Évolution du montant du budget municipal PTA', NC)
+    for col, h in enumerate(['Année', 'Montant PTA primitif (F CFA)',
+                              'Montant PTA révisé (F CFA)', 'Écart (F CFA)', 'Variation (%)'], 1):
+        c = ws.cell(row=sr, column=col, value=h)
+        c.fill = hdr; c.font = Font(bold=True, size=9); c.alignment = ctr; c.border = brd
+    ws.row_dimensions[sr].height = 30; sr += 1
+    for idx, r in enumerate(rows):
+        var = r.variation_pct
+        _wr_p(ws, sr + idx,
+              [r.annee, r.montant_pta or 0, r.montant_pta_rev or 0, r.ecart,
+               f'{var:.2f} %' if var is not None else '—'],
+              alt1 if idx % 2 == 0 else alt2, False, brd, ctr, lft, num_cols={2, 3, 4})
+    for col_l, w in zip('ABCDE', [8, 28, 28, 18, 14]):
+        ws.column_dimensions[col_l].width = w
+    _pluri_footer(ws, NC)
+
+
+def _write_budget_pai_sheet(ws, rows):
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    NC = 5
+    thin = Side(style='thin')
+    brd  = Border(left=thin, right=thin, top=thin, bottom=thin)
+    ctr  = Alignment(horizontal='center', vertical='center', wrap_text=True)
+    lft  = Alignment(horizontal='left',   vertical='center', wrap_text=True)
+    hdr  = PatternFill('solid', fgColor='BDD7EE')
+    alt1 = PatternFill('solid', fgColor='EBF5FB')
+    alt2 = PatternFill('solid', fgColor='FFFFFF')
+    sr = _pluri_header(ws, 'II — Évolution du montant du budget municipal PAI', NC)
+    for col, h in enumerate(['Année', 'Montant PAI primitif (F CFA)',
+                              'Montant PAI révisé (F CFA)', 'Écart (F CFA)', 'Variation (%)'], 1):
+        c = ws.cell(row=sr, column=col, value=h)
+        c.fill = hdr; c.font = Font(bold=True, size=9); c.alignment = ctr; c.border = brd
+    ws.row_dimensions[sr].height = 30; sr += 1
+    for idx, r in enumerate(rows):
+        var = r.variation_pct
+        _wr_p(ws, sr + idx,
+              [r.annee, r.montant_pai or 0, r.montant_pai_rev or 0, r.ecart,
+               f'{var:.2f} %' if var is not None else '—'],
+              alt1 if idx % 2 == 0 else alt2, False, brd, ctr, lft, num_cols={2, 3, 4})
+    for col_l, w in zip('ABCDE', [8, 28, 28, 18, 14]):
+        ws.column_dimensions[col_l].width = w
+    _pluri_footer(ws, NC)
+
+
+# ── Section V : budget général ────────────────────────────────────────────────
+
+def _write_budget_gen_sheet(ws, rows):
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    NC = 5
+    thin = Side(style='thin')
+    brd  = Border(left=thin, right=thin, top=thin, bottom=thin)
+    ctr  = Alignment(horizontal='center', vertical='center', wrap_text=True)
+    lft  = Alignment(horizontal='left',   vertical='center', wrap_text=True)
+    hdr  = PatternFill('solid', fgColor='BDD7EE')
+    alt1 = PatternFill('solid', fgColor='EBF5FB')
+    alt2 = PatternFill('solid', fgColor='FFFFFF')
+    sr = _pluri_header(ws, 'V — Évolution du budget général', NC)
+    for col, h in enumerate(['Année', 'Budget primitif (F CFA)',
+                              'Budget collectif (F CFA)', 'Écart (F CFA)', 'Variation (%)'], 1):
+        c = ws.cell(row=sr, column=col, value=h)
+        c.fill = hdr; c.font = Font(bold=True, size=9); c.alignment = ctr; c.border = brd
+    ws.row_dimensions[sr].height = 30; sr += 1
+    for idx, r in enumerate(rows):
+        var = r.variation_pct
+        _wr_p(ws, sr + idx,
+              [r.annee, r.budget_primitif or 0, r.budget_collectif or 0, r.ecart,
+               f'{var:.2f} %' if var is not None else '—'],
+              alt1 if idx % 2 == 0 else alt2, False, brd, ctr, lft, num_cols={2, 3, 4})
+    for col_l, w in zip('ABCDE', [8, 25, 25, 18, 14]):
+        ws.column_dimensions[col_l].width = w
+    _pluri_footer(ws, NC)
+
+
+# ── Sections III/IV/VIII/IX : taux T1-T4 simples ─────────────────────────────
+
+def _write_taux_t4_sheet(ws, titre, rows):
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    NC = 5
+    thin = Side(style='thin')
+    brd  = Border(left=thin, right=thin, top=thin, bottom=thin)
+    ctr  = Alignment(horizontal='center', vertical='center', wrap_text=True)
+    lft  = Alignment(horizontal='left',   vertical='center', wrap_text=True)
+    hdr  = PatternFill('solid', fgColor='BDD7EE')
+    alt1 = PatternFill('solid', fgColor='EBF5FB')
+    alt2 = PatternFill('solid', fgColor='FFFFFF')
+    sr = _pluri_header(ws, titre, NC)
+    for col, h in enumerate(['Année', 'T1 (%)', 'T2 (%)', 'T3 (%)', 'T4 (%)'], 1):
+        c = ws.cell(row=sr, column=col, value=h)
+        c.fill = hdr; c.font = Font(bold=True, size=9); c.alignment = ctr; c.border = brd
+    ws.row_dimensions[sr].height = 22; sr += 1
+    pct = lambda v: round(v, 2) if v is not None else '—'
+    for idx, r in enumerate(rows):
+        _wr_p(ws, sr + idx,
+              [r.annee, pct(r.t1), pct(r.t2), pct(r.t3), pct(r.t4)],
+              alt1 if idx % 2 == 0 else alt2, False, brd, ctr, lft)
+    for col_l, w in zip('ABCDE', [8, 12, 12, 12, 12]):
+        ws.column_dimensions[col_l].width = w
+    _pluri_footer(ws, NC)
+
+
+# ── Sections VI/VII/X/XI : taux engagement/mandatement/paiement ──────────────
+
+def _write_taux_fin_sheet(ws, titre, rows):
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+    NC = 13
+    thin = Side(style='thin')
+    brd  = Border(left=thin, right=thin, top=thin, bottom=thin)
+    ctr  = Alignment(horizontal='center', vertical='center', wrap_text=True)
+    lft  = Alignment(horizontal='left',   vertical='center', wrap_text=True)
+    hdr  = PatternFill('solid', fgColor='BDD7EE')
+    alt1 = PatternFill('solid', fgColor='EBF5FB')
+    alt2 = PatternFill('solid', fgColor='FFFFFF')
+    sr = _pluri_header(ws, titre, NC)
+    hr1 = ['Année', 'T1', '', '', 'T2', '', '', 'T3', '', '', 'T4', '', '']
+    hr2 = ['', 'Eng. (%)', 'Mand. (%)', 'Pmt. (%)',
+               'Eng. (%)', 'Mand. (%)', 'Pmt. (%)',
+               'Eng. (%)', 'Mand. (%)', 'Pmt. (%)',
+               'Eng. (%)', 'Mand. (%)', 'Pmt. (%)']
+    for col, v in enumerate(hr1, 1):
+        c = ws.cell(row=sr, column=col, value=v)
+        c.fill = hdr; c.font = Font(bold=True, size=9); c.alignment = ctr; c.border = brd
+    for col, v in enumerate(hr2, 1):
+        c = ws.cell(row=sr + 1, column=col, value=v)
+        c.fill = hdr; c.font = Font(bold=True, size=9); c.alignment = ctr; c.border = brd
+    ws.merge_cells(f'A{sr}:A{sr+1}')
+    for sc in [2, 5, 8, 11]:
+        ws.merge_cells(f'{get_column_letter(sc)}{sr}:{get_column_letter(sc+2)}{sr}')
+    ws.row_dimensions[sr].height = 18
+    ws.row_dimensions[sr + 1].height = 18
+    sr += 2
+    pct = lambda v: round(v, 2) if v is not None else '—'
+    for idx, r in enumerate(rows):
+        _wr_p(ws, sr + idx,
+              [r.annee,
+               pct(r.t1_eng), pct(r.t1_mand), pct(r.t1_pmt),
+               pct(r.t2_eng), pct(r.t2_mand), pct(r.t2_pmt),
+               pct(r.t3_eng), pct(r.t3_mand), pct(r.t3_pmt),
+               pct(r.t4_eng), pct(r.t4_mand), pct(r.t4_pmt)],
+              alt1 if idx % 2 == 0 else alt2, False, brd, ctr, lft)
+    for i, w in enumerate([8, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9], 1):
+        ws.column_dimensions[get_column_letter(i)].width = w
+    _pluri_footer(ws, NC)
+
+
+# ── Sections XII/XIII : taux physique par entité ──────────────────────────────
+
+def _write_taux_entite_sheet(ws, titre, rows, get_code, get_nom, lbl):
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    NC = 7
+    thin = Side(style='thin')
+    brd  = Border(left=thin, right=thin, top=thin, bottom=thin)
+    ctr  = Alignment(horizontal='center', vertical='center', wrap_text=True)
+    lft  = Alignment(horizontal='left',   vertical='center', wrap_text=True)
+    hdr  = PatternFill('solid', fgColor='BDD7EE')
+    alt1 = PatternFill('solid', fgColor='EBF5FB')
+    alt2 = PatternFill('solid', fgColor='FFFFFF')
+    sr = _pluri_header(ws, titre, NC)
+    for col, h in enumerate(
+            ['Année', f'Code {lbl}', f'Nom {lbl}', 'T1 (%)', 'T2 (%)', 'T3 (%)', 'T4 (%)'], 1):
+        c = ws.cell(row=sr, column=col, value=h)
+        c.fill = hdr; c.font = Font(bold=True, size=9); c.alignment = ctr; c.border = brd
+    ws.row_dimensions[sr].height = 22; sr += 1
+    pct = lambda v: round(v, 2) if v is not None else '—'
+    for idx, r in enumerate(rows):
+        _wr_p(ws, sr + idx,
+              [r.annee, get_code(r), get_nom(r),
+               pct(r.t1), pct(r.t2), pct(r.t3), pct(r.t4)],
+              alt1 if idx % 2 == 0 else alt2, False, brd, ctr, lft)
+    for col_l, w in zip('ABCDEFG', [8, 12, 35, 12, 12, 12, 12]):
+        ws.column_dimensions[col_l].width = w
+    _pluri_footer(ws, NC)
+
+
+# ── Route export ──────────────────────────────────────────────────────────────
+
+@pluriannuel_bp.route('/export-excel', methods=['POST'])
+@login_required
+def export_excel():
+    import io as _io
+    from openpyxl import Workbook
+    from datetime import datetime as _dt
+
+    sections = request.form.getlist('sections')
+    if not sections:
+        flash('Sélectionnez au moins une section à exporter.', 'warning')
+        return redirect(url_for('pluriannuel.index'))
+
+    ORDRE = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII']
+
+    def _make_sheets(wb):
+        if 'I' in sections:
+            _write_budget_pta_sheet(
+                wb.create_sheet('I-Budget PTA'),
+                MontantPluriannuelPTA.query.order_by(MontantPluriannuelPTA.annee).all())
+        if 'II' in sections:
+            _write_budget_pai_sheet(
+                wb.create_sheet('II-Budget PAI'),
+                MontantPluriannuelPAI.query.order_by(MontantPluriannuelPAI.annee).all())
+        if 'III' in sections:
+            _write_taux_t4_sheet(
+                wb.create_sheet('III-Exec Fin PTA'),
+                "III — Taux d'exécution financière PTA",
+                TauxExecPTA.query.order_by(TauxExecPTA.annee).all())
+        if 'IV' in sections:
+            _write_taux_t4_sheet(
+                wb.create_sheet('IV-Exec Fin PAI'),
+                "IV — Taux d'exécution financière PAI",
+                TauxExecPAI.query.order_by(TauxExecPAI.annee).all())
+        if 'V' in sections:
+            _write_budget_gen_sheet(
+                wb.create_sheet('V-Budget Général'),
+                BudgetPluriannuel.query.order_by(BudgetPluriannuel.annee).all())
+        if 'VI' in sections:
+            _write_taux_fin_sheet(
+                wb.create_sheet('VI-Fin PTA'),
+                'VI — Taux de financement PTA',
+                TauxFinPTA.query.order_by(TauxFinPTA.annee).all())
+        if 'VII' in sections:
+            _write_taux_fin_sheet(
+                wb.create_sheet('VII-Fin PAI'),
+                'VII — Taux de financement PAI',
+                TauxFinPAI.query.order_by(TauxFinPAI.annee).all())
+        if 'VIII' in sections:
+            _write_taux_t4_sheet(
+                wb.create_sheet('VIII-Efficacité PTA'),
+                "VIII — Taux d'efficacité PTA",
+                TauxEfficacitePTA.query.order_by(TauxEfficacitePTA.annee).all())
+        if 'IX' in sections:
+            _write_taux_t4_sheet(
+                wb.create_sheet('IX-Efficacité PAI'),
+                "IX — Taux d'efficacité PAI",
+                TauxEfficacitePAI.query.order_by(TauxEfficacitePAI.annee).all())
+        if 'X' in sections:
+            _write_taux_fin_sheet(
+                wb.create_sheet('X-Efficience PTA'),
+                "X — Taux d'efficience PTA",
+                TauxEfficiencePTA.query.order_by(TauxEfficiencePTA.annee).all())
+        if 'XI' in sections:
+            _write_taux_fin_sheet(
+                wb.create_sheet('XI-Efficience PAI'),
+                "XI — Taux d'efficience PAI",
+                TauxEfficiencePAI.query.order_by(TauxEfficiencePAI.annee).all())
+        if 'XII' in sections:
+            _write_taux_entite_sheet(
+                wb.create_sheet('XII-Exec Phys Dir'),
+                "XII — Taux d'exécution physique par Direction",
+                TauxExecDirection.query.order_by(
+                    TauxExecDirection.annee, TauxExecDirection.direction_id).all(),
+                lambda r: r.direction.code, lambda r: r.direction.nom, 'Direction')
+        if 'XIII' in sections:
+            _write_taux_entite_sheet(
+                wb.create_sheet('XIII-Exec Phys Svc'),
+                "XIII — Taux d'exécution physique par Service",
+                TauxExecService.query.order_by(
+                    TauxExecService.annee, TauxExecService.service_id).all(),
+                lambda r: r.service.code, lambda r: r.service.nom, 'Service')
+
+    wb = Workbook()
+    wb.remove(wb.active)
+    _make_sheets(wb)
+
+    if not wb.worksheets:
+        flash('Aucune donnée à exporter.', 'warning')
+        return redirect(url_for('pluriannuel.index'))
+
+    output = _io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+    fname = f"Suivi_Pluriannuel_{_dt.now().strftime('%Y%m%d_%H%M')}.xlsx"
+    return send_file(output,
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                     as_attachment=True,
+                     download_name=fname)

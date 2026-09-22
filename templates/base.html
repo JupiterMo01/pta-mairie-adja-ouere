@@ -25,15 +25,17 @@
 
     <ul class="nav flex-column pt-2 flex-grow-1">
 
-      {# ── Tableau de bord : tous les rôles ── #}
+      {# ── Items PTA : service et direction (hors admin) ── #}
+      {% if current_user.role not in ('admin_editeur', 'admin_lecteur') %}
       <li class="nav-item">
         <a class="nav-link text-white py-2 px-3 {% if request.blueprint == 'dashboard' %}active-link{% endif %}"
            href="{{ url_for('dashboard.index') }}">
-          <i class="fas fa-tachometer-alt me-2 fa-fw"></i>Tableau de bord
+          <i class="fas fa-tachometer-alt me-2 fa-fw"></i>Tableau de bord PTA
         </a>
       </li>
+      {% endif %}
 
-      {# ── Menus service / direction uniquement ── #}
+      {# ── PTA Service ── #}
       {% if current_user.role == 'service' %}
       <li class="nav-item">
         <a class="nav-link text-white py-2 px-3 {% if request.blueprint == 'svcpta' %}active-link{% endif %}"
@@ -41,7 +43,10 @@
           <i class="fas fa-clipboard-list me-2 fa-fw"></i>Mon PTA
         </a>
       </li>
-      {% elif current_user.role == 'direction' %}
+      {% endif %}
+
+      {# ── PTA Direction ── #}
+      {% if current_user.role == 'direction' %}
       <li class="nav-item">
         <a class="nav-link text-white py-2 px-3 {% if request.blueprint == 'dirpta' %}active-link{% endif %}"
            href="{{ url_for('dirpta.index') }}">
@@ -50,27 +55,19 @@
       </li>
       {% endif %}
 
-      {# ── Suivi : service, direction et admin ── #}
-      {% if current_user.role in ('service', 'direction', 'admin_editeur', 'admin_lecteur') %}
+      {# ── Suivi & Évaluation PTA : service et direction (hors admin) ── #}
+      {% if current_user.role in ('service', 'direction') %}
       <li class="nav-item">
         <a class="nav-link text-white py-2 px-3 {% if request.blueprint == 'suivi' %}active-link{% endif %}"
            href="{{ url_for('suivi.index') }}">
-          <i class="fas fa-tasks me-2 fa-fw"></i>Suivi &amp; Évaluation
+          <i class="fas fa-tasks me-2 fa-fw"></i>Suivi &amp; Évaluation PTA
         </a>
       </li>
       {% endif %}
 
-      {# ── Suivi Pluriannuel : tous les utilisateurs connectés ── #}
-      <li class="nav-item">
-        <a class="nav-link text-white py-2 px-3 {% if request.blueprint == 'pluriannuel' %}active-link{% endif %}"
-           href="{{ url_for('pluriannuel.index') }}">
-          <i class="fas fa-calendar-alt me-2 fa-fw"></i>Suivi Pluriannuel
-        </a>
-      </li>
-
-      {# ── PAI + PEI : tous les utilisateurs, uniquement quand une année active existe ── #}
-      {# (pour les admins, les liens sont aussi présents dans leur section ci-dessous) #}
+      {# ── PAI + Budget + Suivi Pluriannuel : service et direction (quand une année active existe) ── #}
       {% if annee_active_id and current_user.role not in ('admin_editeur', 'admin_lecteur') %}
+      <li><div class="px-3 pt-3 pb-0" style="font-size:.62rem;color:#adb5bd;letter-spacing:.1em;text-transform:uppercase;font-weight:600;">PAI</div></li>
       <li class="nav-item">
         <a class="nav-link text-white py-2 px-3 {% if request.blueprint == 'pai' %}active-link{% endif %}"
            href="{{ url_for('pai.index') }}">
@@ -80,13 +77,20 @@
       <li class="nav-item">
         <a class="nav-link text-white py-2 px-3 {% if request.blueprint == 'pei' %}active-link{% endif %}"
            href="{{ url_for('pei.index') }}">
-          <i class="fas fa-chart-bar me-2 fa-fw"></i>Point d'exécution PAI
+          <i class="fas fa-chart-line me-2 fa-fw"></i>Point d'exécution PAI
         </a>
       </li>
+      <li><div class="px-3 pt-2 pb-0" style="font-size:.62rem;color:#adb5bd;letter-spacing:.1em;text-transform:uppercase;font-weight:600;">Budget</div></li>
       <li class="nav-item">
         <a class="nav-link text-white py-2 px-3 {% if request.blueprint == 'budget' %}active-link{% endif %}"
            href="{{ url_for('budget.index') }}">
           <i class="fas fa-coins me-2 fa-fw"></i>Exécution du Budget
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link text-white py-2 px-3 {% if request.blueprint == 'pluriannuel' %}active-link{% endif %}"
+           href="{{ url_for('pluriannuel.index') }}">
+          <i class="fas fa-calendar-alt me-2 fa-fw"></i>Suivi Pluriannuel
         </a>
       </li>
       {% endif %}
@@ -94,22 +98,25 @@
       {# ── Menus admin uniquement ── #}
       {% if current_user.role in ('admin_editeur', 'admin_lecteur') %}
       <li><hr class="border-secondary my-1"></li>
+
+      {# --- Groupe PTA --- #}
+      <li><div class="px-3 pt-1 pb-0" style="font-size:.62rem;color:#adb5bd;letter-spacing:.1em;text-transform:uppercase;font-weight:600;">PTA</div></li>
+      <li class="nav-item">
+        <a class="nav-link text-white py-2 px-3 {% if request.blueprint == 'dashboard' %}active-link{% endif %}"
+           href="{{ url_for('dashboard.index') }}">
+          <i class="fas fa-tachometer-alt me-2 fa-fw"></i>Tableau de bord PTA
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link text-white py-2 px-3 {% if request.blueprint == 'suivi' %}active-link{% endif %}"
+           href="{{ url_for('suivi.index') }}">
+          <i class="fas fa-tasks me-2 fa-fw"></i>Suivi &amp; Évaluation PTA
+        </a>
+      </li>
       <li class="nav-item">
         <a class="nav-link text-white py-2 px-3 {% if request.blueprint == 'pta' %}active-link{% endif %}"
            href="{{ url_for('pta.global_pta') }}">
-          <i class="fas fa-clipboard-list me-2 fa-fw"></i>PTA Global
-        </a>
-      </li>
-      <li class="nav-item">
-        <a class="nav-link text-white py-2 px-3 {% if request.blueprint == 'stats' %}active-link{% endif %}"
-           href="{{ url_for('stats.index') }}">
-          <i class="fas fa-chart-pie me-2 fa-fw"></i>Statistiques
-        </a>
-      </li>
-      <li class="nav-item">
-        <a class="nav-link text-white py-2 px-3 {% if request.blueprint == 'statspai' %}active-link{% endif %}"
-           href="{{ url_for('statspai.index') }}">
-          <i class="fas fa-chart-bar me-2 fa-fw"></i>Statistiques PAI
+          <i class="fas fa-globe me-2 fa-fw"></i>PTA Global
         </a>
       </li>
       <li class="nav-item">
@@ -125,11 +132,14 @@
         </a>
       </li>
       <li class="nav-item">
-        <a class="nav-link text-white py-2 px-3 {% if request.blueprint == 'exportation' %}active-link{% endif %}"
-           href="{{ url_for('exportation.index') }}">
-          <i class="fas fa-file-export me-2 fa-fw"></i>Exportation
+        <a class="nav-link text-white py-2 px-3 {% if request.blueprint == 'stats' %}active-link{% endif %}"
+           href="{{ url_for('stats.index') }}">
+          <i class="fas fa-chart-pie me-2 fa-fw"></i>Statistiques PTA
         </a>
       </li>
+
+      {# --- Groupe PAI --- #}
+      <li><div class="px-3 pt-3 pb-0" style="font-size:.62rem;color:#adb5bd;letter-spacing:.1em;text-transform:uppercase;font-weight:600;">PAI</div></li>
       <li class="nav-item">
         <a class="nav-link text-white py-2 px-3 {% if request.blueprint == 'pai' %}active-link{% endif %}"
            href="{{ url_for('pai.index') }}">
@@ -139,22 +149,43 @@
       <li class="nav-item">
         <a class="nav-link text-white py-2 px-3 {% if request.blueprint == 'pei' %}active-link{% endif %}"
            href="{{ url_for('pei.index') }}">
-          <i class="fas fa-chart-bar me-2 fa-fw"></i>Point d'exécution PAI
+          <i class="fas fa-chart-line me-2 fa-fw"></i>Point d'exécution PAI
         </a>
       </li>
+      <li class="nav-item">
+        <a class="nav-link text-white py-2 px-3 {% if request.blueprint == 'statspai' %}active-link{% endif %}"
+           href="{{ url_for('statspai.index') }}">
+          <i class="fas fa-chart-bar me-2 fa-fw"></i>Statistiques PAI
+        </a>
+      </li>
+
+      {# --- Budget & Outils --- #}
+      <li><div class="px-3 pt-3 pb-0" style="font-size:.62rem;color:#adb5bd;letter-spacing:.1em;text-transform:uppercase;font-weight:600;">Budget &amp; Outils</div></li>
       <li class="nav-item">
         <a class="nav-link text-white py-2 px-3 {% if request.blueprint == 'budget' %}active-link{% endif %}"
            href="{{ url_for('budget.index') }}">
           <i class="fas fa-coins me-2 fa-fw"></i>Exécution du Budget
         </a>
       </li>
-      <li><hr class="border-secondary my-1"></li>
+      <li class="nav-item">
+        <a class="nav-link text-white py-2 px-3 {% if request.blueprint == 'pluriannuel' %}active-link{% endif %}"
+           href="{{ url_for('pluriannuel.index') }}">
+          <i class="fas fa-calendar-alt me-2 fa-fw"></i>Suivi Pluriannuel
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link text-white py-2 px-3 {% if request.blueprint == 'exportation' %}active-link{% endif %}"
+           href="{{ url_for('exportation.index') }}">
+          <i class="fas fa-file-export me-2 fa-fw"></i>Exportation
+        </a>
+      </li>
       <li class="nav-item">
         <a class="nav-link text-white py-2 px-3 {% if request.blueprint == 'biblio' %}active-link{% endif %}"
            href="{{ url_for('biblio.index') }}">
           <i class="fas fa-book me-2 fa-fw"></i>Bibliothèque
         </a>
       </li>
+
       {% if current_user.role == 'admin_editeur' %}
       <li><hr class="border-secondary my-1"></li>
       <li class="nav-item">

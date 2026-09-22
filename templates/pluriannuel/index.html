@@ -1,9 +1,10 @@
 {% extends "base.html" %}
 
 {# ── Macro : section taux financiers (PTA ou PAI) ──────────────────────────── #}
-{% macro section_taux_fin(titre, num_section, couleur, rows, ep_add, ep_edit, ep_delete, prefixe, canvas_id=none) %}
+{% macro section_taux_fin(titre, num_section, couleur, rows, ep_add, ep_edit, ep_delete, prefixe, canvas_id=none, section_id=none) %}
 {%- set _cid = canvas_id if canvas_id else 'chartFin' ~ prefixe -%}
-<h5 id="section-{{ prefixe|lower }}-fin" class="fw-bold text-primary mt-5 mb-3">
+{%- set _sid = section_id if section_id else 'section-' ~ prefixe|lower ~ '-fin' -%}
+<h5 id="{{ _sid }}" class="fw-bold text-primary mt-5 mb-3">
   <i class="fas fa-coins me-2"></i>{{ num_section }}. {{ titre }}
 </h5>
 
@@ -17,7 +18,7 @@
       <div class="col-6 col-sm-2 col-md-1">
         <label class="form-label small mb-1 fw-bold">Année</label>
         <input type="number" name="annee" class="form-control form-control-sm"
-               placeholder="2026" min="2000" max="2100" required>
+               placeholder="{{ annee_active_val or 2026 }}" min="2016" max="{{ annee_active_val or 2100 }}" required>
       </div>
       {% for q in ['T1','T2','T3','T4'] %}
       <div class="col-12 col-sm-auto d-flex align-items-end gap-1">
@@ -47,7 +48,7 @@
 
 {% if rows %}
 <div class="table-responsive mb-3">
-<table class="table table-bordered table-sm pluri-table mb-0" style="font-size:.78rem;">
+<table id="tbl-pluri-{{ num_section|lower }}-{{ prefixe|lower }}" class="table table-bordered table-sm pluri-table mb-0" style="font-size:.78rem;">
   <thead>
     <tr>
       <th rowspan="2" class="text-center align-middle" style="background:{{ couleur }};width:8%;">Année</th>
@@ -185,7 +186,7 @@
       <div class="col-6 col-sm-2 col-md-2">
         <label class="form-label small mb-1">Année</label>
         <input type="number" name="annee" class="form-control form-control-sm"
-               placeholder="2026" min="2000" max="2100" required>
+               placeholder="{{ annee_active_val or 2026 }}" min="2016" max="{{ annee_active_val or 2100 }}" required>
       </div>
       {% for q in ['t1','t2','t3','t4'] %}
       <div class="col-6 col-sm-2">
@@ -206,7 +207,7 @@
 
 {% if rows %}
 <div class="table-responsive mb-4">
-<table class="table table-bordered pluri-table" style="max-width:780px;">
+<table id="tbl-pluri-{{ num_section|lower }}-{{ prefixe|lower }}" class="table table-bordered pluri-table" style="max-width:780px;">
   <thead>
     <tr>
       <th class="text-start" style="width:13%;background:{{ couleur }};">Année</th>
@@ -317,7 +318,43 @@
 .variation-pos { color:#1E8449; font-weight:600; }
 .variation-neg { color:#C0392B; font-weight:600; }
 .variation-neu { color:#666; }
+.toc-link { display:block; padding:3px 6px; font-size:.83rem; color:#1F4E79; text-decoration:none; border-radius:4px; }
+.toc-link:hover { background:#EBF5FB; color:#154360; }
+.toc-chevron { transition:transform .25s; }
+.collapsed .toc-chevron { transform:rotate(-90deg); }
 </style>
+
+{# ════════════════════════════════════════════════════════════════════════════ #}
+{# TABLE DES MATIÈRES + EXPORT EXCEL                                            #}
+{# ════════════════════════════════════════════════════════════════════════════ #}
+<div class="card border-0 shadow-sm mb-4" style="border-left:4px solid #1F4E79 !important;">
+  <div class="card-header bg-transparent border-0 py-2 d-flex justify-content-between align-items-center"
+       style="cursor:pointer;" data-bs-toggle="collapse" data-bs-target="#toc-pluri">
+    <span class="fw-bold small text-primary">
+      <i class="fas fa-list-ul me-2"></i>Table des matières &mdash; 13 sections
+    </span>
+    <i class="fas fa-chevron-down text-muted small toc-chevron"></i>
+  </div>
+  <div class="collapse show" id="toc-pluri">
+    <div class="card-body pt-1 pb-2">
+      <div class="row row-cols-1 row-cols-md-2 g-0">
+        <div class="col"><a href="#section-budget" class="toc-link"><i class="fas fa-circle fa-xs me-1" style="color:#1F4E79;"></i>I. Évolution du budget municipal</a></div>
+        <div class="col"><a href="#section-pta" class="toc-link"><i class="fas fa-circle fa-xs me-1" style="color:#1E8449;"></i>II. Évolution des montants du PTA</a></div>
+        <div class="col"><a href="#section-pai" class="toc-link"><i class="fas fa-circle fa-xs me-1" style="color:#7D3C98;"></i>III. Évolution des montants du PAI</a></div>
+        <div class="col"><a href="#section-pta-exec" class="toc-link"><i class="fas fa-circle fa-xs me-1" style="color:#1E8449;"></i>IV. Taux d'exécution physique du PTA</a></div>
+        <div class="col"><a href="#section-pai-exec" class="toc-link"><i class="fas fa-circle fa-xs me-1" style="color:#7D3C98;"></i>V. Taux d'exécution physique du PAI</a></div>
+        <div class="col"><a href="#section-pta-fin" class="toc-link"><i class="fas fa-circle fa-xs me-1" style="color:#D35400;"></i>VI. Taux d'exécution financière du PTA</a></div>
+        <div class="col"><a href="#section-pai-fin" class="toc-link"><i class="fas fa-circle fa-xs me-1" style="color:#2471A3;"></i>VII. Taux d'exécution financière du PAI</a></div>
+        <div class="col"><a href="#section-pta-efficacite" class="toc-link"><i class="fas fa-circle fa-xs me-1" style="color:#1A5276;"></i>VIII. Taux d'efficacité du PTA</a></div>
+        <div class="col"><a href="#section-pai-efficacite" class="toc-link"><i class="fas fa-circle fa-xs me-1" style="color:#6C3483;"></i>IX. Taux d'efficacité du PAI</a></div>
+        <div class="col"><a href="#section-pta-efficience" class="toc-link"><i class="fas fa-circle fa-xs me-1" style="color:#922B21;"></i>X. Taux d'efficience du PTA</a></div>
+        <div class="col"><a href="#section-pai-efficience" class="toc-link"><i class="fas fa-circle fa-xs me-1" style="color:#117A65;"></i>XI. Taux d'efficience du PAI</a></div>
+        <div class="col"><a href="#section-dir-exec" class="toc-link"><i class="fas fa-circle fa-xs me-1" style="color:#1A237E;"></i>XII. Taux d'exécution par direction</a></div>
+        <div class="col"><a href="#section-svc-exec" class="toc-link"><i class="fas fa-circle fa-xs me-1" style="color:#006064;"></i>XIII. Taux d'exécution par service</a></div>
+      </div>
+    </div>
+  </div>
+</div>
 
 {# ════════════════════════════════════════════════════════════════════════════ #}
 {# I. SECTION BUDGET — EVOLUTION                                                #}
@@ -337,7 +374,7 @@
       <div class="col-6 col-sm-3 col-md-2">
         <label class="form-label small mb-1">Année</label>
         <input type="number" name="annee" class="form-control form-control-sm"
-               placeholder="2026" min="2000" max="2100" required>
+               placeholder="{{ annee_active_val or 2026 }}" min="2016" max="{{ annee_active_val or 2100 }}" required>
       </div>
       <div class="col-6 col-sm-4 col-md-3">
         <label class="form-label small mb-1">Budget primitif (F CFA)</label>
@@ -362,7 +399,7 @@
 {# ── Tableau ── #}
 {% if annees %}
 <div class="table-responsive mb-4">
-<table class="table table-bordered pluri-table" style="max-width:860px;">
+<table id="tbl-pluri-i" class="table table-bordered pluri-table" style="max-width:860px;">
   <thead>
     <tr>
       <th class="text-start" style="width:12%">Année</th>
@@ -505,7 +542,7 @@
       <div class="col-6 col-sm-3 col-md-2">
         <label class="form-label small mb-1">Année</label>
         <input type="number" name="annee" class="form-control form-control-sm"
-               placeholder="2026" min="2000" max="2100" required>
+               placeholder="{{ annee_active_val or 2026 }}" min="2016" max="{{ annee_active_val or 2100 }}" required>
       </div>
       <div class="col-6 col-sm-4 col-md-3">
         <label class="form-label small mb-1">Montant PTA (F CFA)</label>
@@ -529,7 +566,7 @@
 
 {% if pta_annees %}
 <div class="table-responsive mb-4">
-<table class="table table-bordered pluri-table" style="max-width:860px;">
+<table id="tbl-pluri-ii" class="table table-bordered pluri-table" style="max-width:860px;">
   <thead>
     <tr>
       <th class="text-start" style="width:12%;background:#1E8449;">Année</th>
@@ -659,7 +696,7 @@
       <div class="col-6 col-sm-3 col-md-2">
         <label class="form-label small mb-1">Année</label>
         <input type="number" name="annee" class="form-control form-control-sm"
-               placeholder="2026" min="2000" max="2100" required>
+               placeholder="{{ annee_active_val or 2026 }}" min="2016" max="{{ annee_active_val or 2100 }}" required>
       </div>
       <div class="col-6 col-sm-4 col-md-3">
         <label class="form-label small mb-1">Montant PAI (F CFA)</label>
@@ -683,7 +720,7 @@
 
 {% if pai_annees %}
 <div class="table-responsive mb-4">
-<table class="table table-bordered pluri-table" style="max-width:860px;">
+<table id="tbl-pluri-iii" class="table table-bordered pluri-table" style="max-width:860px;">
   <thead>
     <tr>
       <th class="text-start" style="width:12%;background:#7D3C98;">Année</th>
@@ -815,7 +852,7 @@
       <div class="col-6 col-sm-2 col-md-2">
         <label class="form-label small mb-1">Année</label>
         <input type="number" name="annee" class="form-control form-control-sm"
-               placeholder="2026" min="2000" max="2100" required>
+               placeholder="{{ annee_active_val or 2026 }}" min="2016" max="{{ annee_active_val or 2100 }}" required>
       </div>
       {% for q in ['t1','t2','t3','t4'] %}
       <div class="col-6 col-sm-2">
@@ -837,7 +874,7 @@
 
 {% if pta_exec_annees %}
 <div class="table-responsive mb-4">
-<table class="table table-bordered pluri-table" style="max-width:780px;">
+<table id="tbl-pluri-iv" class="table table-bordered pluri-table" style="max-width:780px;">
   <thead>
     <tr>
       <th class="text-start" style="width:13%;background:#1E8449;">Année</th>
@@ -951,7 +988,7 @@
       <div class="col-6 col-sm-2 col-md-2">
         <label class="form-label small mb-1">Année</label>
         <input type="number" name="annee" class="form-control form-control-sm"
-               placeholder="2026" min="2000" max="2100" required>
+               placeholder="{{ annee_active_val or 2026 }}" min="2016" max="{{ annee_active_val or 2100 }}" required>
       </div>
       {% for q in ['t1','t2','t3','t4'] %}
       <div class="col-6 col-sm-2">
@@ -973,7 +1010,7 @@
 
 {% if pai_exec_annees %}
 <div class="table-responsive mb-4">
-<table class="table table-bordered pluri-table" style="max-width:780px;">
+<table id="tbl-pluri-v" class="table table-bordered pluri-table" style="max-width:780px;">
   <thead>
     <tr>
       <th class="text-start" style="width:13%;background:#7D3C98;">Année</th>
@@ -1115,7 +1152,8 @@
      'pluriannuel.edit_pta_efficience',
      'pluriannuel.delete_pta_efficience',
      "PTA",
-     canvas_id="chartEfficientePTA"
+     canvas_id="chartEfficientePTA",
+     section_id="section-pta-efficience"
 ) }}
 
 {{ section_taux_fin(
@@ -1125,13 +1163,393 @@
      'pluriannuel.edit_pai_efficience',
      'pluriannuel.delete_pai_efficience',
      "PAI",
-     canvas_id="chartEfficientePAI"
+     canvas_id="chartEfficientePAI",
+     section_id="section-pai-efficience"
 ) }}
+
+
+{# ════════════════════════════════════════════════════════════════════════════ #}
+{# XII. TAUX D'EXÉCUTION PHYSIQUE PAR DIRECTION                                  #}
+{# ════════════════════════════════════════════════════════════════════════════ #}
+
+<h5 id="section-dir-exec" class="fw-bold text-primary mt-5 mb-3">
+  <i class="fas fa-building me-2"></i>XII. Taux d'exécution physique par direction
+</h5>
+
+{% if dir_exec_rows %}
+{% set dir_annees = dir_exec_rows | map(attribute='annee') | unique | sort | list %}
+<div class="d-flex flex-wrap gap-1 mb-3 align-items-center">
+  <span class="small text-muted me-1">Filtrer :</span>
+  <button class="btn btn-sm btn-outline-primary dir-year-btn" data-annee="all"
+          onclick="filtrerDirExec('all',this)">Toutes</button>
+  {% for a in dir_annees %}
+  <button class="btn btn-sm btn-outline-primary dir-year-btn" data-annee="{{ a }}"
+          onclick="filtrerDirExec('{{ a }}',this)">{{ a }}</button>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if current_user.role == 'admin_editeur' %}
+<div class="card border-0 shadow-sm mb-3" style="border-left:4px solid #1A237E !important;">
+  <div class="card-body py-2">
+    <h6 class="fw-bold mb-2" style="color:#1A237E;"><i class="fas fa-plus-circle me-1"></i>Ajouter une ligne</h6>
+    <small class="text-muted d-block mb-2">Taux cumulatifs : T1 ≤ T2 ≤ T3 ≤ T4. Laisser vide si non disponible.</small>
+    <form method="post" action="{{ url_for('pluriannuel.add_dir_exec') }}" class="row g-2 align-items-end"
+          onsubmit="return validerTaux(this,'err-dir-exec-add')">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+      <div class="col-6 col-sm-2">
+        <label class="form-label small mb-1">Année</label>
+        <input type="number" name="annee" class="form-control form-control-sm"
+               placeholder="{{ annee_active_val or 2026 }}" min="2016" max="{{ annee_active_val or 2100 }}" required>
+      </div>
+      <div class="col-12 col-sm-4">
+        <label class="form-label small mb-1">Direction</label>
+        <select name="direction_id" class="form-select form-select-sm" required>
+          <option value="">— Sélectionner —</option>
+          {% for d in directions %}
+          <option value="{{ d.id }}">{{ d.code }} — {{ d.nom }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% for q in ['t1','t2','t3','t4'] %}
+      <div class="col-6 col-sm-1">
+        <label class="form-label small mb-1">{{ q|upper }} (%)</label>
+        <input type="number" name="{{ q }}" class="form-control form-control-sm"
+               placeholder="—" min="0" max="100" step="0.01">
+      </div>
+      {% endfor %}
+      <div class="col-auto">
+        <button type="submit" class="btn btn-sm" style="background:#1A237E;color:#fff;">
+          <i class="fas fa-plus"></i>
+        </button>
+      </div>
+      <div id="err-dir-exec-add" class="col-12 alert alert-danger py-1 mb-0 d-none" style="font-size:.83rem;"></div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{% if dir_exec_rows %}
+<div class="table-responsive mb-3">
+<table id="tbl-pluri-xii" class="table table-bordered pluri-table" style="min-width:600px;">
+  <thead>
+    <tr>
+      <th style="width:10%;background:#1A237E;">Année</th>
+      <th style="background:#1A237E;">Direction</th>
+      <th style="background:#1A237E;">T1 (%)</th>
+      <th style="background:#1A237E;">T2 (%)</th>
+      <th style="background:#1A237E;">T3 (%)</th>
+      <th style="background:#1A237E;">T4 (%)</th>
+      {% if current_user.role == 'admin_editeur' %}<th style="width:7%;background:#1A237E;">Actions</th>{% endif %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in dir_exec_rows %}
+    <tr class="dir-exec-row" data-annee="{{ row.annee }}">
+      <td class="fw-bold text-center">{{ row.annee }}</td>
+      <td><span class="badge me-1" style="background:#1A237E;">{{ row.direction.code }}</span><span class="small">{{ row.direction.nom }}</span></td>
+      {% for v in [row.t1, row.t2, row.t3, row.t4] %}
+      <td class="text-center">{% if v is not none %}{{ '%.2f'|format(v)|replace('.',',') }} %{% else %}—{% endif %}</td>
+      {% endfor %}
+      {% if current_user.role == 'admin_editeur' %}
+      <td class="text-center">
+        <button type="button" class="btn btn-sm py-0 px-1" style="border:1px solid #1A237E;color:#1A237E;"
+                data-bs-toggle="modal" data-bs-target="#editDirExecModal{{ row.id }}" title="Modifier">
+          <i class="fas fa-pencil-alt fa-xs"></i>
+        </button>
+        <form method="post" action="{{ url_for('pluriannuel.delete_dir_exec', row_id=row.id) }}"
+              style="display:inline;"
+              onsubmit="return confirm('Supprimer {{ row.annee }} — {{ row.direction.code }} ?');">
+          <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+          <button type="submit" class="btn btn-outline-danger btn-sm py-0 px-1" title="Supprimer">
+            <i class="fas fa-trash fa-xs"></i>
+          </button>
+        </form>
+      </td>
+      {% endif %}
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+
+<h6 class="fw-bold text-secondary mt-3 mb-1" style="font-size:.85rem;">
+  <i class="fas fa-chart-bar me-1"></i>T4 par direction — année filtrée
+</h6>
+{% set dir_chart_w = [dir_exec_rows|length * 70, 400]|max %}
+<div style="overflow-x:auto;">
+  <div id="chartDirExecWrap" style="min-width:{{ dir_chart_w }}px;height:280px;position:relative;">
+    <canvas id="chartDirExec"></canvas>
+  </div>
+</div>
+
+{% if current_user.role == 'admin_editeur' %}
+{% for row in dir_exec_rows %}
+<div class="modal fade" id="editDirExecModal{{ row.id }}" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header py-2">
+        <h6 class="modal-title fw-bold" style="color:#1A237E;">
+          <i class="fas fa-pencil-alt me-1"></i>{{ row.direction.code }} — {{ row.annee }}
+        </h6>
+        <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="{{ url_for('pluriannuel.edit_dir_exec', row_id=row.id) }}"
+            onsubmit="return validerTaux(this,'err-dir-exec-edit-{{ row.id }}')">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        <div class="modal-body py-2">
+          <small class="text-muted">T1 ≤ T2 ≤ T3 ≤ T4 — cumulatifs. 0–100 %.</small>
+          {% for q, v in [('t1', row.t1), ('t2', row.t2), ('t3', row.t3), ('t4', row.t4)] %}
+          <div class="mb-2 mt-2">
+            <label class="form-label small mb-1">{{ q|upper }} (%)</label>
+            <input type="number" name="{{ q }}" class="form-control form-control-sm"
+                   value="{{ '%.2f'|format(v) if v is not none else '' }}"
+                   min="0" max="100" step="0.01" placeholder="—">
+          </div>
+          {% endfor %}
+          <div id="err-dir-exec-edit-{{ row.id }}" class="alert alert-danger py-1 d-none mt-2 mb-0" style="font-size:.83rem;"></div>
+        </div>
+        <div class="modal-footer py-2">
+          <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-sm" style="background:#1A237E;color:#fff;">Enregistrer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endfor %}
+{% endif %}
+
+{% else %}
+<div class="alert alert-info py-2">
+  <i class="fas fa-info-circle me-2"></i>Aucun taux d'exécution par direction saisi.
+  {% if current_user.role == 'admin_editeur' %}Utilisez le formulaire ci-dessus pour commencer.{% endif %}
+</div>
+{% endif %}
+
+
+{# ════════════════════════════════════════════════════════════════════════════ #}
+{# XIII. TAUX D'EXÉCUTION PHYSIQUE PAR SERVICE                                   #}
+{# ════════════════════════════════════════════════════════════════════════════ #}
+
+<h5 id="section-svc-exec" class="fw-bold text-primary mt-5 mb-3">
+  <i class="fas fa-users me-2"></i>XIII. Taux d'exécution physique par service
+</h5>
+
+{% if svc_exec_rows %}
+{% set svc_annees = svc_exec_rows | map(attribute='annee') | unique | sort | list %}
+<div class="d-flex flex-wrap gap-1 mb-3 align-items-center">
+  <span class="small text-muted me-1">Filtrer :</span>
+  <button class="btn btn-sm btn-outline-success svc-year-btn" data-annee="all"
+          onclick="filtrerSvcExec('all',this)">Toutes</button>
+  {% for a in svc_annees %}
+  <button class="btn btn-sm btn-outline-success svc-year-btn" data-annee="{{ a }}"
+          onclick="filtrerSvcExec('{{ a }}',this)">{{ a }}</button>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if current_user.role == 'admin_editeur' %}
+<div class="card border-0 shadow-sm mb-3" style="border-left:4px solid #006064 !important;">
+  <div class="card-body py-2">
+    <h6 class="fw-bold mb-2" style="color:#006064;"><i class="fas fa-plus-circle me-1"></i>Ajouter une ligne</h6>
+    <small class="text-muted d-block mb-2">Taux cumulatifs : T1 ≤ T2 ≤ T3 ≤ T4. Laisser vide si non disponible.</small>
+    <form method="post" action="{{ url_for('pluriannuel.add_svc_exec') }}" class="row g-2 align-items-end"
+          onsubmit="return validerTaux(this,'err-svc-exec-add')">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+      <div class="col-6 col-sm-2">
+        <label class="form-label small mb-1">Année</label>
+        <input type="number" name="annee" class="form-control form-control-sm"
+               placeholder="{{ annee_active_val or 2026 }}" min="2016" max="{{ annee_active_val or 2100 }}" required>
+      </div>
+      <div class="col-12 col-sm-4">
+        <label class="form-label small mb-1">Service</label>
+        <select name="service_id" class="form-select form-select-sm" required>
+          <option value="">— Sélectionner —</option>
+          {% for s in services %}
+          <option value="{{ s.id }}">{{ s.code }} — {{ s.nom }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% for q in ['t1','t2','t3','t4'] %}
+      <div class="col-6 col-sm-1">
+        <label class="form-label small mb-1">{{ q|upper }} (%)</label>
+        <input type="number" name="{{ q }}" class="form-control form-control-sm"
+               placeholder="—" min="0" max="100" step="0.01">
+      </div>
+      {% endfor %}
+      <div class="col-auto">
+        <button type="submit" class="btn btn-sm" style="background:#006064;color:#fff;">
+          <i class="fas fa-plus"></i>
+        </button>
+      </div>
+      <div id="err-svc-exec-add" class="col-12 alert alert-danger py-1 mb-0 d-none" style="font-size:.83rem;"></div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{% if svc_exec_rows %}
+<div class="table-responsive mb-3">
+<table id="tbl-pluri-xiii" class="table table-bordered pluri-table" style="min-width:600px;">
+  <thead>
+    <tr>
+      <th style="width:10%;background:#006064;">Année</th>
+      <th style="background:#006064;">Service</th>
+      <th style="background:#006064;">T1 (%)</th>
+      <th style="background:#006064;">T2 (%)</th>
+      <th style="background:#006064;">T3 (%)</th>
+      <th style="background:#006064;">T4 (%)</th>
+      {% if current_user.role == 'admin_editeur' %}<th style="width:7%;background:#006064;">Actions</th>{% endif %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in svc_exec_rows %}
+    <tr class="svc-exec-row" data-annee="{{ row.annee }}">
+      <td class="fw-bold text-center">{{ row.annee }}</td>
+      <td><span class="badge me-1" style="background:#006064;">{{ row.service.code }}</span><span class="small">{{ row.service.nom }}</span></td>
+      {% for v in [row.t1, row.t2, row.t3, row.t4] %}
+      <td class="text-center">{% if v is not none %}{{ '%.2f'|format(v)|replace('.',',') }} %{% else %}—{% endif %}</td>
+      {% endfor %}
+      {% if current_user.role == 'admin_editeur' %}
+      <td class="text-center">
+        <button type="button" class="btn btn-sm py-0 px-1" style="border:1px solid #006064;color:#006064;"
+                data-bs-toggle="modal" data-bs-target="#editSvcExecModal{{ row.id }}" title="Modifier">
+          <i class="fas fa-pencil-alt fa-xs"></i>
+        </button>
+        <form method="post" action="{{ url_for('pluriannuel.delete_svc_exec', row_id=row.id) }}"
+              style="display:inline;"
+              onsubmit="return confirm('Supprimer {{ row.annee }} — {{ row.service.code }} ?');">
+          <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+          <button type="submit" class="btn btn-outline-danger btn-sm py-0 px-1" title="Supprimer">
+            <i class="fas fa-trash fa-xs"></i>
+          </button>
+        </form>
+      </td>
+      {% endif %}
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+
+<h6 class="fw-bold text-secondary mt-3 mb-1" style="font-size:.85rem;">
+  <i class="fas fa-chart-bar me-1"></i>T4 par service — année filtrée
+</h6>
+{% set svc_chart_w = [svc_exec_rows|length * 60, 400]|max %}
+<div style="overflow-x:auto;">
+  <div id="chartSvcExecWrap" style="min-width:{{ svc_chart_w }}px;height:280px;position:relative;">
+    <canvas id="chartSvcExec"></canvas>
+  </div>
+</div>
+
+{% if current_user.role == 'admin_editeur' %}
+{% for row in svc_exec_rows %}
+<div class="modal fade" id="editSvcExecModal{{ row.id }}" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header py-2">
+        <h6 class="modal-title fw-bold" style="color:#006064;">
+          <i class="fas fa-pencil-alt me-1"></i>{{ row.service.code }} — {{ row.annee }}
+        </h6>
+        <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="{{ url_for('pluriannuel.edit_svc_exec', row_id=row.id) }}"
+            onsubmit="return validerTaux(this,'err-svc-exec-edit-{{ row.id }}')">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        <div class="modal-body py-2">
+          <small class="text-muted">T1 ≤ T2 ≤ T3 ≤ T4 — cumulatifs. 0–100 %.</small>
+          {% for q, v in [('t1', row.t1), ('t2', row.t2), ('t3', row.t3), ('t4', row.t4)] %}
+          <div class="mb-2 mt-2">
+            <label class="form-label small mb-1">{{ q|upper }} (%)</label>
+            <input type="number" name="{{ q }}" class="form-control form-control-sm"
+                   value="{{ '%.2f'|format(v) if v is not none else '' }}"
+                   min="0" max="100" step="0.01" placeholder="—">
+          </div>
+          {% endfor %}
+          <div id="err-svc-exec-edit-{{ row.id }}" class="alert alert-danger py-1 d-none mt-2 mb-0" style="font-size:.83rem;"></div>
+        </div>
+        <div class="modal-footer py-2">
+          <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-sm" style="background:#006064;color:#fff;">Enregistrer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endfor %}
+{% endif %}
+
+{% else %}
+<div class="alert alert-info py-2">
+  <i class="fas fa-info-circle me-2"></i>Aucun taux d'exécution par service saisi.
+  {% if current_user.role == 'admin_editeur' %}Utilisez le formulaire ci-dessus pour commencer.{% endif %}
+</div>
+{% endif %}
+
+
+{# ════════════════════════════════════════════════════════════════════════════ #}
+{# BOUTON EXPORT EXCEL (fixé en bas à droite)                                    #}
+{# ════════════════════════════════════════════════════════════════════════════ #}
+<button type="button" class="btn btn-success btn-sm shadow"
+        data-bs-toggle="modal" data-bs-target="#modalExportExcel"
+        style="position:fixed;bottom:22px;right:22px;z-index:1055;border-radius:20px;padding:8px 16px;font-size:.85rem;">
+  <i class="fas fa-file-excel me-1"></i>Export Excel
+</button>
+
+<div class="modal fade" id="modalExportExcel" tabindex="-1">
+  <div class="modal-dialog modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header py-2">
+        <h6 class="modal-title fw-bold text-success">
+          <i class="fas fa-file-excel me-2"></i>Exporter en Excel
+        </h6>
+        <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body py-2">
+        <p class="small text-muted mb-2">Chaque tableau sélectionné devient un onglet dans le fichier.</p>
+        <div class="d-flex gap-2 mb-3">
+          <button class="btn btn-sm btn-outline-secondary" type="button" onclick="selectAllExport(true)">Tout cocher</button>
+          <button class="btn btn-sm btn-outline-secondary" type="button" onclick="selectAllExport(false)">Tout décocher</button>
+        </div>
+        {% set export_sections = [
+          ('tbl-pluri-i',       'I. Évolution du budget municipal'),
+          ('tbl-pluri-ii',      'II. Montants du PTA'),
+          ('tbl-pluri-iii',     'III. Montants du PAI'),
+          ('tbl-pluri-iv',      'IV. Taux exéc. physique PTA'),
+          ('tbl-pluri-v',       'V. Taux exéc. physique PAI'),
+          ('tbl-pluri-vi-pta',  'VI. Taux financiers PTA'),
+          ('tbl-pluri-vii-pai', 'VII. Taux financiers PAI'),
+          ('tbl-pluri-viii-pta','VIII. Taux efficacité PTA'),
+          ('tbl-pluri-ix-pai',  'IX. Taux efficacité PAI'),
+          ('tbl-pluri-x-pta',   'X. Taux efficience PTA'),
+          ('tbl-pluri-xi-pai',  'XI. Taux efficience PAI'),
+          ('tbl-pluri-xii',     'XII. Exéc. par direction'),
+          ('tbl-pluri-xiii',    'XIII. Exéc. par service'),
+        ] %}
+        {% for tbl_id, tbl_label in export_sections %}
+        <div class="form-check mb-1">
+          <input class="form-check-input export-check" type="checkbox"
+                 id="exp-{{ tbl_id }}" value="{{ tbl_id }}" checked>
+          <label class="form-check-label small" for="exp-{{ tbl_id }}">{{ tbl_label }}</label>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="modal-footer py-2">
+        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Annuler</button>
+        <button type="button" class="btn btn-sm btn-success" onclick="exporterExcel()">
+          <i class="fas fa-download me-1"></i>Télécharger le fichier
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 
 {% endblock %}
 
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 // ── Validation côté client T1 ≤ T2 ≤ T3 ≤ T4 ──────────────────────────────
 function validerTaux(formEl, errId) {
@@ -1425,5 +1843,150 @@ function validerTaux(formEl, errId) {
   {% endif %}
 
 })();
+
+// ── Sections XII/XIII : filtre par année + graphiques barres ─────────────────
+var ANNEE_ACTIVE = {{ annee_active_val | tojson }};
+var dirExecAllData = {{ dir_exec_json | tojson }};
+var svcExecAllData = {{ svc_exec_json | tojson }};
+
+var chartDirExecInst = null;
+var chartSvcExecInst = null;
+
+function filtrerDirExec(annee, btn) {
+  document.querySelectorAll('.dir-year-btn').forEach(function(b) {
+    b.classList.toggle('btn-primary', b.dataset.annee === annee);
+    b.classList.toggle('btn-outline-primary', b.dataset.annee !== annee);
+  });
+  document.querySelectorAll('.dir-exec-row').forEach(function(tr) {
+    tr.style.display = (annee === 'all' || tr.dataset.annee == annee) ? '' : 'none';
+  });
+  renderDirExecChart(annee);
+}
+
+function renderDirExecChart(annee) {
+  var rows = annee === 'all'
+    ? dirExecAllData
+    : dirExecAllData.filter(function(r) { return String(r.annee) === String(annee); });
+  var canvas = document.getElementById('chartDirExec');
+  var wrap   = document.getElementById('chartDirExecWrap');
+  if (!canvas) return;
+  if (wrap) wrap.style.minWidth = Math.max(rows.length * 70, 400) + 'px';
+  if (chartDirExecInst) { chartDirExecInst.destroy(); chartDirExecInst = null; }
+  if (!rows.length) return;
+  chartDirExecInst = new Chart(canvas.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: rows.map(function(r) { return r.code; }),
+      datasets: [{
+        label: 'T4 (%)',
+        data: rows.map(function(r) { return r.t4 !== null ? r.t4 : null; }),
+        backgroundColor: '#3F51B5', borderColor: '#1A237E', borderWidth: 1.5, borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: function(c) {
+          return ' T4 : ' + (c.parsed.y !== null ? c.parsed.y.toFixed(2).replace('.',',') + ' %' : '—');
+        }}}
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+        y: { min: 0, max: 100, ticks: { callback: function(v) { return v + ' %'; }, font: { size: 10 } } }
+      }
+    }
+  });
+}
+
+function filtrerSvcExec(annee, btn) {
+  document.querySelectorAll('.svc-year-btn').forEach(function(b) {
+    b.classList.toggle('btn-success', b.dataset.annee === annee);
+    b.classList.toggle('btn-outline-success', b.dataset.annee !== annee);
+  });
+  document.querySelectorAll('.svc-exec-row').forEach(function(tr) {
+    tr.style.display = (annee === 'all' || tr.dataset.annee == annee) ? '' : 'none';
+  });
+  renderSvcExecChart(annee);
+}
+
+function renderSvcExecChart(annee) {
+  var rows = annee === 'all'
+    ? svcExecAllData
+    : svcExecAllData.filter(function(r) { return String(r.annee) === String(annee); });
+  var canvas = document.getElementById('chartSvcExec');
+  var wrap   = document.getElementById('chartSvcExecWrap');
+  if (!canvas) return;
+  if (wrap) wrap.style.minWidth = Math.max(rows.length * 55, 400) + 'px';
+  if (chartSvcExecInst) { chartSvcExecInst.destroy(); chartSvcExecInst = null; }
+  if (!rows.length) return;
+  chartSvcExecInst = new Chart(canvas.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: rows.map(function(r) { return r.code; }),
+      datasets: [{
+        label: 'T4 (%)',
+        data: rows.map(function(r) { return r.t4 !== null ? r.t4 : null; }),
+        backgroundColor: '#00897B', borderColor: '#006064', borderWidth: 1.5, borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: function(c) {
+          return ' T4 : ' + (c.parsed.y !== null ? c.parsed.y.toFixed(2).replace('.',',') + ' %' : '—');
+        }}}
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+        y: { min: 0, max: 100, ticks: { callback: function(v) { return v + ' %'; }, font: { size: 10 } } }
+      }
+    }
+  });
+}
+
+// Initialisation filtres XII/XIII avec l'année active (ou dernière année disponible)
+document.addEventListener('DOMContentLoaded', function() {
+  function initFiltre(data, filtrerFn, btnClass) {
+    if (!data.length) return;
+    var annees = data.map(function(r) { return r.annee; });
+    var cible = ANNEE_ACTIVE && annees.indexOf(ANNEE_ACTIVE) !== -1
+                ? String(ANNEE_ACTIVE)
+                : String(Math.max.apply(null, annees));
+    var btn = document.querySelector('.' + btnClass + '[data-annee="' + cible + '"]');
+    filtrerFn(cible, btn);
+  }
+  initFiltre(dirExecAllData, filtrerDirExec, 'dir-year-btn');
+  initFiltre(svcExecAllData, filtrerSvcExec, 'svc-year-btn');
+});
+
+// ── Export Excel via SheetJS ─────────────────────────────────────────────────
+function selectAllExport(state) {
+  document.querySelectorAll('.export-check').forEach(function(cb) { cb.checked = state; });
+}
+
+function exporterExcel() {
+  if (typeof XLSX === 'undefined') {
+    alert('La bibliothèque Excel n\'est pas encore chargée. Réessayez dans quelques secondes.');
+    return;
+  }
+  var wb = XLSX.utils.book_new();
+  var added = 0;
+  document.querySelectorAll('.export-check:checked').forEach(function(cb) {
+    var tbl = document.getElementById(cb.value);
+    if (!tbl) return;
+    var ws = XLSX.utils.table_to_sheet(tbl);
+    var label = document.querySelector('label[for="exp-' + cb.value + '"]').textContent.trim();
+    var sheetName = label.substring(0, 31).replace(/[:\\\/\?\*\[\]]/g, '');
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    added++;
+  });
+  if (!added) { alert('Veuillez sélectionner au moins un tableau.'); return; }
+  var fname = 'Suivi_Pluriannuel_' + new Date().getFullYear() + '.xlsx';
+  XLSX.writeFile(wb, fname);
+  var m = bootstrap.Modal.getInstance(document.getElementById('modalExportExcel'));
+  if (m) m.hide();
+}
 </script>
 {% endblock %}

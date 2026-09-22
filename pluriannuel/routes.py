@@ -3,9 +3,11 @@ from functools import wraps
 from flask import render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required, current_user
 
-from models import db, BudgetPluriannuel, MontantPluriannuelPTA, MontantPluriannuelPAI, \
+from models import db, Direction, Service, \
+                   BudgetPluriannuel, MontantPluriannuelPTA, MontantPluriannuelPAI, \
                    TauxExecPTA, TauxExecPAI, TauxFinPTA, TauxFinPAI, \
-                   TauxEfficacitePTA, TauxEfficacitePAI, TauxEfficiencePTA, TauxEfficiencePAI
+                   TauxEfficacitePTA, TauxEfficacitePAI, TauxEfficiencePTA, TauxEfficiencePAI, \
+                   TauxExecDirection, TauxExecService
 from pluriannuel import pluriannuel_bp
 from utils import log_audit
 
@@ -73,6 +75,22 @@ def index():
     pai_efficacite_annees = TauxEfficacitePAI.query.order_by(TauxEfficacitePAI.annee).all()
     pta_efficience_annees = TauxEfficiencePTA.query.order_by(TauxEfficiencePTA.annee).all()
     pai_efficience_annees = TauxEfficiencePAI.query.order_by(TauxEfficiencePAI.annee).all()
+    dir_exec_rows = TauxExecDirection.query.order_by(
+        TauxExecDirection.annee, TauxExecDirection.direction_id).all()
+    svc_exec_rows = TauxExecService.query.order_by(
+        TauxExecService.annee, TauxExecService.service_id).all()
+    directions    = Direction.query.order_by(Direction.code).all()
+    services      = Service.query.order_by(Service.code).all()
+    dir_exec_json = [
+        {'id': r.id, 'annee': r.annee, 'code': r.direction.code,
+         'nom': r.direction.nom, 't1': r.t1, 't2': r.t2, 't3': r.t3, 't4': r.t4}
+        for r in dir_exec_rows
+    ]
+    svc_exec_json = [
+        {'id': r.id, 'annee': r.annee, 'code': r.service.code,
+         'nom': r.service.nom, 't1': r.t1, 't2': r.t2, 't3': r.t3, 't4': r.t4}
+        for r in svc_exec_rows
+    ]
     return render_template('pluriannuel/index.html',
                            annees=annees, pta_annees=pta_annees, pai_annees=pai_annees,
                            pta_exec_annees=pta_exec_annees, pai_exec_annees=pai_exec_annees,
@@ -80,7 +98,10 @@ def index():
                            pta_efficacite_annees=pta_efficacite_annees,
                            pai_efficacite_annees=pai_efficacite_annees,
                            pta_efficience_annees=pta_efficience_annees,
-                           pai_efficience_annees=pai_efficience_annees)
+                           pai_efficience_annees=pai_efficience_annees,
+                           dir_exec_rows=dir_exec_rows, svc_exec_rows=svc_exec_rows,
+                           directions=directions, services=services,
+                           dir_exec_json=dir_exec_json, svc_exec_json=svc_exec_json)
 
 
 # ── Ajouter une année ─────────────────────────────────────────────────────────
@@ -744,3 +765,147 @@ def delete_pai_efficience(row_id):
     log_audit('pluriannuel_pai_efficience_delete', f"Efficience PAI {a} supprimé")
     flash(f"Efficience PAI {a} supprimée.", 'warning')
     return _redir('#section-pai-efficience')
+
+
+# ════════════════════════════════════════════════════════════════
+# Section XII — Taux d'exécution physique par direction
+# ════════════════════════════════════════════════════════════════
+
+@pluriannuel_bp.route('/dir-exec/add', methods=['POST'])
+@editeur_only
+def add_dir_exec():
+    try:
+        annee_val = int(request.form.get('annee', 0))
+        dir_id    = int(request.form.get('direction_id', 0))
+    except (TypeError, ValueError):
+        flash("Données invalides.", 'danger')
+        return _redir('#section-dir-exec')
+    if annee_val < 2016 or annee_val > 2100:
+        flash("Année hors plage (2016–2100).", 'danger')
+        return _redir('#section-dir-exec')
+    if not dir_id:
+        flash("Veuillez sélectionner une direction.", 'danger')
+        return _redir('#section-dir-exec')
+    if TauxExecDirection.query.filter_by(annee=annee_val, direction_id=dir_id).first():
+        flash("Cette direction a déjà un taux pour cette année.", 'warning')
+        return _redir('#section-dir-exec')
+    t1 = _parse_taux(request.form.get('t1'))
+    t2 = _parse_taux(request.form.get('t2'))
+    t3 = _parse_taux(request.form.get('t3'))
+    t4 = _parse_taux(request.form.get('t4'))
+    err = _valider_taux(t1, t2, t3, t4)
+    if err:
+        flash(err, 'danger')
+        return _redir('#section-dir-exec')
+    db.session.add(TauxExecDirection(
+        annee=annee_val, direction_id=dir_id, t1=t1, t2=t2, t3=t3, t4=t4,
+        date_maj=datetime.now(timezone.utc), modified_by_id=current_user.id))
+    db.session.commit()
+    log_audit('pluriannuel_dir_exec_add', f"Exec dir {annee_val}/{dir_id} ajouté")
+    flash("Taux ajouté.", 'success')
+    return _redir('#section-dir-exec')
+
+
+@pluriannuel_bp.route('/dir-exec/edit/<int:row_id>', methods=['POST'])
+@editeur_only
+def edit_dir_exec(row_id):
+    row = db.get_or_404(TauxExecDirection, row_id)
+    t1 = _parse_taux(request.form.get('t1'))
+    t2 = _parse_taux(request.form.get('t2'))
+    t3 = _parse_taux(request.form.get('t3'))
+    t4 = _parse_taux(request.form.get('t4'))
+    err = _valider_taux(t1, t2, t3, t4)
+    if err:
+        flash(err, 'danger')
+        return _redir('#section-dir-exec')
+    row.t1 = t1; row.t2 = t2; row.t3 = t3; row.t4 = t4
+    row.date_maj = datetime.now(timezone.utc)
+    row.modified_by_id = current_user.id
+    db.session.commit()
+    log_audit('pluriannuel_dir_exec_edit', f"Exec dir {row.annee}/{row.direction_id} modifié")
+    flash("Taux mis à jour.", 'success')
+    return _redir('#section-dir-exec')
+
+
+@pluriannuel_bp.route('/dir-exec/delete/<int:row_id>', methods=['POST'])
+@editeur_only
+def delete_dir_exec(row_id):
+    row = db.get_or_404(TauxExecDirection, row_id)
+    info = f"{row.annee}/{row.direction.code}"
+    db.session.delete(row)
+    db.session.commit()
+    log_audit('pluriannuel_dir_exec_delete', f"Exec dir {info} supprimé")
+    flash("Taux supprimé.", 'warning')
+    return _redir('#section-dir-exec')
+
+
+# ════════════════════════════════════════════════════════════════
+# Section XIII — Taux d'exécution physique par service
+# ════════════════════════════════════════════════════════════════
+
+@pluriannuel_bp.route('/svc-exec/add', methods=['POST'])
+@editeur_only
+def add_svc_exec():
+    try:
+        annee_val = int(request.form.get('annee', 0))
+        svc_id    = int(request.form.get('service_id', 0))
+    except (TypeError, ValueError):
+        flash("Données invalides.", 'danger')
+        return _redir('#section-svc-exec')
+    if annee_val < 2016 or annee_val > 2100:
+        flash("Année hors plage (2016–2100).", 'danger')
+        return _redir('#section-svc-exec')
+    if not svc_id:
+        flash("Veuillez sélectionner un service.", 'danger')
+        return _redir('#section-svc-exec')
+    if TauxExecService.query.filter_by(annee=annee_val, service_id=svc_id).first():
+        flash("Ce service a déjà un taux pour cette année.", 'warning')
+        return _redir('#section-svc-exec')
+    t1 = _parse_taux(request.form.get('t1'))
+    t2 = _parse_taux(request.form.get('t2'))
+    t3 = _parse_taux(request.form.get('t3'))
+    t4 = _parse_taux(request.form.get('t4'))
+    err = _valider_taux(t1, t2, t3, t4)
+    if err:
+        flash(err, 'danger')
+        return _redir('#section-svc-exec')
+    db.session.add(TauxExecService(
+        annee=annee_val, service_id=svc_id, t1=t1, t2=t2, t3=t3, t4=t4,
+        date_maj=datetime.now(timezone.utc), modified_by_id=current_user.id))
+    db.session.commit()
+    log_audit('pluriannuel_svc_exec_add', f"Exec svc {annee_val}/{svc_id} ajouté")
+    flash("Taux ajouté.", 'success')
+    return _redir('#section-svc-exec')
+
+
+@pluriannuel_bp.route('/svc-exec/edit/<int:row_id>', methods=['POST'])
+@editeur_only
+def edit_svc_exec(row_id):
+    row = db.get_or_404(TauxExecService, row_id)
+    t1 = _parse_taux(request.form.get('t1'))
+    t2 = _parse_taux(request.form.get('t2'))
+    t3 = _parse_taux(request.form.get('t3'))
+    t4 = _parse_taux(request.form.get('t4'))
+    err = _valider_taux(t1, t2, t3, t4)
+    if err:
+        flash(err, 'danger')
+        return _redir('#section-svc-exec')
+    row.t1 = t1; row.t2 = t2; row.t3 = t3; row.t4 = t4
+    row.date_maj = datetime.now(timezone.utc)
+    row.modified_by_id = current_user.id
+    db.session.commit()
+    log_audit('pluriannuel_svc_exec_edit', f"Exec svc {row.annee}/{row.service_id} modifié")
+    flash("Taux mis à jour.", 'success')
+    return _redir('#section-svc-exec')
+
+
+@pluriannuel_bp.route('/svc-exec/delete/<int:row_id>', methods=['POST'])
+@editeur_only
+def delete_svc_exec(row_id):
+    row = db.get_or_404(TauxExecService, row_id)
+    info = f"{row.annee}/{row.service.code}"
+    db.session.delete(row)
+    db.session.commit()
+    log_audit('pluriannuel_svc_exec_delete', f"Exec svc {info} supprimé")
+    flash("Taux supprimé.", 'warning')
+    return _redir('#section-svc-exec')

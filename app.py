@@ -114,6 +114,7 @@ def create_app(test_config=None):
             return dict(
                 toutes_annees=toutes,
                 annee_active_id=active.id if active else None,
+                annee_active_val=active.annee if active else None,
             )
         except Exception:
             return dict(toutes_annees=[], annee_active_id=None)

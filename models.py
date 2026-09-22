@@ -652,6 +652,38 @@ class TauxEfficiencePAI(db.Model):
     modified_by    = db.relationship('User', foreign_keys=[modified_by_id])
 
 
+class TauxExecDirection(db.Model):
+    __tablename__ = 'taux_exec_direction'
+    id             = db.Column(db.Integer, primary_key=True)
+    annee          = db.Column(db.Integer, nullable=False)
+    direction_id   = db.Column(db.Integer, db.ForeignKey('directions.id'), nullable=False)
+    t1             = db.Column(db.Float, nullable=True)
+    t2             = db.Column(db.Float, nullable=True)
+    t3             = db.Column(db.Float, nullable=True)
+    t4             = db.Column(db.Float, nullable=True)
+    date_maj       = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    modified_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    modified_by    = db.relationship('User', foreign_keys=[modified_by_id])
+    direction      = db.relationship('Direction', foreign_keys=[direction_id])
+    __table_args__ = (db.UniqueConstraint('annee', 'direction_id', name='uq_ted_annee_dir'),)
+
+
+class TauxExecService(db.Model):
+    __tablename__ = 'taux_exec_service'
+    id             = db.Column(db.Integer, primary_key=True)
+    annee          = db.Column(db.Integer, nullable=False)
+    service_id     = db.Column(db.Integer, db.ForeignKey('services.id'), nullable=False)
+    t1             = db.Column(db.Float, nullable=True)
+    t2             = db.Column(db.Float, nullable=True)
+    t3             = db.Column(db.Float, nullable=True)
+    t4             = db.Column(db.Float, nullable=True)
+    date_maj       = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    modified_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    modified_by    = db.relationship('User', foreign_keys=[modified_by_id])
+    service        = db.relationship('Service', foreign_keys=[service_id])
+    __table_args__ = (db.UniqueConstraint('annee', 'service_id', name='uq_tes_annee_svc'),)
+
+
 # ─── Journal d'audit ─────────────────────────────────────────────────────────
 
 class AuditLog(db.Model):

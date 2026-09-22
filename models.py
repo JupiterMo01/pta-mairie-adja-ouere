@@ -516,6 +516,48 @@ class MontantPluriannuelPAI(db.Model):
         return round(self.ecart / self.montant_pai * 100, 2)
 
 
+class TauxFinPTA(db.Model):
+    __tablename__ = 'taux_fin_pta'
+    id             = db.Column(db.Integer, primary_key=True)
+    annee          = db.Column(db.Integer, nullable=False, unique=True)
+    t1_eng         = db.Column(db.Float, nullable=True)
+    t1_mand        = db.Column(db.Float, nullable=True)
+    t1_pmt         = db.Column(db.Float, nullable=True)
+    t2_eng         = db.Column(db.Float, nullable=True)
+    t2_mand        = db.Column(db.Float, nullable=True)
+    t2_pmt         = db.Column(db.Float, nullable=True)
+    t3_eng         = db.Column(db.Float, nullable=True)
+    t3_mand        = db.Column(db.Float, nullable=True)
+    t3_pmt         = db.Column(db.Float, nullable=True)
+    t4_eng         = db.Column(db.Float, nullable=True)
+    t4_mand        = db.Column(db.Float, nullable=True)
+    t4_pmt         = db.Column(db.Float, nullable=True)
+    date_maj       = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    modified_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    modified_by    = db.relationship('User', foreign_keys=[modified_by_id])
+
+
+class TauxFinPAI(db.Model):
+    __tablename__ = 'taux_fin_pai'
+    id             = db.Column(db.Integer, primary_key=True)
+    annee          = db.Column(db.Integer, nullable=False, unique=True)
+    t1_eng         = db.Column(db.Float, nullable=True)
+    t1_mand        = db.Column(db.Float, nullable=True)
+    t1_pmt         = db.Column(db.Float, nullable=True)
+    t2_eng         = db.Column(db.Float, nullable=True)
+    t2_mand        = db.Column(db.Float, nullable=True)
+    t2_pmt         = db.Column(db.Float, nullable=True)
+    t3_eng         = db.Column(db.Float, nullable=True)
+    t3_mand        = db.Column(db.Float, nullable=True)
+    t3_pmt         = db.Column(db.Float, nullable=True)
+    t4_eng         = db.Column(db.Float, nullable=True)
+    t4_mand        = db.Column(db.Float, nullable=True)
+    t4_pmt         = db.Column(db.Float, nullable=True)
+    date_maj       = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    modified_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    modified_by    = db.relationship('User', foreign_keys=[modified_by_id])
+
+
 class TauxExecPTA(db.Model):
     __tablename__ = 'taux_exec_pta'
     id             = db.Column(db.Integer, primary_key=True)

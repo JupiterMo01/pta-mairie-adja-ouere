@@ -4,7 +4,7 @@ from flask import render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required, current_user
 
 from models import db, BudgetPluriannuel, MontantPluriannuelPTA, MontantPluriannuelPAI, \
-                   TauxExecPTA, TauxExecPAI
+                   TauxExecPTA, TauxExecPAI, TauxFinPTA, TauxFinPAI
 from pluriannuel import pluriannuel_bp
 from utils import log_audit
 
@@ -62,9 +62,12 @@ def index():
     pai_annees      = MontantPluriannuelPAI.query.order_by(MontantPluriannuelPAI.annee).all()
     pta_exec_annees = TauxExecPTA.query.order_by(TauxExecPTA.annee).all()
     pai_exec_annees = TauxExecPAI.query.order_by(TauxExecPAI.annee).all()
+    pta_fin_annees  = TauxFinPTA.query.order_by(TauxFinPTA.annee).all()
+    pai_fin_annees  = TauxFinPAI.query.order_by(TauxFinPAI.annee).all()
     return render_template('pluriannuel/index.html',
                            annees=annees, pta_annees=pta_annees, pai_annees=pai_annees,
-                           pta_exec_annees=pta_exec_annees, pai_exec_annees=pai_exec_annees)
+                           pta_exec_annees=pta_exec_annees, pai_exec_annees=pai_exec_annees,
+                           pta_fin_annees=pta_fin_annees, pai_fin_annees=pai_fin_annees)
 
 
 # ── Ajouter une année ─────────────────────────────────────────────────────────
@@ -382,4 +385,126 @@ def delete_pai_exec(row_id):
     db.session.commit()
     log_audit('pluriannuel_pai_exec_delete', f"Taux exec PAI {annee_val} supprimé")
     flash(f"Taux exécution PAI {annee_val} supprimé.", 'warning')
+    return redirect(url_for('pluriannuel.index'))
+
+
+# ════════════════════════════════════════════════════════════════
+# Helpers taux financiers
+# ════════════════════════════════════════════════════════════════
+
+_FIN_CHAMPS = ['t1_eng','t1_mand','t1_pmt',
+               't2_eng','t2_mand','t2_pmt',
+               't3_eng','t3_mand','t3_pmt',
+               't4_eng','t4_mand','t4_pmt']
+
+
+def _lire_fin(form):
+    return {c: _parse_taux(form.get(c)) for c in _FIN_CHAMPS}
+
+
+# ════════════════════════════════════════════════════════════════
+# Section VI — Taux d'exécution financière PTA
+# ════════════════════════════════════════════════════════════════
+
+@pluriannuel_bp.route('/pta-fin/add', methods=['POST'])
+@editeur_only
+def add_pta_fin():
+    try:
+        annee_val = int(request.form.get('annee', 0))
+    except (TypeError, ValueError):
+        flash("Année invalide.", 'danger')
+        return redirect(url_for('pluriannuel.index'))
+    if annee_val < 2000 or annee_val > 2100:
+        flash("Année hors plage (2000–2100).", 'danger')
+        return redirect(url_for('pluriannuel.index'))
+    if TauxFinPTA.query.filter_by(annee=annee_val).first():
+        flash(f"L'année {annee_val} existe déjà (taux fin PTA).", 'warning')
+        return redirect(url_for('pluriannuel.index'))
+    vals = _lire_fin(request.form)
+    row = TauxFinPTA(annee=annee_val, date_maj=datetime.now(timezone.utc),
+                     modified_by_id=current_user.id, **vals)
+    db.session.add(row)
+    db.session.commit()
+    log_audit('pluriannuel_pta_fin_add', f"Taux fin PTA {annee_val} ajouté")
+    flash(f"Taux financiers PTA {annee_val} ajoutés.", 'success')
+    return redirect(url_for('pluriannuel.index'))
+
+
+@pluriannuel_bp.route('/pta-fin/edit/<int:row_id>', methods=['POST'])
+@editeur_only
+def edit_pta_fin(row_id):
+    row = db.get_or_404(TauxFinPTA, row_id)
+    for c, v in _lire_fin(request.form).items():
+        setattr(row, c, v)
+    row.date_maj = datetime.now(timezone.utc)
+    row.modified_by_id = current_user.id
+    db.session.commit()
+    log_audit('pluriannuel_pta_fin_edit', f"Taux fin PTA {row.annee} modifié")
+    flash(f"Taux financiers PTA {row.annee} mis à jour.", 'success')
+    return redirect(url_for('pluriannuel.index'))
+
+
+@pluriannuel_bp.route('/pta-fin/delete/<int:row_id>', methods=['POST'])
+@editeur_only
+def delete_pta_fin(row_id):
+    row = db.get_or_404(TauxFinPTA, row_id)
+    annee_val = row.annee
+    db.session.delete(row)
+    db.session.commit()
+    log_audit('pluriannuel_pta_fin_delete', f"Taux fin PTA {annee_val} supprimé")
+    flash(f"Taux financiers PTA {annee_val} supprimés.", 'warning')
+    return redirect(url_for('pluriannuel.index'))
+
+
+# ════════════════════════════════════════════════════════════════
+# Section VII — Taux d'exécution financière PAI
+# ════════════════════════════════════════════════════════════════
+
+@pluriannuel_bp.route('/pai-fin/add', methods=['POST'])
+@editeur_only
+def add_pai_fin():
+    try:
+        annee_val = int(request.form.get('annee', 0))
+    except (TypeError, ValueError):
+        flash("Année invalide.", 'danger')
+        return redirect(url_for('pluriannuel.index'))
+    if annee_val < 2000 or annee_val > 2100:
+        flash("Année hors plage (2000–2100).", 'danger')
+        return redirect(url_for('pluriannuel.index'))
+    if TauxFinPAI.query.filter_by(annee=annee_val).first():
+        flash(f"L'année {annee_val} existe déjà (taux fin PAI).", 'warning')
+        return redirect(url_for('pluriannuel.index'))
+    vals = _lire_fin(request.form)
+    row = TauxFinPAI(annee=annee_val, date_maj=datetime.now(timezone.utc),
+                     modified_by_id=current_user.id, **vals)
+    db.session.add(row)
+    db.session.commit()
+    log_audit('pluriannuel_pai_fin_add', f"Taux fin PAI {annee_val} ajouté")
+    flash(f"Taux financiers PAI {annee_val} ajoutés.", 'success')
+    return redirect(url_for('pluriannuel.index'))
+
+
+@pluriannuel_bp.route('/pai-fin/edit/<int:row_id>', methods=['POST'])
+@editeur_only
+def edit_pai_fin(row_id):
+    row = db.get_or_404(TauxFinPAI, row_id)
+    for c, v in _lire_fin(request.form).items():
+        setattr(row, c, v)
+    row.date_maj = datetime.now(timezone.utc)
+    row.modified_by_id = current_user.id
+    db.session.commit()
+    log_audit('pluriannuel_pai_fin_edit', f"Taux fin PAI {row.annee} modifié")
+    flash(f"Taux financiers PAI {row.annee} mis à jour.", 'success')
+    return redirect(url_for('pluriannuel.index'))
+
+
+@pluriannuel_bp.route('/pai-fin/delete/<int:row_id>', methods=['POST'])
+@editeur_only
+def delete_pai_fin(row_id):
+    row = db.get_or_404(TauxFinPAI, row_id)
+    annee_val = row.annee
+    db.session.delete(row)
+    db.session.commit()
+    log_audit('pluriannuel_pai_fin_delete', f"Taux fin PAI {annee_val} supprimé")
+    flash(f"Taux financiers PAI {annee_val} supprimés.", 'warning')
     return redirect(url_for('pluriannuel.index'))

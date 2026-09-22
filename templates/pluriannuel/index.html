@@ -1,5 +1,171 @@
 {% extends "base.html" %}
 
+{# ── Macro : section taux financiers (PTA ou PAI) ──────────────────────────── #}
+{% macro section_taux_fin(titre, num_section, couleur, rows, ep_add, ep_edit, ep_delete, prefixe) %}
+<h5 class="fw-bold text-primary mt-5 mb-3">
+  <i class="fas fa-coins me-2"></i>{{ num_section }}. {{ titre }}
+</h5>
+
+{% if current_user.role == 'admin_editeur' %}
+<div class="card border-0 shadow-sm mb-3" style="border-left:4px solid {{ couleur }} !important;">
+  <div class="card-body py-2">
+    <h6 class="fw-bold mb-1" style="color:{{ couleur }};"><i class="fas fa-plus-circle me-1"></i>Ajouter une année</h6>
+    <small class="text-muted d-block mb-2">Eng. = base engagement · Mand. = base mandatement · Pmt = base paiement · Laisser vide si non disponible.</small>
+    <form method="post" action="{{ url_for(ep_add) }}" class="row g-1 align-items-end">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+      <div class="col-6 col-sm-2 col-md-1">
+        <label class="form-label small mb-1 fw-bold">Année</label>
+        <input type="number" name="annee" class="form-control form-control-sm"
+               placeholder="2026" min="2000" max="2100" required>
+      </div>
+      {% for q in ['T1','T2','T3','T4'] %}
+      <div class="col-12 col-sm-auto d-flex align-items-end gap-1">
+        <div>
+          <label class="form-label small mb-1 text-center d-block" style="color:{{ couleur }};font-weight:600;">{{ q }}</label>
+          <div class="d-flex gap-1">
+            {% for s,lbl in [('eng','Eng.'),('mand','Mand.'),('pmt','Pmt')] %}
+            <div style="width:62px;">
+              <label class="form-label small mb-0" style="font-size:.7rem;">{{ lbl }}</label>
+              <input type="number" name="{{ q|lower }}_{{ s }}" class="form-control form-control-sm px-1"
+                     placeholder="—" min="0" max="100" step="0.01" style="font-size:.78rem;">
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+      <div class="col-auto">
+        <button type="submit" class="btn btn-sm" style="background:{{ couleur }};color:#fff;">
+          <i class="fas fa-plus"></i>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{% if rows %}
+<div class="table-responsive mb-3">
+<table class="table table-bordered table-sm pluri-table mb-0" style="font-size:.78rem;">
+  <thead>
+    <tr>
+      <th rowspan="2" class="text-center align-middle" style="background:{{ couleur }};width:8%;">Année</th>
+      {% for q in ['T1','T2','T3','T4'] %}
+      <th colspan="3" class="text-center" style="background:{{ couleur }};">{{ q }}</th>
+      {% endfor %}
+      {% if current_user.role == 'admin_editeur' %}
+      <th rowspan="2" class="text-center align-middle" style="background:{{ couleur }};width:7%;">Actions</th>
+      {% endif %}
+    </tr>
+    <tr>
+      {% for q in ['t1','t2','t3','t4'] %}
+      <th class="text-center" style="background:{{ couleur }};opacity:.85;">Eng.</th>
+      <th class="text-center" style="background:{{ couleur }};opacity:.85;">Mand.</th>
+      <th class="text-center" style="background:{{ couleur }};opacity:.85;">Pmt</th>
+      {% endfor %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in rows %}
+    <tr>
+      <td class="fw-bold text-center">{{ row.annee }}</td>
+      {% for v in [row.t1_eng, row.t1_mand, row.t1_pmt,
+                   row.t2_eng, row.t2_mand, row.t2_pmt,
+                   row.t3_eng, row.t3_mand, row.t3_pmt,
+                   row.t4_eng, row.t4_mand, row.t4_pmt] %}
+      <td class="text-center">
+        {% if v is not none %}{{ '%.2f'|format(v)|replace('.',',') }}{% else %}—{% endif %}
+      </td>
+      {% endfor %}
+      {% if current_user.role == 'admin_editeur' %}
+      <td class="text-center">
+        <button type="button" class="btn btn-sm py-0 px-1"
+                style="border:1px solid {{ couleur }};color:{{ couleur }};"
+                data-bs-toggle="modal" data-bs-target="#editFinModal{{ prefixe }}{{ row.id }}"
+                title="Modifier">
+          <i class="fas fa-pencil-alt fa-xs"></i>
+        </button>
+        <form method="post" action="{{ url_for(ep_delete, row_id=row.id) }}" style="display:inline;"
+              onsubmit="return confirm('Supprimer {{ row.annee }} (taux financiers {{ prefixe }}) ?');">
+          <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+          <button type="submit" class="btn btn-outline-danger btn-sm py-0 px-1" title="Supprimer">
+            <i class="fas fa-trash fa-xs"></i>
+          </button>
+        </form>
+      </td>
+      {% endif %}
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+
+<h6 class="fw-bold text-secondary mt-3 mb-1" style="font-size:.85rem;">
+  <i class="fas fa-chart-area me-1"></i>Évolution graphique — T4 (taux annuel cumulé)
+</h6>
+{% set chart_min_w = [rows|length * 90, 500]|max %}
+<div style="overflow-x:auto;">
+  <div style="min-width:{{ chart_min_w }}px; height:300px; position:relative;">
+    <canvas id="chartFin{{ prefixe }}"></canvas>
+  </div>
+</div>
+
+{% if current_user.role == 'admin_editeur' %}
+{% for row in rows %}
+<div class="modal fade" id="editFinModal{{ prefixe }}{{ row.id }}" tabindex="-1">
+  <div class="modal-dialog modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header py-2">
+        <h6 class="modal-title fw-bold" style="color:{{ couleur }};">
+          <i class="fas fa-pencil-alt me-1"></i>Taux financiers {{ prefixe }} — {{ row.annee }}
+        </h6>
+        <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="{{ url_for(ep_edit, row_id=row.id) }}">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        <div class="modal-body py-2">
+          <small class="text-muted">Eng. = engagement · Mand. = mandatement · Pmt = paiement · 0–100 %</small>
+          {% for q, tvals in [
+              ('T1', [(row.t1_eng,'t1_eng'),(row.t1_mand,'t1_mand'),(row.t1_pmt,'t1_pmt')]),
+              ('T2', [(row.t2_eng,'t2_eng'),(row.t2_mand,'t2_mand'),(row.t2_pmt,'t2_pmt')]),
+              ('T3', [(row.t3_eng,'t3_eng'),(row.t3_mand,'t3_mand'),(row.t3_pmt,'t3_pmt')]),
+              ('T4', [(row.t4_eng,'t4_eng'),(row.t4_mand,'t4_mand'),(row.t4_pmt,'t4_pmt')]),
+          ] %}
+          <div class="mt-2 mb-1">
+            <span class="fw-bold small" style="color:{{ couleur }};">{{ q }}</span>
+          </div>
+          <div class="row g-1">
+            {% for v, fname in tvals %}
+            {% set lbl = {'eng':'Engagement','mand':'Mandatement','pmt':'Paiement'}[fname.split('_')[1]] %}
+            <div class="col-4">
+              <label class="form-label small mb-0">{{ lbl }} (%)</label>
+              <input type="number" name="{{ fname }}" class="form-control form-control-sm"
+                     value="{{ '%.2f'|format(v) if v is not none else '' }}"
+                     min="0" max="100" step="0.01" placeholder="—">
+            </div>
+            {% endfor %}
+          </div>
+          {% endfor %}
+        </div>
+        <div class="modal-footer py-2">
+          <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-sm" style="background:{{ couleur }};color:#fff;">Enregistrer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endfor %}
+{% endif %}
+
+{% else %}
+<div class="alert alert-info py-2">
+  <i class="fas fa-info-circle me-2"></i>Aucun taux financier {{ prefixe }} saisi.
+  {% if current_user.role == 'admin_editeur' %}Utilisez le formulaire ci-dessus pour commencer.{% endif %}
+</div>
+{% endif %}
+{% endmacro %}
+
 {% block title %}Suivi Pluriannuel — Mairie d'Adja-Ouèrè{% endblock %}
 
 {% block page_title %}
@@ -757,6 +923,29 @@
 </div>
 {% endif %}
 
+
+{# ════════════════════════════════════════════════════════════════════════════ #}
+{# VI & VII — TAUX FINANCIERS PTA / PAI                                         #}
+{# ════════════════════════════════════════════════════════════════════════════ #}
+
+{{ section_taux_fin(
+     "Taux d'exécution financière du PTA", "VI", "#D35400",
+     pta_fin_annees,
+     'pluriannuel.add_pta_fin',
+     'pluriannuel.edit_pta_fin',
+     'pluriannuel.delete_pta_fin',
+     "PTA"
+) }}
+
+{{ section_taux_fin(
+     "Taux d'exécution financière du PAI", "VII", "#2471A3",
+     pai_fin_annees,
+     'pluriannuel.add_pai_fin',
+     'pluriannuel.edit_pai_fin',
+     'pluriannuel.delete_pai_fin',
+     "PAI"
+) }}
+
 {% endblock %}
 
 {% block scripts %}
@@ -911,6 +1100,61 @@
         borderColor: '#4A235A', pointBackgroundColor: '#4A235A',
         pointRadius: 5, pointHoverRadius: 7, borderWidth: 2.5, fill: false, tension: 0.3 },
     ]
+  );
+  {% endif %}
+
+  // ── Graphiques taux financiers (3 courbes T4 : eng/mand/pmt) ────────────────
+  function makeChartFin(canvasId, labels, eng, mand, pmt, c1, c2, c3) {
+    var ctx = document.getElementById(canvasId);
+    if (!ctx) return;
+    function ds(lbl, data, col) {
+      return { label: lbl, data: data, borderColor: col, pointBackgroundColor: col,
+               pointRadius: 5, pointHoverRadius: 7, borderWidth: 2.5,
+               fill: false, tension: 0.3 };
+    }
+    new Chart(ctx.getContext('2d'), {
+      type: 'line',
+      data: { labels: labels, datasets: [ds('Engagement', eng, c1), ds('Mandatement', mand, c2), ds('Paiement', pmt, c3)] },
+      options: {
+        responsive: true, maintainAspectRatio: false, spanGaps: true,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { position: 'top', labels: { font: { size: 12 }, padding: 14 } },
+          tooltip: {
+            callbacks: {
+              label: function(c) {
+                if (c.parsed.y === null) return null;
+                return ' ' + c.dataset.label + ' : ' + c.parsed.y.toFixed(2).replace('.', ',') + ' %';
+              }
+            }
+          }
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+          y: { min: 0, max: 100, grid: { color: 'rgba(0,0,0,0.06)' },
+               ticks: { font: { size: 10 }, callback: function(v) { return v + ' %'; }, stepSize: 20 } }
+        }
+      }
+    });
+  }
+
+  {% if pta_fin_annees %}
+  makeChartFin('chartFinPTA',
+    {{ pta_fin_annees | map(attribute='annee') | list | tojson }},
+    {{ pta_fin_annees | map(attribute='t4_eng') | list | tojson }},
+    {{ pta_fin_annees | map(attribute='t4_mand') | list | tojson }},
+    {{ pta_fin_annees | map(attribute='t4_pmt') | list | tojson }},
+    '#D35400', '#E59866', '#922B21'
+  );
+  {% endif %}
+
+  {% if pai_fin_annees %}
+  makeChartFin('chartFinPAI',
+    {{ pai_fin_annees | map(attribute='annee') | list | tojson }},
+    {{ pai_fin_annees | map(attribute='t4_eng') | list | tojson }},
+    {{ pai_fin_annees | map(attribute='t4_mand') | list | tojson }},
+    {{ pai_fin_annees | map(attribute='t4_pmt') | list | tojson }},
+    '#2471A3', '#5DADE2', '#154360'
   );
   {% endif %}
 

@@ -48,17 +48,6 @@ def _parse_taux(v):
         return None
 
 
-def _valider_taux(t1, t2, t3, t4):
-    """Vérifie la non-décroissance T1→T4 (ignore les None).
-    Retourne un message d'erreur ou None si OK."""
-    vals = [(i+1, v) for i, v in enumerate([t1, t2, t3, t4]) if v is not None]
-    for idx in range(len(vals) - 1):
-        num_a, va = vals[idx]
-        num_b, vb = vals[idx + 1]
-        if vb < va:
-            return (f"T{num_b} ({vb:.2f} %) ne peut pas être inférieur à "
-                    f"T{num_a} ({va:.2f} %) — le taux d'exécution est cumulatif.")
-    return None
 
 
 @pluriannuel_bp.route('/')
@@ -308,10 +297,6 @@ def add_pta_exec():
     t2 = _parse_taux(request.form.get('t2'))
     t3 = _parse_taux(request.form.get('t3'))
     t4 = _parse_taux(request.form.get('t4'))
-    err = _valider_taux(t1, t2, t3, t4)
-    if err:
-        flash(f"Taux PTA {annee_val} — {err}", 'danger')
-        return _redir('#section-pta-exec')
     row = TauxExecPTA(annee=annee_val, t1=t1, t2=t2, t3=t3, t4=t4,
                       date_maj=datetime.now(timezone.utc), modified_by_id=current_user.id)
     db.session.add(row)
@@ -329,10 +314,6 @@ def edit_pta_exec(row_id):
     t2 = _parse_taux(request.form.get('t2'))
     t3 = _parse_taux(request.form.get('t3'))
     t4 = _parse_taux(request.form.get('t4'))
-    err = _valider_taux(t1, t2, t3, t4)
-    if err:
-        flash(f"Taux PTA {row.annee} — {err}", 'danger')
-        return _redir('#section-pta-exec')
     row.t1 = t1; row.t2 = t2; row.t3 = t3; row.t4 = t4
     row.date_maj = datetime.now(timezone.utc)
     row.modified_by_id = current_user.id
@@ -376,10 +357,6 @@ def add_pai_exec():
     t2 = _parse_taux(request.form.get('t2'))
     t3 = _parse_taux(request.form.get('t3'))
     t4 = _parse_taux(request.form.get('t4'))
-    err = _valider_taux(t1, t2, t3, t4)
-    if err:
-        flash(f"Taux PAI {annee_val} — {err}", 'danger')
-        return _redir('#section-pai-exec')
     row = TauxExecPAI(annee=annee_val, t1=t1, t2=t2, t3=t3, t4=t4,
                       date_maj=datetime.now(timezone.utc), modified_by_id=current_user.id)
     db.session.add(row)
@@ -397,10 +374,6 @@ def edit_pai_exec(row_id):
     t2 = _parse_taux(request.form.get('t2'))
     t3 = _parse_taux(request.form.get('t3'))
     t4 = _parse_taux(request.form.get('t4'))
-    err = _valider_taux(t1, t2, t3, t4)
-    if err:
-        flash(f"Taux PAI {row.annee} — {err}", 'danger')
-        return _redir('#section-pai-exec')
     row.t1 = t1; row.t2 = t2; row.t3 = t3; row.t4 = t4
     row.date_maj = datetime.now(timezone.utc)
     row.modified_by_id = current_user.id
@@ -793,10 +766,6 @@ def add_dir_exec():
     t2 = _parse_taux(request.form.get('t2'))
     t3 = _parse_taux(request.form.get('t3'))
     t4 = _parse_taux(request.form.get('t4'))
-    err = _valider_taux(t1, t2, t3, t4)
-    if err:
-        flash(err, 'danger')
-        return _redir('#section-dir-exec')
     db.session.add(TauxExecDirection(
         annee=annee_val, direction_id=dir_id, t1=t1, t2=t2, t3=t3, t4=t4,
         date_maj=datetime.now(timezone.utc), modified_by_id=current_user.id))
@@ -814,10 +783,6 @@ def edit_dir_exec(row_id):
     t2 = _parse_taux(request.form.get('t2'))
     t3 = _parse_taux(request.form.get('t3'))
     t4 = _parse_taux(request.form.get('t4'))
-    err = _valider_taux(t1, t2, t3, t4)
-    if err:
-        flash(err, 'danger')
-        return _redir('#section-dir-exec')
     row.t1 = t1; row.t2 = t2; row.t3 = t3; row.t4 = t4
     row.date_maj = datetime.now(timezone.utc)
     row.modified_by_id = current_user.id
@@ -865,10 +830,6 @@ def add_svc_exec():
     t2 = _parse_taux(request.form.get('t2'))
     t3 = _parse_taux(request.form.get('t3'))
     t4 = _parse_taux(request.form.get('t4'))
-    err = _valider_taux(t1, t2, t3, t4)
-    if err:
-        flash(err, 'danger')
-        return _redir('#section-svc-exec')
     db.session.add(TauxExecService(
         annee=annee_val, service_id=svc_id, t1=t1, t2=t2, t3=t3, t4=t4,
         date_maj=datetime.now(timezone.utc), modified_by_id=current_user.id))
@@ -886,10 +847,6 @@ def edit_svc_exec(row_id):
     t2 = _parse_taux(request.form.get('t2'))
     t3 = _parse_taux(request.form.get('t3'))
     t4 = _parse_taux(request.form.get('t4'))
-    err = _valider_taux(t1, t2, t3, t4)
-    if err:
-        flash(err, 'danger')
-        return _redir('#section-svc-exec')
     row.t1 = t1; row.t2 = t2; row.t3 = t3; row.t4 = t4
     row.date_maj = datetime.now(timezone.utc)
     row.modified_by_id = current_user.id

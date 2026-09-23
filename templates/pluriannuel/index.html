@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 
 {# ── Macro : section taux financiers (PTA ou PAI) ──────────────────────────── #}
 {% macro section_taux_fin(titre, num_section, couleur, rows, ep_add, ep_edit, ep_delete, prefixe, canvas_id=none, section_id=none) %}
@@ -845,9 +845,7 @@
 <div class="card border-0 shadow-sm mb-4" style="border-left:4px solid #1E8449 !important;">
   <div class="card-body py-2">
     <h6 class="fw-bold mb-2" style="color:#1E8449;"><i class="fas fa-plus-circle me-1"></i>Ajouter une année</h6>
-    <small class="text-muted d-block mb-2">Les taux sont cumulatifs : T1 ≤ T2 ≤ T3 ≤ T4. Laisser vide si le trimestre n'est pas encore terminé.</small>
-    <form method="post" action="{{ url_for('pluriannuel.add_pta_exec') }}" class="row g-2 align-items-end"
-          onsubmit="return validerTaux(this, 'err-pta-exec-add')">
+    <form method="post" action="{{ url_for('pluriannuel.add_pta_exec') }}" class="row g-2 align-items-end">
       <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
       <div class="col-6 col-sm-2 col-md-2">
         <label class="form-label small mb-1">Année</label>
@@ -866,7 +864,6 @@
           <i class="fas fa-plus me-1"></i>Ajouter
         </button>
       </div>
-      <div id="err-pta-exec-add" class="col-12 alert alert-danger py-1 mb-0 d-none" style="font-size:.83rem;"></div>
     </form>
   </div>
 </div>
@@ -935,11 +932,9 @@
         <h6 class="modal-title fw-bold"><i class="fas fa-pencil-alt me-1"></i>Taux PTA — {{ row.annee }}</h6>
         <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal"></button>
       </div>
-      <form method="post" action="{{ url_for('pluriannuel.edit_pta_exec', row_id=row.id) }}"
-            onsubmit="return validerTaux(this, 'err-pta-exec-edit-{{ row.id }}')">
+      <form method="post" action="{{ url_for('pluriannuel.edit_pta_exec', row_id=row.id) }}">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
         <div class="modal-body py-2">
-          <small class="text-muted">Taux cumulatifs : T1 ≤ T2 ≤ T3 ≤ T4. Vider = trimestre non disponible.</small>
           {% for q, v in [('t1', row.t1), ('t2', row.t2), ('t3', row.t3), ('t4', row.t4)] %}
           <div class="mb-2 mt-2">
             <label class="form-label small mb-1">{{ q|upper }} (%)</label>
@@ -948,7 +943,6 @@
                    min="0" max="100" step="0.01" placeholder="—">
           </div>
           {% endfor %}
-          <div id="err-pta-exec-edit-{{ row.id }}" class="alert alert-danger py-1 d-none mt-2 mb-0" style="font-size:.83rem;"></div>
         </div>
         <div class="modal-footer py-2">
           <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Annuler</button>
@@ -981,9 +975,7 @@
 <div class="card border-0 shadow-sm mb-4" style="border-left:4px solid #7D3C98 !important;">
   <div class="card-body py-2">
     <h6 class="fw-bold mb-2" style="color:#7D3C98;"><i class="fas fa-plus-circle me-1"></i>Ajouter une année</h6>
-    <small class="text-muted d-block mb-2">Les taux sont cumulatifs : T1 ≤ T2 ≤ T3 ≤ T4. Laisser vide si le trimestre n'est pas encore terminé.</small>
-    <form method="post" action="{{ url_for('pluriannuel.add_pai_exec') }}" class="row g-2 align-items-end"
-          onsubmit="return validerTaux(this, 'err-pai-exec-add')">
+    <form method="post" action="{{ url_for('pluriannuel.add_pai_exec') }}" class="row g-2 align-items-end">
       <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
       <div class="col-6 col-sm-2 col-md-2">
         <label class="form-label small mb-1">Année</label>
@@ -1002,7 +994,6 @@
           <i class="fas fa-plus me-1"></i>Ajouter
         </button>
       </div>
-      <div id="err-pai-exec-add" class="col-12 alert alert-danger py-1 mb-0 d-none" style="font-size:.83rem;"></div>
     </form>
   </div>
 </div>
@@ -1071,11 +1062,9 @@
         <h6 class="modal-title fw-bold"><i class="fas fa-pencil-alt me-1"></i>Taux PAI — {{ row.annee }}</h6>
         <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal"></button>
       </div>
-      <form method="post" action="{{ url_for('pluriannuel.edit_pai_exec', row_id=row.id) }}"
-            onsubmit="return validerTaux(this, 'err-pai-exec-edit-{{ row.id }}')">
+      <form method="post" action="{{ url_for('pluriannuel.edit_pai_exec', row_id=row.id) }}">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
         <div class="modal-body py-2">
-          <small class="text-muted">Taux cumulatifs : T1 ≤ T2 ≤ T3 ≤ T4. Vider = trimestre non disponible.</small>
           {% for q, v in [('t1', row.t1), ('t2', row.t2), ('t3', row.t3), ('t4', row.t4)] %}
           <div class="mb-2 mt-2">
             <label class="form-label small mb-1">{{ q|upper }} (%)</label>
@@ -1084,7 +1073,6 @@
                    min="0" max="100" step="0.01" placeholder="—">
           </div>
           {% endfor %}
-          <div id="err-pai-exec-edit-{{ row.id }}" class="alert alert-danger py-1 d-none mt-2 mb-0" style="font-size:.83rem;"></div>
         </div>
         <div class="modal-footer py-2">
           <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Annuler</button>
@@ -1193,9 +1181,7 @@
 <div class="card border-0 shadow-sm mb-3" style="border-left:4px solid #1A237E !important;">
   <div class="card-body py-2">
     <h6 class="fw-bold mb-2" style="color:#1A237E;"><i class="fas fa-plus-circle me-1"></i>Ajouter une ligne</h6>
-    <small class="text-muted d-block mb-2">Taux cumulatifs : T1 ≤ T2 ≤ T3 ≤ T4. Laisser vide si non disponible.</small>
-    <form method="post" action="{{ url_for('pluriannuel.add_dir_exec') }}" class="row g-2 align-items-end"
-          onsubmit="return validerTaux(this,'err-dir-exec-add')">
+    <form method="post" action="{{ url_for('pluriannuel.add_dir_exec') }}" class="row g-2 align-items-end">
       <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
       <div class="col-6 col-sm-2">
         <label class="form-label small mb-1">Année</label>
@@ -1223,7 +1209,6 @@
           <i class="fas fa-plus"></i>
         </button>
       </div>
-      <div id="err-dir-exec-add" class="col-12 alert alert-danger py-1 mb-0 d-none" style="font-size:.83rem;"></div>
     </form>
   </div>
 </div>
@@ -1294,11 +1279,9 @@
         </h6>
         <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal"></button>
       </div>
-      <form method="post" action="{{ url_for('pluriannuel.edit_dir_exec', row_id=row.id) }}"
-            onsubmit="return validerTaux(this,'err-dir-exec-edit-{{ row.id }}')">
+      <form method="post" action="{{ url_for('pluriannuel.edit_dir_exec', row_id=row.id) }}">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
         <div class="modal-body py-2">
-          <small class="text-muted">T1 ≤ T2 ≤ T3 ≤ T4 — cumulatifs. 0–100 %.</small>
           {% for q, v in [('t1', row.t1), ('t2', row.t2), ('t3', row.t3), ('t4', row.t4)] %}
           <div class="mb-2 mt-2">
             <label class="form-label small mb-1">{{ q|upper }} (%)</label>
@@ -1307,7 +1290,6 @@
                    min="0" max="100" step="0.01" placeholder="—">
           </div>
           {% endfor %}
-          <div id="err-dir-exec-edit-{{ row.id }}" class="alert alert-danger py-1 d-none mt-2 mb-0" style="font-size:.83rem;"></div>
         </div>
         <div class="modal-footer py-2">
           <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Annuler</button>
@@ -1353,9 +1335,7 @@
 <div class="card border-0 shadow-sm mb-3" style="border-left:4px solid #006064 !important;">
   <div class="card-body py-2">
     <h6 class="fw-bold mb-2" style="color:#006064;"><i class="fas fa-plus-circle me-1"></i>Ajouter une ligne</h6>
-    <small class="text-muted d-block mb-2">Taux cumulatifs : T1 ≤ T2 ≤ T3 ≤ T4. Laisser vide si non disponible.</small>
-    <form method="post" action="{{ url_for('pluriannuel.add_svc_exec') }}" class="row g-2 align-items-end"
-          onsubmit="return validerTaux(this,'err-svc-exec-add')">
+    <form method="post" action="{{ url_for('pluriannuel.add_svc_exec') }}" class="row g-2 align-items-end">
       <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
       <div class="col-6 col-sm-2">
         <label class="form-label small mb-1">Année</label>
@@ -1383,7 +1363,6 @@
           <i class="fas fa-plus"></i>
         </button>
       </div>
-      <div id="err-svc-exec-add" class="col-12 alert alert-danger py-1 mb-0 d-none" style="font-size:.83rem;"></div>
     </form>
   </div>
 </div>
@@ -1454,11 +1433,9 @@
         </h6>
         <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal"></button>
       </div>
-      <form method="post" action="{{ url_for('pluriannuel.edit_svc_exec', row_id=row.id) }}"
-            onsubmit="return validerTaux(this,'err-svc-exec-edit-{{ row.id }}')">
+      <form method="post" action="{{ url_for('pluriannuel.edit_svc_exec', row_id=row.id) }}">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
         <div class="modal-body py-2">
-          <small class="text-muted">T1 ≤ T2 ≤ T3 ≤ T4 — cumulatifs. 0–100 %.</small>
           {% for q, v in [('t1', row.t1), ('t2', row.t2), ('t3', row.t3), ('t4', row.t4)] %}
           <div class="mb-2 mt-2">
             <label class="form-label small mb-1">{{ q|upper }} (%)</label>
@@ -1467,7 +1444,6 @@
                    min="0" max="100" step="0.01" placeholder="—">
           </div>
           {% endfor %}
-          <div id="err-svc-exec-edit-{{ row.id }}" class="alert alert-danger py-1 d-none mt-2 mb-0" style="font-size:.83rem;"></div>
         </div>
         <div class="modal-footer py-2">
           <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Annuler</button>
@@ -1553,23 +1529,6 @@
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script>
-// ── Validation côté client T1 ≤ T2 ≤ T3 ≤ T4 ──────────────────────────────
-function validerTaux(formEl, errId) {
-  var noms = ['t1','t2','t3','t4'];
-  var vals = noms.map(function(n) {
-    var inp = formEl.elements[n];
-    if (!inp || inp.value === '') return null;
-    var v = parseFloat(inp.value);
-    return isNaN(v) ? null : v;
-  });
-  var errDiv = document.getElementById(errId);
-  for (var i = 0; i < 3; i++) {
-    if (vals[i] !== null && vals[i+1] !== null && vals[i+1] < vals[i]) {
-      var msg = '⚠️ T' + (i+2) + ' (' + vals[i+1].toFixed(2).replace('.',',') + ' %) '
-              + 'ne peut pas être inférieur à '
-              + 'T' + (i+1) + ' (' + vals[i].toFixed(2).replace('.',',') + ' %) '
-              + '— le taux est cumulatif.';
-      if (errDiv) { errDiv.textContent = msg; errDiv.classList.remove('d-none'); }
       return false;
     }
   }

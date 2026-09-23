@@ -36,3 +36,6 @@ desktop.ini
 
 # Claude (usage local uniquement)
 .claude/
+
+# Documentation technique locale (ne pas versionner)
+ARCHITECTURE.md

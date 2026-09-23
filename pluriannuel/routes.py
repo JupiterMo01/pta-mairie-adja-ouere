@@ -48,6 +48,28 @@ def _parse_taux(v):
         return None
 
 
+def _parse_taux_libre(v):
+    """Retourne un float >= 0 ou None si vide (pas de plafond — efficacité peut dépasser 100 %)."""
+    s = str(v or '').replace(' ', '').replace(',', '.')
+    if not s:
+        return None
+    try:
+        return max(0.0, round(float(s), 2))
+    except (TypeError, ValueError):
+        return None
+
+
+def _parse_indice(v):
+    """Retourne un float >= 0 ou None si vide (indice décimal, précision 3 décimales)."""
+    s = str(v or '').replace(' ', '').replace(',', '.')
+    if not s:
+        return None
+    try:
+        return max(0.0, round(float(s), 3))
+    except (TypeError, ValueError):
+        return None
+
+
 
 
 @pluriannuel_bp.route('/')
@@ -409,6 +431,11 @@ def _lire_fin(form):
     return {c: _parse_taux(form.get(c)) for c in _FIN_CHAMPS}
 
 
+def _lire_indice(form):
+    """Lit les 12 champs eng/mand/pmt sans plafond (indices décimaux)."""
+    return {c: _parse_indice(form.get(c)) for c in _FIN_CHAMPS}
+
+
 # ════════════════════════════════════════════════════════════════
 # Section VI — Taux d'exécution financière PTA
 # ════════════════════════════════════════════════════════════════
@@ -544,10 +571,10 @@ def add_pta_efficacite():
     if TauxEfficacitePTA.query.filter_by(annee=annee_val).first():
         flash(f"L'année {annee_val} existe déjà (efficacité PTA).", 'warning')
         return _redir('#section-pta-efficacite')
-    t1 = _parse_taux(request.form.get('t1'))
-    t2 = _parse_taux(request.form.get('t2'))
-    t3 = _parse_taux(request.form.get('t3'))
-    t4 = _parse_taux(request.form.get('t4'))
+    t1 = _parse_taux_libre(request.form.get('t1'))
+    t2 = _parse_taux_libre(request.form.get('t2'))
+    t3 = _parse_taux_libre(request.form.get('t3'))
+    t4 = _parse_taux_libre(request.form.get('t4'))
     db.session.add(TauxEfficacitePTA(annee=annee_val, t1=t1, t2=t2, t3=t3, t4=t4,
                                      date_maj=datetime.now(timezone.utc), modified_by_id=current_user.id))
     db.session.commit()
@@ -560,10 +587,10 @@ def add_pta_efficacite():
 @editeur_only
 def edit_pta_efficacite(row_id):
     row = db.get_or_404(TauxEfficacitePTA, row_id)
-    row.t1 = _parse_taux(request.form.get('t1'))
-    row.t2 = _parse_taux(request.form.get('t2'))
-    row.t3 = _parse_taux(request.form.get('t3'))
-    row.t4 = _parse_taux(request.form.get('t4'))
+    row.t1 = _parse_taux_libre(request.form.get('t1'))
+    row.t2 = _parse_taux_libre(request.form.get('t2'))
+    row.t3 = _parse_taux_libre(request.form.get('t3'))
+    row.t4 = _parse_taux_libre(request.form.get('t4'))
     row.date_maj = datetime.now(timezone.utc)
     row.modified_by_id = current_user.id
     db.session.commit()
@@ -598,10 +625,10 @@ def add_pai_efficacite():
     if TauxEfficacitePAI.query.filter_by(annee=annee_val).first():
         flash(f"L'année {annee_val} existe déjà (efficacité PAI).", 'warning')
         return _redir('#section-pai-efficacite')
-    t1 = _parse_taux(request.form.get('t1'))
-    t2 = _parse_taux(request.form.get('t2'))
-    t3 = _parse_taux(request.form.get('t3'))
-    t4 = _parse_taux(request.form.get('t4'))
+    t1 = _parse_taux_libre(request.form.get('t1'))
+    t2 = _parse_taux_libre(request.form.get('t2'))
+    t3 = _parse_taux_libre(request.form.get('t3'))
+    t4 = _parse_taux_libre(request.form.get('t4'))
     db.session.add(TauxEfficacitePAI(annee=annee_val, t1=t1, t2=t2, t3=t3, t4=t4,
                                      date_maj=datetime.now(timezone.utc), modified_by_id=current_user.id))
     db.session.commit()
@@ -614,10 +641,10 @@ def add_pai_efficacite():
 @editeur_only
 def edit_pai_efficacite(row_id):
     row = db.get_or_404(TauxEfficacitePAI, row_id)
-    row.t1 = _parse_taux(request.form.get('t1'))
-    row.t2 = _parse_taux(request.form.get('t2'))
-    row.t3 = _parse_taux(request.form.get('t3'))
-    row.t4 = _parse_taux(request.form.get('t4'))
+    row.t1 = _parse_taux_libre(request.form.get('t1'))
+    row.t2 = _parse_taux_libre(request.form.get('t2'))
+    row.t3 = _parse_taux_libre(request.form.get('t3'))
+    row.t4 = _parse_taux_libre(request.form.get('t4'))
     row.date_maj = datetime.now(timezone.utc)
     row.modified_by_id = current_user.id
     db.session.commit()
@@ -656,7 +683,7 @@ def add_pta_efficience():
     if TauxEfficiencePTA.query.filter_by(annee=annee_val).first():
         flash(f"L'année {annee_val} existe déjà (efficience PTA).", 'warning')
         return _redir('#section-pta-efficience')
-    vals = _lire_fin(request.form)
+    vals = _lire_indice(request.form)
     db.session.add(TauxEfficiencePTA(annee=annee_val, date_maj=datetime.now(timezone.utc),
                                      modified_by_id=current_user.id, **vals))
     db.session.commit()
@@ -669,7 +696,7 @@ def add_pta_efficience():
 @editeur_only
 def edit_pta_efficience(row_id):
     row = db.get_or_404(TauxEfficiencePTA, row_id)
-    for c, v in _lire_fin(request.form).items():
+    for c, v in _lire_indice(request.form).items():
         setattr(row, c, v)
     row.date_maj = datetime.now(timezone.utc)
     row.modified_by_id = current_user.id
@@ -705,7 +732,7 @@ def add_pai_efficience():
     if TauxEfficiencePAI.query.filter_by(annee=annee_val).first():
         flash(f"L'année {annee_val} existe déjà (efficience PAI).", 'warning')
         return _redir('#section-pai-efficience')
-    vals = _lire_fin(request.form)
+    vals = _lire_indice(request.form)
     db.session.add(TauxEfficiencePAI(annee=annee_val, date_maj=datetime.now(timezone.utc),
                                      modified_by_id=current_user.id, **vals))
     db.session.commit()
@@ -718,7 +745,7 @@ def add_pai_efficience():
 @editeur_only
 def edit_pai_efficience(row_id):
     row = db.get_or_404(TauxEfficiencePAI, row_id)
-    for c, v in _lire_fin(request.form).items():
+    for c, v in _lire_indice(request.form).items():
         setattr(row, c, v)
     row.date_maj = datetime.now(timezone.utc)
     row.modified_by_id = current_user.id
@@ -1226,12 +1253,12 @@ def export_excel():
         if 'X' in sections:
             _write_taux_fin_sheet(
                 wb.create_sheet('X-Efficience PTA'),
-                "X — Taux d'efficience PTA",
+                "X — Indice d'efficience PTA",
                 TauxEfficiencePTA.query.order_by(TauxEfficiencePTA.annee).all())
         if 'XI' in sections:
             _write_taux_fin_sheet(
                 wb.create_sheet('XI-Efficience PAI'),
-                "XI — Taux d'efficience PAI",
+                "XI — Indice d'efficience PAI",
                 TauxEfficiencePAI.query.order_by(TauxEfficiencePAI.annee).all())
         if 'XII' in sections:
             _write_taux_entite_sheet(

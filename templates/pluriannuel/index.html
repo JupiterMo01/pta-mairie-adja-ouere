@@ -1,7 +1,7 @@
 ﻿{% extends "base.html" %}
 
 {# ── Macro : section taux financiers (PTA ou PAI) ──────────────────────────── #}
-{% macro section_taux_fin(titre, num_section, couleur, rows, ep_add, ep_edit, ep_delete, prefixe, canvas_id=none, section_id=none) %}
+{% macro section_taux_fin(titre, num_section, couleur, rows, ep_add, ep_edit, ep_delete, prefixe, canvas_id=none, section_id=none, indice=false) %}
 {%- set _cid = canvas_id if canvas_id else 'chartFin' ~ prefixe -%}
 {%- set _sid = section_id if section_id else 'section-' ~ prefixe|lower ~ '-fin' -%}
 <h5 id="{{ _sid }}" class="fw-bold text-primary mt-5 mb-3">
@@ -12,7 +12,11 @@
 <div class="card border-0 shadow-sm mb-3" style="border-left:4px solid {{ couleur }} !important;">
   <div class="card-body py-2">
     <h6 class="fw-bold mb-1" style="color:{{ couleur }};"><i class="fas fa-plus-circle me-1"></i>Ajouter une année</h6>
+    {% if indice %}
+    <small class="text-muted d-block mb-2">Valeurs décimales (indice). Ex : 0,85 ou 1,20. Laisser vide si non disponible.</small>
+    {% else %}
     <small class="text-muted d-block mb-2">Eng. = base engagement · Mand. = base mandatement · Pmt = base paiement · Laisser vide si non disponible.</small>
+    {% endif %}
     <form method="post" action="{{ url_for(ep_add) }}" class="row g-1 align-items-end">
       <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
       <div class="col-6 col-sm-2 col-md-1">
@@ -29,7 +33,7 @@
             <div style="width:62px;">
               <label class="form-label small mb-0" style="font-size:.7rem;">{{ lbl }}</label>
               <input type="number" name="{{ q|lower }}_{{ s }}" class="form-control form-control-sm px-1"
-                     placeholder="—" min="0" max="100" step="0.01" style="font-size:.78rem;">
+                     placeholder="—" {% if not indice %}min="0" max="100"{% endif %} step="{{ '0.001' if indice else '0.01' }}" style="font-size:.78rem;">
             </div>
             {% endfor %}
           </div>
@@ -126,7 +130,11 @@
       <form method="post" action="{{ url_for(ep_edit, row_id=row.id) }}">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
         <div class="modal-body py-2">
+          {% if indice %}
+          <small class="text-muted">Valeurs décimales (indice). Vider = non disponible.</small>
+          {% else %}
           <small class="text-muted">Eng. = engagement · Mand. = mandatement · Pmt = paiement · 0–100 %</small>
+          {% endif %}
           {% for q, tvals in [
               ('T1', [(row.t1_eng,'t1_eng'),(row.t1_mand,'t1_mand'),(row.t1_pmt,'t1_pmt')]),
               ('T2', [(row.t2_eng,'t2_eng'),(row.t2_mand,'t2_mand'),(row.t2_pmt,'t2_pmt')]),
@@ -140,10 +148,10 @@
             {% for v, fname in tvals %}
             {% set lbl = {'eng':'Engagement','mand':'Mandatement','pmt':'Paiement'}[fname.split('_')[1]] %}
             <div class="col-4">
-              <label class="form-label small mb-0">{{ lbl }} (%)</label>
+              <label class="form-label small mb-0">{{ lbl }}{% if not indice %} (%){% endif %}</label>
               <input type="number" name="{{ fname }}" class="form-control form-control-sm"
-                     value="{{ '%.2f'|format(v) if v is not none else '' }}"
-                     min="0" max="100" step="0.01" placeholder="—">
+                     value="{{ '%.3f'|format(v) if (v is not none and indice) else ('%.2f'|format(v) if v is not none else '') }}"
+                     {% if not indice %}min="0" max="100"{% endif %} step="{{ '0.001' if indice else '0.01' }}" placeholder="—">
             </div>
             {% endfor %}
           </div>
@@ -162,7 +170,7 @@
 
 {% else %}
 <div class="alert alert-info py-2">
-  <i class="fas fa-info-circle me-2"></i>Aucun taux financier {{ prefixe }} saisi.
+  <i class="fas fa-info-circle me-2"></i>{% if indice %}Aucun indice d'efficience {{ prefixe }} saisi.{% else %}Aucun taux financier {{ prefixe }} saisi.{% endif %}
   {% if current_user.role == 'admin_editeur' %}Utilisez le formulaire ci-dessus pour commencer.{% endif %}
 </div>
 {% endif %}
@@ -180,7 +188,7 @@
 <div class="card border-0 shadow-sm mb-4" style="border-left:4px solid {{ couleur }} !important;">
   <div class="card-body py-2">
     <h6 class="fw-bold mb-2" style="color:{{ couleur }};"><i class="fas fa-plus-circle me-1"></i>Ajouter une année</h6>
-    <small class="text-muted d-block mb-2">Valeurs comprises entre 0 et 100 %. Laisser vide si non disponible.</small>
+    <small class="text-muted d-block mb-2">Valeurs en %. Peut dépasser 100 %. Laisser vide si non disponible.</small>
     <form method="post" action="{{ url_for(ep_add) }}" class="row g-2 align-items-end">
       <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
       <div class="col-6 col-sm-2 col-md-2">
@@ -192,7 +200,7 @@
       <div class="col-6 col-sm-2">
         <label class="form-label small mb-1">{{ q|upper }} (%)</label>
         <input type="number" name="{{ q }}" class="form-control form-control-sm"
-               placeholder="—" min="0" max="100" step="0.01">
+               placeholder="—" step="0.01">
       </div>
       {% endfor %}
       <div class="col-12 col-sm-auto">
@@ -274,13 +282,13 @@
       <form method="post" action="{{ url_for(ep_edit, row_id=row.id) }}">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
         <div class="modal-body py-2">
-          <small class="text-muted">0 – 100 %. Vider = non disponible.</small>
+          <small class="text-muted">Valeurs en %. Peut dépasser 100 %. Vider = non disponible.</small>
           {% for q, v in [('t1', row.t1), ('t2', row.t2), ('t3', row.t3), ('t4', row.t4)] %}
           <div class="mb-2 mt-2">
             <label class="form-label small mb-1">{{ q|upper }} (%)</label>
             <input type="number" name="{{ q }}" class="form-control form-control-sm"
                    value="{{ '%.2f'|format(v) if v is not none else '' }}"
-                   min="0" max="100" step="0.01" placeholder="—">
+                   step="0.01" placeholder="—">
           </div>
           {% endfor %}
         </div>
@@ -347,8 +355,8 @@
         <div class="col"><a href="#section-pai-fin" class="toc-link"><i class="fas fa-circle fa-xs me-1" style="color:#2471A3;"></i>VII. Taux d'exécution financière du PAI</a></div>
         <div class="col"><a href="#section-pta-efficacite" class="toc-link"><i class="fas fa-circle fa-xs me-1" style="color:#1A5276;"></i>VIII. Taux d'efficacité du PTA</a></div>
         <div class="col"><a href="#section-pai-efficacite" class="toc-link"><i class="fas fa-circle fa-xs me-1" style="color:#6C3483;"></i>IX. Taux d'efficacité du PAI</a></div>
-        <div class="col"><a href="#section-pta-efficience" class="toc-link"><i class="fas fa-circle fa-xs me-1" style="color:#922B21;"></i>X. Taux d'efficience du PTA</a></div>
-        <div class="col"><a href="#section-pai-efficience" class="toc-link"><i class="fas fa-circle fa-xs me-1" style="color:#117A65;"></i>XI. Taux d'efficience du PAI</a></div>
+        <div class="col"><a href="#section-pta-efficience" class="toc-link"><i class="fas fa-circle fa-xs me-1" style="color:#922B21;"></i>X. Indice d'efficience du PTA</a></div>
+        <div class="col"><a href="#section-pai-efficience" class="toc-link"><i class="fas fa-circle fa-xs me-1" style="color:#117A65;"></i>XI. Indice d'efficience du PAI</a></div>
         <div class="col"><a href="#section-dir-exec" class="toc-link"><i class="fas fa-circle fa-xs me-1" style="color:#1A237E;"></i>XII. Taux d'exécution par direction</a></div>
         <div class="col"><a href="#section-svc-exec" class="toc-link"><i class="fas fa-circle fa-xs me-1" style="color:#006064;"></i>XIII. Taux d'exécution par service</a></div>
       </div>
@@ -1134,25 +1142,27 @@
 ) }}
 
 {{ section_taux_fin(
-     "Taux d'efficience du PTA", "X", "#922B21",
+     "Indice d'efficience du PTA", "X", "#922B21",
      pta_efficience_annees,
      'pluriannuel.add_pta_efficience',
      'pluriannuel.edit_pta_efficience',
      'pluriannuel.delete_pta_efficience',
      "PTA",
      canvas_id="chartEfficientePTA",
-     section_id="section-pta-efficience"
+     section_id="section-pta-efficience",
+     indice=true
 ) }}
 
 {{ section_taux_fin(
-     "Taux d'efficience du PAI", "XI", "#117A65",
+     "Indice d'efficience du PAI", "XI", "#117A65",
      pai_efficience_annees,
      'pluriannuel.add_pai_efficience',
      'pluriannuel.edit_pai_efficience',
      'pluriannuel.delete_pai_efficience',
      "PAI",
      canvas_id="chartEfficientePAI",
-     section_id="section-pai-efficience"
+     section_id="section-pai-efficience",
+     indice=true
 ) }}
 
 
@@ -1548,8 +1558,8 @@
             ('VII',  'VII. Taux de financement PAI'),
             ('VIII', "VIII. Taux d'efficacité PTA"),
             ('IX',   "IX. Taux d'efficacité PAI"),
-            ('X',    "X. Taux d'efficience PTA"),
-            ('XI',   "XI. Taux d'efficience PAI"),
+            ('X',    "X. Indice d'efficience PTA"),
+            ('XI',   "XI. Indice d'efficience PAI"),
             ('XII',  "XII. Taux d'exécution physique par Direction"),
             ('XIII', "XIII. Taux d'exécution physique par Service"),
           ] %}
@@ -1689,6 +1699,78 @@
     });
   }
 
+  // ── Graphique taux T1-T4 axe libre (efficacité, peut dépasser 100 %) ─────────
+  function makeChartTauxLibre(canvasId, labels, datasets) {
+    var ctx = document.getElementById(canvasId);
+    if (!ctx) return;
+    new Chart(ctx.getContext('2d'), {
+      type: 'line',
+      data: { labels: labels, datasets: datasets },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        spanGaps: true,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { position: 'top', labels: { font: { size: 12 }, padding: 14 } },
+          tooltip: {
+            callbacks: {
+              label: function(c) {
+                if (c.parsed.y === null) return null;
+                return ' ' + c.dataset.label + ' : ' + c.parsed.y.toFixed(2).replace('.', ',') + ' %';
+              }
+            }
+          }
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+          y: {
+            beginAtZero: true,
+            grid: { color: 'rgba(0,0,0,0.06)' },
+            ticks: { font: { size: 10 }, callback: function(v) { return v + ' %'; } }
+          }
+        }
+      }
+    });
+  }
+
+  // ── Graphique indice d'efficience (décimal, axe libre, pas de %) ─────────────
+  function makeChartIndice(canvasId, labels, eng, mand, pmt, c1, c2, c3) {
+    var ctx = document.getElementById(canvasId);
+    if (!ctx) return;
+    function ds(lbl, data, col) {
+      return { label: lbl, data: data, borderColor: col, pointBackgroundColor: col,
+               pointRadius: 5, pointHoverRadius: 7, borderWidth: 2.5,
+               fill: false, tension: 0.3 };
+    }
+    new Chart(ctx.getContext('2d'), {
+      type: 'line',
+      data: { labels: labels, datasets: [ds('Engagement', eng, c1), ds('Mandatement', mand, c2), ds('Paiement', pmt, c3)] },
+      options: {
+        responsive: true, maintainAspectRatio: false, spanGaps: true,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { position: 'top', labels: { font: { size: 12 }, padding: 14 } },
+          tooltip: {
+            callbacks: {
+              label: function(c) {
+                if (c.parsed.y === null) return null;
+                return ' ' + c.dataset.label + ' : ' + c.parsed.y.toFixed(3).replace('.', ',');
+              }
+            }
+          }
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+          y: {
+            beginAtZero: true,
+            grid: { color: 'rgba(0,0,0,0.06)' },
+            ticks: { font: { size: 10 }, callback: function(v) { return v.toFixed(2); } }
+          }
+        }
+      }
+    });
+  }
+
   {% if pta_exec_annees %}
   makeChartTaux('chartPtaExec',
     {{ pta_exec_annees | map(attribute='annee') | list | tojson }},
@@ -1785,7 +1867,7 @@
   {% endif %}
 
   {% if pta_efficacite_annees %}
-  makeChartTaux('chartEfficacitePTA',
+  makeChartTauxLibre('chartEfficacitePTA',
     {{ pta_efficacite_annees | map(attribute='annee') | list | tojson }},
     [
       { label: 'T1', data: {{ pta_efficacite_annees | map(attribute='t1') | list | tojson }},
@@ -1805,7 +1887,7 @@
   {% endif %}
 
   {% if pai_efficacite_annees %}
-  makeChartTaux('chartEfficacitePAI',
+  makeChartTauxLibre('chartEfficacitePAI',
     {{ pai_efficacite_annees | map(attribute='annee') | list | tojson }},
     [
       { label: 'T1', data: {{ pai_efficacite_annees | map(attribute='t1') | list | tojson }},
@@ -1825,7 +1907,7 @@
   {% endif %}
 
   {% if pta_efficience_annees %}
-  makeChartFin('chartEfficientePTA',
+  makeChartIndice('chartEfficientePTA',
     {{ pta_efficience_annees | map(attribute='annee') | list | tojson }},
     {{ pta_efficience_annees | map(attribute='t4_eng') | list | tojson }},
     {{ pta_efficience_annees | map(attribute='t4_mand') | list | tojson }},
@@ -1835,7 +1917,7 @@
   {% endif %}
 
   {% if pai_efficience_annees %}
-  makeChartFin('chartEfficientePAI',
+  makeChartIndice('chartEfficientePAI',
     {{ pai_efficience_annees | map(attribute='annee') | list | tojson }},
     {{ pai_efficience_annees | map(attribute='t4_eng') | list | tojson }},
     {{ pai_efficience_annees | map(attribute='t4_mand') | list | tojson }},

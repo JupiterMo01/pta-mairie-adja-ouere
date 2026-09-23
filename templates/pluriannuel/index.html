@@ -83,7 +83,7 @@
       <td class="text-center">
         <button type="button" class="btn btn-sm py-0 px-1"
                 style="border:1px solid {{ couleur }};color:{{ couleur }};"
-                data-bs-toggle="modal" data-bs-target="#editFinModal{{ prefixe }}{{ row.id }}"
+                data-bs-toggle="modal" data-bs-target="#editFinModal{{ num_section }}{{ prefixe }}{{ row.id }}"
                 title="Modifier">
           <i class="fas fa-pencil-alt fa-xs"></i>
         </button>
@@ -114,7 +114,7 @@
 
 {% if current_user.role == 'admin_editeur' %}
 {% for row in rows %}
-<div class="modal fade" id="editFinModal{{ prefixe }}{{ row.id }}" tabindex="-1">
+<div class="modal fade" id="editFinModal{{ num_section }}{{ prefixe }}{{ row.id }}" tabindex="-1">
   <div class="modal-dialog modal-dialog-scrollable">
     <div class="modal-content">
       <div class="modal-header py-2">
@@ -231,7 +231,7 @@
       <td class="text-center">
         <button type="button" class="btn btn-sm py-0 px-1"
                 style="border:1px solid {{ couleur }};color:{{ couleur }};"
-                data-bs-toggle="modal" data-bs-target="#editEffacModal{{ prefixe }}{{ row.id }}"
+                data-bs-toggle="modal" data-bs-target="#editEffacModal{{ num_section }}{{ prefixe }}{{ row.id }}"
                 title="Modifier">
           <i class="fas fa-pencil-alt fa-xs"></i>
         </button>
@@ -262,7 +262,7 @@
 
 {% if current_user.role == 'admin_editeur' %}
 {% for row in rows %}
-<div class="modal fade" id="editEffacModal{{ prefixe }}{{ row.id }}" tabindex="-1">
+<div class="modal fade" id="editEffacModal{{ num_section }}{{ prefixe }}{{ row.id }}" tabindex="-1">
   <div class="modal-dialog modal-sm">
     <div class="modal-content">
       <div class="modal-header py-2">

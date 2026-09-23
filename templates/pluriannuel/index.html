@@ -1465,6 +1465,54 @@
 
 
 {# ════════════════════════════════════════════════════════════════════════════ #}
+{# XIV. ÉVOLUTION DES TAUX D'EXÉCUTION PHYSIQUE PAR ENTITÉ                       #}
+{# ════════════════════════════════════════════════════════════════════════════ #}
+<hr class="my-4">
+<div id="section-entite-evo" class="mb-4">
+  <h5 class="fw-bold mb-3" style="color:#1565C0;">
+    <i class="fas fa-chart-line me-2"></i>XIV. Évolution des taux d'exécution physique par entité
+  </h5>
+  <div class="card border-0 shadow-sm">
+    <div class="card-body">
+      <div class="row g-3 align-items-end mb-3">
+        <div class="col-auto">
+          <div class="form-label small fw-bold mb-1">Type d'entité</div>
+          <div class="d-flex gap-3">
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="entiteType" id="radioDir" value="dir" checked>
+              <label class="form-check-label small" for="radioDir">
+                <i class="fas fa-building me-1" style="color:#1565C0;"></i>Direction
+              </label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="entiteType" id="radioSvc" value="svc">
+              <label class="form-check-label small" for="radioSvc">
+                <i class="fas fa-sitemap me-1" style="color:#006064;"></i>Service
+              </label>
+            </div>
+          </div>
+        </div>
+        <div class="col-sm-6 col-md-4">
+          <label class="form-label small fw-bold mb-1" for="selectEntite">Entité</label>
+          <select id="selectEntite" class="form-select form-select-sm"></select>
+        </div>
+      </div>
+      <h6 id="entiteChartTitle" class="fw-bold text-secondary mb-2" style="font-size:.85rem;">
+        <i class="fas fa-chart-line me-1"></i>
+      </h6>
+      <div style="overflow-x:auto;">
+        <div style="min-width:400px;height:300px;position:relative;">
+          <canvas id="chartEntiteEvo"></canvas>
+        </div>
+      </div>
+      <div id="entiteNoData" class="alert alert-info py-2 mt-2 d-none">
+        <i class="fas fa-info-circle me-2"></i>Aucune donnée disponible pour cette entité.
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ════════════════════════════════════════════════════════════════════════════ #}
 {# BOUTON EXPORT EXCEL (fixé en bas à droite)                                    #}
 {# ════════════════════════════════════════════════════════════════════════════ #}
 <button type="button" class="btn btn-success btn-sm shadow"
@@ -1529,13 +1577,6 @@
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script>
-      return false;
-    }
-  }
-  if (errDiv) errDiv.classList.add('d-none');
-  return true;
-}
-
 (function () {
   function fmt(v) {
     return new Intl.NumberFormat('fr-BJ', {maximumFractionDigits:0}).format(v) + ' F';
@@ -1920,7 +1961,130 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   initFiltre(dirExecAllData, filtrerDirExec, 'dir-year-btn');
   initFiltre(svcExecAllData, filtrerSvcExec, 'svc-year-btn');
+
+  // ── Init section XIV ─────────────────────────────────────────────────────
+  document.querySelectorAll('input[name="entiteType"]').forEach(function(radio) {
+    radio.addEventListener('change', updateEntiteSelect);
+  });
+  var selectEntite = document.getElementById('selectEntite');
+  if (selectEntite) {
+    selectEntite.addEventListener('change', renderEntiteChart);
+    updateEntiteSelect();
+  }
 });
+
+// ── XIV. Évolution par entité ─────────────────────────────────────────────────
+var chartEntiteEvoInst = null;
+var dirExecData = {{ dir_exec_json | tojson }};
+var svcExecData = {{ svc_exec_json | tojson }};
+
+function getEntiteOptions(type) {
+  var data = type === 'dir' ? dirExecData : svcExecData;
+  var seen = {};
+  var options = [];
+  data.forEach(function(r) {
+    if (!seen[r.code]) {
+      seen[r.code] = true;
+      options.push({ code: r.code, nom: r.nom });
+    }
+  });
+  options.sort(function(a, b) { return a.code.localeCompare(b.code); });
+  return options;
+}
+
+function updateEntiteSelect() {
+  var type = document.querySelector('input[name="entiteType"]:checked');
+  if (!type) return;
+  type = type.value;
+  var select = document.getElementById('selectEntite');
+  if (!select) return;
+  var options = getEntiteOptions(type);
+  var currentCode = select.value;
+  select.innerHTML = options.length
+    ? options.map(function(o) {
+        return '<option value="' + o.code + '">' + o.code + ' — ' + o.nom + '</option>';
+      }).join('')
+    : '<option value="">— Aucune donnée —</option>';
+  if (options.some(function(o) { return o.code === currentCode; })) {
+    select.value = currentCode;
+  }
+  renderEntiteChart();
+}
+
+function renderEntiteChart() {
+  var typeEl  = document.querySelector('input[name="entiteType"]:checked');
+  var select  = document.getElementById('selectEntite');
+  var noData  = document.getElementById('entiteNoData');
+  var title   = document.getElementById('entiteChartTitle');
+  var canvas  = document.getElementById('chartEntiteEvo');
+  if (!typeEl || !select || !canvas) return;
+
+  var type = typeEl.value;
+  var code = select.value;
+  var data = (type === 'dir' ? dirExecData : svcExecData).filter(function(r) {
+    return r.code === code;
+  });
+  data.sort(function(a, b) { return a.annee - b.annee; });
+
+  var typeLabel = type === 'dir' ? 'Direction' : 'Service';
+  var entiteNom = data.length ? data[0].nom : code;
+  if (title) {
+    title.innerHTML = '<i class="fas fa-chart-line me-1"></i>' + typeLabel + ' : <strong>' + code + '</strong> — ' + entiteNom;
+  }
+
+  if (chartEntiteEvoInst) { chartEntiteEvoInst.destroy(); chartEntiteEvoInst = null; }
+
+  if (!data.length) {
+    if (noData) noData.classList.remove('d-none');
+    return;
+  }
+  if (noData) noData.classList.add('d-none');
+
+  var nv = function(v) { return (v !== null && v !== undefined) ? v : null; };
+  chartEntiteEvoInst = new Chart(canvas.getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: data.map(function(r) { return String(r.annee); }),
+      datasets: [
+        { label: 'T1', data: data.map(function(r) { return nv(r.t1); }),
+          borderColor: '#A9DFBF', pointBackgroundColor: '#A9DFBF',
+          pointRadius: 5, pointHoverRadius: 7, borderWidth: 2.5, fill: false, tension: 0.3, spanGaps: true },
+        { label: 'T2', data: data.map(function(r) { return nv(r.t2); }),
+          borderColor: '#52BE80', pointBackgroundColor: '#52BE80',
+          pointRadius: 5, pointHoverRadius: 7, borderWidth: 2.5, fill: false, tension: 0.3, spanGaps: true },
+        { label: 'T3', data: data.map(function(r) { return nv(r.t3); }),
+          borderColor: '#1E8449', pointBackgroundColor: '#1E8449',
+          pointRadius: 5, pointHoverRadius: 7, borderWidth: 2.5, fill: false, tension: 0.3, spanGaps: true },
+        { label: 'T4', data: data.map(function(r) { return nv(r.t4); }),
+          borderColor: '#145A32', pointBackgroundColor: '#145A32',
+          pointRadius: 5, pointHoverRadius: 7, borderWidth: 2.5, fill: false, tension: 0.3, spanGaps: true }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, spanGaps: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { position: 'top', labels: { font: { size: 12 }, padding: 14 } },
+        tooltip: {
+          callbacks: {
+            label: function(c) {
+              if (c.parsed.y === null) return null;
+              return ' ' + c.dataset.label + ' : ' + c.parsed.y.toFixed(2).replace('.', ',') + ' %';
+            }
+          }
+        }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+        y: {
+          min: 0, max: 100,
+          grid: { color: 'rgba(0,0,0,0.06)' },
+          ticks: { font: { size: 10 }, callback: function(v) { return v + ' %'; }, stepSize: 20 }
+        }
+      }
+    }
+  });
+}
 
 // ── Export Excel ─────────────────────────────────────────────────────────────
 function selectAllExport(state) {

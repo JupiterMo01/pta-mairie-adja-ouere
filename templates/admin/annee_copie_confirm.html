@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Nouvelle année {{ nouvelle.annee }} — Importer le PTA{% endblock %}
+{% block title %}Nouvelle année {{ nouvelle.annee }} : importer le PTA{% endblock %}
 {% block page_title %}
   <i class="fas fa-calendar-alt me-2 text-warning"></i>Année {{ nouvelle.annee }} créée
 {% endblock %}
@@ -34,7 +34,7 @@
         {% elif source %}
         <div class="alert alert-warning py-2 mb-4">
           <i class="fas fa-exclamation-triangle me-1"></i>
-          Le PTA <strong>{{ source.annee }}</strong> est vide — rien à copier.
+          Le PTA <strong>{{ source.annee }}</strong> est vide, il n'y a rien à copier.
           Vous devrez saisir ou importer le PTA de <strong>{{ nouvelle.annee }}</strong> depuis zéro.
         </div>
         {% else %}
@@ -91,7 +91,7 @@
             <input type="hidden" name="source_id" value="{{ source.id }}">
             <button type="submit" class="btn btn-success btn-lg px-4">
               <i class="fas fa-copy me-2"></i>
-              Oui — copier le PTA {{ source.annee }}
+              Oui, copier le PTA {{ source.annee }}
             </button>
           </form>
           {% endif %}
@@ -100,7 +100,7 @@
           <a href="{{ url_for('admin.annees') }}"
              class="btn btn-outline-secondary btn-lg px-4">
             <i class="fas fa-plus-circle me-2"></i>
-            Non — partir de zéro
+            Non, partir de zéro
           </a>
 
         </div>

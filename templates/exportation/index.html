@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Exportation — PTA {{ annee.annee if annee }}{% endblock %}
+{% block title %}Exportation · PTA {{ annee.annee if annee }}{% endblock %}
 {% block page_title %}
   <i class="fas fa-file-export me-2 text-warning"></i>Exportation
   {% if annee %}<span class="badge bg-warning text-dark ms-1">{{ annee.annee }}</span>{% endif %}
@@ -41,7 +41,7 @@
     <div class="exp-card card h-100">
       <div class="card-body text-center py-4">
         <div class="mb-3"><i class="fas fa-file-excel fa-2x text-success"></i></div>
-        <h6 class="card-title fw-bold">Excel — PTA Global</h6>
+        <h6 class="card-title fw-bold">Excel : PTA global</h6>
         <p class="card-text text-muted small">Toutes les tâches du PTA {{ annee.annee }} en une feuille</p>
         <a href="{{ url_for('exportation.excel_global') }}"
            class="btn btn-success btn-sm mt-2">
@@ -67,9 +67,9 @@
               <select name="eid" id="selDir" class="form-select form-select-sm"
                       onchange="document.getElementById('selSvc').value='';
                                 document.getElementById('etypeInp').value='direction';">
-                <option value="">— Choisir une direction —</option>
+                <option value="">Choisir une direction</option>
                 {% for d in directions %}
-                <option value="{{ d.id }}">{{ d.code }} — {{ d.nom }}</option>
+                <option value="{{ d.id }}">{{ d.code }} · {{ d.nom }}</option>
                 {% endfor %}
               </select>
             </div>
@@ -79,13 +79,13 @@
               <select name="eid" id="selSvc" class="form-select form-select-sm"
                       onchange="document.getElementById('selDir').value='';
                                 document.getElementById('etypeInp').value='service';">
-                <option value="">— Choisir un service —</option>
+                <option value="">Choisir un service</option>
                 {% for d in directions %}
                   {% set svcs = d.services|sort(attribute='nom') %}
                   {% if svcs %}
-                  <optgroup label="{{ d.code }} — {{ d.nom }}">
+                  <optgroup label="{{ d.code }} · {{ d.nom }}">
                     {% for s in svcs %}
-                    <option value="{{ s.id }}">{{ s.code }} — {{ s.nom }}</option>
+                    <option value="{{ s.id }}">{{ s.code }} · {{ s.nom }}</option>
                     {% endfor %}
                   </optgroup>
                   {% endif %}
@@ -199,11 +199,11 @@
         <form method="GET" action="">
           <select name="direction_id" class="form-select form-select-sm mb-2"
                   onchange="this.form.action=this.options[this.selectedIndex].dataset.url;">
-            <option value="">— Choisir une direction —</option>
+            <option value="">Choisir une direction</option>
             {% for d in directions %}
             <option value="{{ d.id }}"
                     data-url="{{ url_for('exportation.excel_direction_et_services', direction_id=d.id) }}">
-              {{ d.code }} — {{ d.nom }}
+              {{ d.code }} · {{ d.nom }}
             </option>
             {% endfor %}
           </select>
@@ -280,7 +280,7 @@
                 <input type="checkbox" name="prog_ids" value="{{ prog.id }}"
                        class="form-check-input mt-1">
                 <div>
-                  <span class="fw-semibold">{{ prog.code }} — {{ prog.nom }}</span>
+                  <span class="fw-semibold">{{ prog.code }} · {{ prog.nom }}</span>
                   {% if prog.objectif_specifique %}
                   <br><small class="text-muted fst-italic">{{ prog.objectif_specifique[:90] }}{% if prog.objectif_specifique|length > 90 %}…{% endif %}</small>
                   {% endif %}
@@ -336,7 +336,7 @@
     <div class="exp-card card h-100">
       <div class="card-body text-center py-4">
         <div class="mb-3"><i class="fas fa-file-excel fa-2x text-success"></i></div>
-        <h6 class="card-title fw-bold">Excel — Suivi Global</h6>
+        <h6 class="card-title fw-bold">Excel : suivi global</h6>
         <p class="card-text text-muted small">Toutes les tâches suivies en une feuille</p>
         <a id="suiviExcelGlobal"
            href="{{ url_for('exportation.suivi_excel_global') }}"
@@ -350,7 +350,7 @@
 </div>
 
 {# 6-B : Entité unique #}
-<div class="exp-section-title"><i class="fas fa-search me-1"></i>Suivi — sélectionner une direction ou un service</div>
+<div class="exp-section-title"><i class="fas fa-search me-1"></i>Suivi d'une direction ou d'un service</div>
 <div class="row g-3 mb-4">
   <div class="col-lg-10 col-xl-8">
     <div class="exp-card card">
@@ -364,9 +364,9 @@
               <select name="eid" id="suiviSelDir" class="form-select form-select-sm"
                       onchange="document.getElementById('suiviSelSvc').value='';
                                 document.getElementById('suiviEtypeInp').value='direction';">
-                <option value="">— Choisir une direction —</option>
+                <option value="">Choisir une direction</option>
                 {% for d in directions %}
-                <option value="{{ d.id }}">{{ d.code }} — {{ d.nom }}</option>
+                <option value="{{ d.id }}">{{ d.code }} · {{ d.nom }}</option>
                 {% endfor %}
               </select>
             </div>
@@ -376,13 +376,13 @@
               <select name="eid" id="suiviSelSvc" class="form-select form-select-sm"
                       onchange="document.getElementById('suiviSelDir').value='';
                                 document.getElementById('suiviEtypeInp').value='service';">
-                <option value="">— Choisir un service —</option>
+                <option value="">Choisir un service</option>
                 {% for d in directions %}
                   {% set svcs = d.services|sort(attribute='nom') %}
                   {% if svcs %}
-                  <optgroup label="{{ d.code }} — {{ d.nom }}">
+                  <optgroup label="{{ d.code }} · {{ d.nom }}">
                     {% for s in svcs %}
-                    <option value="{{ s.id }}">{{ s.code }} — {{ s.nom }}</option>
+                    <option value="{{ s.id }}">{{ s.code }} · {{ s.nom }}</option>
                     {% endfor %}
                   </optgroup>
                   {% endif %}
@@ -410,7 +410,7 @@
 </div>
 
 {# 6-C : Sélection multiple #}
-<div class="exp-section-title"><i class="fas fa-check-square me-1"></i>Suivi — sélectionner plusieurs directions et/ou services</div>
+<div class="exp-section-title"><i class="fas fa-check-square me-1"></i>Suivi de plusieurs directions ou services</div>
 <div class="row g-3 mb-4">
   <div class="col-12">
     <div class="exp-card card">
@@ -472,7 +472,7 @@
 </div>
 
 {# 6-D : Exports groupés suivi #}
-<div class="exp-section-title"><i class="fas fa-layer-group me-1"></i>Suivi — exports groupés</div>
+<div class="exp-section-title"><i class="fas fa-layer-group me-1"></i>Suivi : exports groupés</div>
 <div class="row g-3 mb-4">
 
   <div class="col-md-6 col-lg-4">
@@ -487,10 +487,10 @@
         </p>
         <div class="mb-2">
           <select id="suiviDirSvcSelect" class="form-select form-select-sm">
-            <option value="">— Choisir une direction —</option>
+            <option value="">Choisir une direction</option>
             {% for d in directions %}
             <option value="{{ url_for('exportation.suivi_excel_direction_et_services', direction_id=d.id) }}">
-              {{ d.code }} — {{ d.nom }}
+              {{ d.code }} · {{ d.nom }}
             </option>
             {% endfor %}
           </select>

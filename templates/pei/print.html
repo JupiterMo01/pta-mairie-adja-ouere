@@ -2,12 +2,12 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<title>Point d'exécution PAI {{ annee.annee }} — Mairie d'Adja-Ouèrè</title>
+<title>Point d'exécution PAI {{ annee.annee }} · Mairie d'Adja-Ouèrè</title>
 <style>
   @page {
     size: A4 landscape;
     margin: 1.2cm 0.8cm 1.8cm 0.8cm;
-    @bottom-left  { content: "Mairie d'Adja-Ouèrè — Point d'exécution du PAI {{ annee.annee }}"; font-size:6pt; color:#444; font-weight:bold; }
+    @bottom-left  { content: "Mairie d'Adja-Ouèrè · Point d'exécution du PAI {{ annee.annee }}"; font-size:6pt; color:#444; font-weight:bold; }
     @bottom-right { content: "Page " counter(page) " / " counter(pages); font-size:6pt; color:#444; font-weight:bold; }
   }
   *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
@@ -71,7 +71,7 @@
 <body>
 
 <div class="screen-bar">
-  <span>Point d'exécution du PAI {{ annee.annee }} — Mairie d'Adja-Ouèrè</span>
+  <span>Point d'exécution du PAI {{ annee.annee }} · Mairie d'Adja-Ouèrè</span>
   <button class="btn-p" onclick="window.print()">🖨 Imprimer</button>
   <button class="btn-c" onclick="window.close()">✕ Fermer</button>
 </div>

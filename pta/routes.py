@@ -658,7 +658,7 @@ def activite_export_biblio(act_id):
         bt.structures_externes = list(t.structures_externes)
         db.session.add(bt)
     db.session.commit()
-    flash(f'Activité « {nom} » et ses {len(a.taches)} tâche(s) exportées vers la bibliothèque — tous les champs conservés.', 'success')
+    flash(f'Activité « {nom} » et ses {len(a.taches)} tâche(s) exportées vers la bibliothèque. Tous les champs sont conservés.', 'success')
     return redirect(url_for('pta.global_pta', go=f'act-{act_id}'))
 
 

@@ -44,7 +44,7 @@
                 <option value="">-- Aucune --</option>
                 {% for d in directions %}
                 <option value="{{ d.id }}" {% if user.direction_id == d.id %}selected{% endif %}>
-                  {{ d.code }} — {{ d.nom }}
+                  {{ d.code }} · {{ d.nom }}
                 </option>
                 {% endfor %}
               </select>
@@ -55,7 +55,7 @@
                 <option value="">-- Aucun --</option>
                 {% for s in services %}
                 <option value="{{ s.id }}" {% if user.service_id == s.id %}selected{% endif %}>
-                  {{ s.code }} — {{ s.nom }}
+                  {{ s.code }} · {{ s.nom }}
                 </option>
                 {% endfor %}
               </select>
@@ -67,7 +67,7 @@
                      placeholder="ex: prenom.nom@mairie.bj">
               <div class="form-text text-muted">
                 <i class="fas fa-info-circle me-1"></i>
-                Facultatif — sert à l'envoi des alertes trimestrielles.
+                Facultatif. Sert à l'envoi des alertes trimestrielles.
               </div>
             </div>
             <div class="col-12">

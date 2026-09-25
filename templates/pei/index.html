@@ -1,5 +1,5 @@
 ﻿{% extends "base.html" %}
-{% block title %}Point d'exécution PAI — {{ annee.annee }}{% endblock %}
+{% block title %}Point d'exécution PAI · {{ annee.annee }}{% endblock %}
 {% block page_title %}<i class="fas fa-chart-bar me-2"></i>Point d'exécution du PAI {{ annee.annee }}{% endblock %}
 
 {% block content %}
@@ -601,7 +601,7 @@ function _prepPeiEdit(actId) {
   var engHint = qm('#peiEngageHint');
   if (engHint) {
     engHint.innerHTML = _peiEngageLocked
-      ? '<i class="fas fa-lock me-1 text-danger"></i><span class="text-danger fw-semibold">Verrouillé — saisie unique déjà effectuée</span>'
+      ? '<i class="fas fa-lock me-1 text-danger"></i><span class="text-danger fw-semibold">Verrouillé : saisie unique déjà effectuée</span>'
       : 'Max : <span class="fw-semibold">' + d.budget.toLocaleString('fr-FR') + '</span> F CFA (coût total)';
   }
 

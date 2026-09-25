@@ -1,67 +1,159 @@
-/* ── PTA Mairie d'Adja-Ouèrè ───────────────────────────────────────────── */
+/* ── Àbójútó · Mairie d'Adja-Ouèrè ─────────────────────────────────────── */
+
+:root {
+  --abj-foret:    #0F3529;
+  --abj-foret-2:  #0A2A20;
+  --abj-vert:     #008751;
+  --abj-jaune:    #FCD116;
+  --abj-rouge:    #E8112D;
+  --abj-fond:     #F2F5F3;
+  --abj-surface:  #FFFFFF;
+  --abj-ligne:    #E1E8E4;
+  --abj-encre:    #1B2A23;
+  --abj-doux:     #5F6E67;
+
+  /* Couleur principale Bootstrap : bleu institutionnel plus profond */
+  --bs-primary: #1B4F8C;
+  --bs-primary-rgb: 27, 79, 140;
+  --bs-link-color: #1B4F8C;
+  --bs-link-color-rgb: 27, 79, 140;
+  --bs-link-hover-color: #123A68;
+  --bs-link-hover-color-rgb: 18, 58, 104;
+  --bs-body-font-family: 'Source Sans 3', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --bs-body-color: var(--abj-encre);
+  --bs-border-color: var(--abj-ligne);
+  --bs-border-radius: .5rem;
+  --bs-border-radius-lg: .75rem;
+}
 
 body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background-color: #f4f6f9;
+  font-family: var(--bs-body-font-family);
+  background-color: var(--abj-fond);
+  color: var(--abj-encre);
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Sidebar */
-#sidebar {
-  min-width: 220px;
-  max-width: 220px;
-  min-height: 100vh;
-  transition: min-width .25s ease, max-width .25s ease;
-  overflow: hidden;
-  white-space: nowrap;
-}
+h1, h2, h3, h4, h5, h6 { text-wrap: balance; }
+.table, .badge, .taux-haut, .taux-moyen, .taux-bas { font-variant-numeric: tabular-nums; }
 
-#sidebar.sidebar-collapsed {
-  min-width: 0;
-  max-width: 0;
+/* ── Boutons primaires alignés sur la couleur principale ── */
+.btn-primary {
+  --bs-btn-bg: #1B4F8C;
+  --bs-btn-border-color: #1B4F8C;
+  --bs-btn-hover-bg: #164275;
+  --bs-btn-hover-border-color: #164275;
+  --bs-btn-active-bg: #123A68;
+  --bs-btn-active-border-color: #123A68;
+  --bs-btn-disabled-bg: #1B4F8C;
+  --bs-btn-disabled-border-color: #1B4F8C;
 }
+.btn-outline-primary {
+  --bs-btn-color: #1B4F8C;
+  --bs-btn-border-color: #1B4F8C;
+  --bs-btn-hover-bg: #1B4F8C;
+  --bs-btn-hover-border-color: #1B4F8C;
+  --bs-btn-active-bg: #164275;
+  --bs-btn-active-border-color: #164275;
+}
+.btn { border-radius: .5rem; font-weight: 600; }
+.btn-sm { border-radius: .4rem; }
+.btn:focus-visible { box-shadow: 0 0 0 .2rem rgba(0,135,81,.25); }
 
+/* ── Menu latéral ── */
+#sidebar.abj-sidebar {
+  background: linear-gradient(180deg, var(--abj-foret) 0%, var(--abj-foret-2) 100%);
+  color: #fff;
+}
+#sidebar .offcanvas-header { border-color: rgba(255,255,255,.1) !important; }
+#sidebar .nav-link {
+  color: rgba(255,255,255,.82) !important;
+  border-radius: 8px;
+  margin: 1px 8px;
+  padding-left: .75rem !important;
+  transition: background-color .15s, color .15s;
+}
 #sidebar .nav-link:hover {
-  background-color: rgba(255,255,255,0.1);
-  border-radius: 6px;
-  margin: 0 4px;
+  background-color: rgba(255,255,255,.08);
+  color: #fff !important;
 }
-
 #sidebar .active-link {
-  background-color: #0d6efd !important;
-  border-radius: 6px;
-  margin: 0 4px;
+  background-color: rgba(252,209,22,.14) !important;
+  color: #fff !important;
+  box-shadow: inset 3px 0 0 var(--abj-jaune);
+  font-weight: 600;
 }
+#sidebar .active-link i { color: var(--abj-jaune); }
+#sidebar hr { border-color: rgba(255,255,255,.12) !important; opacity: 1; }
 
-/* Topbar */
+/* ── Barre du haut ── */
 .navbar {
-  min-height: 52px;
+  min-height: 56px;
+  background: rgba(255,255,255,.92) !important;
+  backdrop-filter: saturate(160%) blur(8px);
+  border-bottom: 1px solid var(--abj-ligne) !important;
+  box-shadow: 0 1px 0 rgba(15,53,41,.03), 0 4px 16px rgba(15,53,41,.05) !important;
 }
 
-/* Cartes */
+/* ── Cartes ── */
 .card {
-  border-radius: 12px;
+  border-radius: 14px;
+  border-color: var(--abj-ligne);
 }
-
+.card.shadow-sm, .card.border-0 {
+  box-shadow: 0 1px 2px rgba(15,53,41,.04), 0 6px 20px rgba(15,53,41,.06) !important;
+}
 .card-header {
-  border-radius: 12px 12px 0 0 !important;
+  border-radius: 14px 14px 0 0 !important;
+  border-bottom-color: var(--abj-ligne);
 }
+.card-header:not([class*="bg-"]):not([style*="background"]) { background-color: #F7F9F8; }
 
-/* Tables PTA */
+/* ── Tableaux ── */
+.table { --bs-table-hover-bg: rgba(0,135,81,.045); border-color: var(--abj-ligne); }
 .table th {
   font-size: .8rem;
   font-weight: 600;
   white-space: nowrap;
 }
-
 .table td {
   vertical-align: middle;
-  font-size: .83rem;
+  font-size: .85rem;
 }
 
-/* Badges personnalisés */
-.badge {
-  font-weight: 500;
+/* ── Formulaires ── */
+.form-control, .form-select { border-radius: .5rem; border-color: #D5DED9; }
+.form-control:focus, .form-select:focus {
+  border-color: var(--abj-vert);
+  box-shadow: 0 0 0 .2rem rgba(0,135,81,.15);
 }
+.form-check-input:checked { background-color: var(--abj-vert); border-color: var(--abj-vert); }
+.form-label { color: #33443C; }
+
+/* ── Onglets ── */
+.nav-tabs { border-bottom-color: var(--abj-ligne); }
+.nav-tabs .nav-link { border-radius: 8px 8px 0 0; color: var(--abj-doux); font-weight: 500; }
+.nav-tabs .nav-link:hover { color: var(--abj-encre); border-color: transparent; }
+.nav-tabs .nav-link.active { font-weight: 700; }
+.nav-pills .nav-link.active { background-color: var(--abj-foret); }
+
+/* ── Alertes, badges, modales, menus ── */
+.alert { border-radius: 10px; }
+.badge { font-weight: 600; letter-spacing: .01em; border-radius: .4rem; }
+.modal-content { border: 0; border-radius: 16px; box-shadow: 0 24px 60px rgba(10,30,22,.25); overflow: hidden; }
+.modal-header { border-bottom-color: var(--abj-ligne); }
+.modal-footer { border-top-color: var(--abj-ligne); background: #FAFBFA; }
+.modal-backdrop.show { opacity: .45; }
+.dropdown-menu { border-radius: 12px; border-color: var(--abj-ligne); padding: .35rem; }
+.dropdown-item { border-radius: 8px; }
+.list-group-item { border-color: var(--abj-ligne); }
+
+/* ── Pied de page de l'application ── */
+.abj-pied {
+  font-size: .72rem;
+  color: #8A968F;
+  border-top: 1px solid var(--abj-ligne);
+}
+.abj-pied .abj-marque { font-size: .85rem; color: var(--abj-foret); }
 
 /* Barre de progression */
 .progress {
@@ -75,19 +167,24 @@ body {
   border-radius: 4px;
 }
 
+/* Barres de défilement discrètes */
+* { scrollbar-width: thin; scrollbar-color: #C3CEC8 transparent; }
+
+/* Apparition douce du contenu */
+@keyframes abj-apparition { from { opacity: 0; transform: translateY(6px); } }
+main.abj-contenu { animation: abj-apparition .35s ease-out both; }
+@media (prefers-reduced-motion: reduce) {
+  main.abj-contenu { animation: none; }
+}
+
 /* Impression */
 @media print {
-  #sidebar, .navbar, .btn, .modal, .alert-dismissible .btn-close,
+  #sidebar, .navbar, .btn, .modal, .alert-dismissible .btn-close, .abj-pied,
   button[data-bs-toggle], form[onsubmit] button { display: none !important; }
   .card { box-shadow: none !important; border: 1px solid #ccc !important; }
   body { background: white; }
   .collapse { display: block !important; }
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  #sidebar { min-width: 60px !important; max-width: 60px !important; }
-  #sidebar .nav-link span, #sidebar .fw-bold, #sidebar .text-muted { display: none; }
+  main.abj-contenu { animation: none; }
 }
 
 /* Ancres URL : décalage pour la barre d'en-tête collante */

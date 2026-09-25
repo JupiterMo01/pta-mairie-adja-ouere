@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Tableau de bord — {{ titre }} — {{ annee.annee if annee }}{% endblock %}
+{% block title %}Tableau de bord · {{ titre }} · {{ annee.annee if annee }}{% endblock %}
 {% block page_title %}
   <i class="fas fa-tachometer-alt me-2 text-primary"></i>Tableau de bord
   {% if annee %}<span class="badge bg-primary ms-1">{{ annee.annee }}</span>{% endif %}
@@ -16,7 +16,7 @@
     <tr>
       <th class="text-start ps-3">Statut</th>
       <th>T1</th><th>T2</th><th>T3</th><th>T4</th>
-      <th style="background:#155724;">Global</th>
+      <th style="background:#155724;color:#fff;">Global</th>
     </tr>
   </thead>
   <tbody>
@@ -101,10 +101,10 @@
         </label>
         <select name="direction_id" class="form-select form-select-sm"
                 onchange="this.form.submit()" style="min-width:220px;">
-          <option value="">— Toutes directions —</option>
+          <option value="">Toutes directions</option>
           {% for d in all_directions %}
           <option value="{{ d.id }}" {% if sel_dir_id == d.id %}selected{% endif %}>
-            {{ d.code }} — {{ d.nom }}
+            {{ d.code }} · {{ d.nom }}
           </option>
           {% endfor %}
         </select>
@@ -117,10 +117,10 @@
         </label>
         <select name="service_id" class="form-select form-select-sm"
                 onchange="this.form.submit()" style="min-width:220px;">
-          <option value="">— Tous services —</option>
+          <option value="">Tous services</option>
           {% for s in all_services %}
           <option value="{{ s.id }}" {% if sel_svc_id == s.id %}selected{% endif %}>
-            {{ s.code }} — {{ s.nom }}
+            {{ s.code }} · {{ s.nom }}
           </option>
           {% endfor %}
         </select>
@@ -255,7 +255,7 @@
       <tr>
         <th class="text-start ps-3">Indicateur</th>
         <th>T1</th><th>T2</th><th>T3</th><th>T4</th>
-        <th style="background:#155724;">Global</th>
+        <th style="background:#155724;color:#fff;">Global</th>
       </tr>
     </thead>
     <tbody>
@@ -353,14 +353,14 @@
   <div class="tab-pane fade show active" id="nat-tout" role="tabpanel">
 
     <h6 class="fw-bold text-uppercase text-muted mb-2">
-      <i class="fas fa-tasks me-1"></i>Tâches par statut — Toutes natures
+      <i class="fas fa-tasks me-1"></i>Tâches par statut
     </h6>
     <div class="card border-0 shadow-sm mb-4">
       {{ table_statuts(stats.suivi, 'taches') }}
     </div>
 
     <h6 class="fw-bold text-uppercase text-muted mb-2">
-      <i class="fas fa-list-check me-1"></i>Activités par statut — Toutes natures
+      <i class="fas fa-list-check me-1"></i>Activités par statut
     </h6>
     <div class="card border-0 shadow-sm mb-4">
       {{ table_statuts(stats.suivi, 'activites') }}
@@ -373,20 +373,20 @@
 
     <div class="alert alert-info py-2 px-3 mb-3" style="font-size:.84rem;">
       <i class="fas fa-hard-hat me-1"></i>
-      <strong>Activités d'investissement uniquement</strong> —
+      <strong>Activités d'investissement uniquement :</strong>
       {{ stats.nb_invest }} activité{{ 's' if stats.nb_invest > 1 }} ·
       {{ stats.nb_taches_invest }} tâche{{ 's' if stats.nb_taches_invest > 1 }}
     </div>
 
     <h6 class="fw-bold text-uppercase text-muted mb-2">
-      <i class="fas fa-tasks me-1"></i>Tâches par statut — Investissement
+      <i class="fas fa-tasks me-1"></i>Tâches par statut (investissement)
     </h6>
     <div class="card border-0 shadow-sm mb-4">
       {{ table_statuts(stats.suivi_invest, 'taches') }}
     </div>
 
     <h6 class="fw-bold text-uppercase text-muted mb-2">
-      <i class="fas fa-list-check me-1"></i>Activités par statut — Investissement
+      <i class="fas fa-list-check me-1"></i>Activités par statut (investissement)
     </h6>
     <div class="card border-0 shadow-sm mb-4">
       {{ table_statuts(stats.suivi_invest, 'activites') }}
@@ -399,20 +399,20 @@
 
     <div class="alert alert-warning py-2 px-3 mb-3" style="font-size:.84rem;">
       <i class="fas fa-cogs me-1"></i>
-      <strong>Activités de fonctionnement uniquement</strong> —
+      <strong>Activités de fonctionnement uniquement :</strong>
       {{ stats.nb_fonct }} activité{{ 's' if stats.nb_fonct > 1 }} ·
       {{ stats.nb_taches_fonct }} tâche{{ 's' if stats.nb_taches_fonct > 1 }}
     </div>
 
     <h6 class="fw-bold text-uppercase text-muted mb-2">
-      <i class="fas fa-tasks me-1"></i>Tâches par statut — Fonctionnement
+      <i class="fas fa-tasks me-1"></i>Tâches par statut (fonctionnement)
     </h6>
     <div class="card border-0 shadow-sm mb-4">
       {{ table_statuts(stats.suivi_fonct, 'taches') }}
     </div>
 
     <h6 class="fw-bold text-uppercase text-muted mb-2">
-      <i class="fas fa-list-check me-1"></i>Activités par statut — Fonctionnement
+      <i class="fas fa-list-check me-1"></i>Activités par statut (fonctionnement)
     </h6>
     <div class="card border-0 shadow-sm mb-4">
       {{ table_statuts(stats.suivi_fonct, 'activites') }}
@@ -446,7 +446,7 @@
 ════════════════════════════════════════════════════════════════════════════ #}
 {% if is_admin and synthese %}
 <h6 class="fw-bold text-uppercase text-muted mb-2 mt-1">
-  <i class="fas fa-chart-bar me-1"></i>Vue d'ensemble — Directions &amp; Services
+  <i class="fas fa-chart-bar me-1"></i>Vue d'ensemble des directions et services
 </h6>
 
 <div class="card border-0 shadow-sm mb-4">
@@ -467,7 +467,7 @@
       <tr style="background:#e8eaf6;">
         <td class="ps-3 fw-bold">
           <i class="fas fa-building me-2 text-primary"></i>
-          {{ item.direction.code }} — {{ item.direction.nom }}
+          {{ item.direction.code }} · {{ item.direction.nom }}
         </td>
         <td class="text-center fw-bold"
             style="color:{% if td >= 75 %}#155724{% elif td >= 40 %}#856404{% else %}#dc3545{% endif %};">
@@ -488,7 +488,7 @@
         <tr>
           <td class="ps-5 text-muted">
             <i class="fas fa-users me-2 text-secondary" style="font-size:.75rem;"></i>
-            {{ sv.service.code }} — {{ sv.service.nom }}
+            {{ sv.service.code }} · {{ sv.service.nom }}
           </td>
           <td class="text-center fw-semibold"
               style="color:{% if ts >= 75 %}#155724{% elif ts >= 40 %}#856404{% else %}#dc3545{% endif %};">

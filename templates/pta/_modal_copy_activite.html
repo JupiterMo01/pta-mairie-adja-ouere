@@ -12,7 +12,7 @@
       <div class="modal-body">
         <label class="form-label fw-semibold">Projet de destination</label>
         <select name="projet_id" class="form-select" required>
-          <option value="">— Sélectionner —</option>
+          <option value="">Sélectionner…</option>
           {% for prog in programmes %}
           <optgroup label="Programme {{ prog.code }} : {{ prog.nom }}">
             {% for pj in prog.projets %}

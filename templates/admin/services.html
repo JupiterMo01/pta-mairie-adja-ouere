@@ -68,7 +68,7 @@
                     <select name="direction_id" class="form-select" required>
                       {% for d in directions %}
                       <option value="{{ d.id }}" {% if s.direction_id == d.id %}selected{% endif %}>
-                        {{ d.code }} — {{ d.nom }}
+                        {{ d.code }} · {{ d.nom }}
                       </option>
                       {% endfor %}
                     </select>
@@ -114,7 +114,7 @@
             <select name="direction_id" class="form-select" required>
               <option value="">-- Choisir une direction --</option>
               {% for d in directions %}
-              <option value="{{ d.id }}">{{ d.code }} — {{ d.nom }}</option>
+              <option value="{{ d.id }}">{{ d.code }} · {{ d.nom }}</option>
               {% endfor %}
             </select>
           </div>

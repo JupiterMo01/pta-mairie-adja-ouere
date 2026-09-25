@@ -2,12 +2,12 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<title>PAI {{ annee.annee if annee }} — Mairie d'Adja-Ouèrè</title>
+<title>PAI {{ annee.annee if annee }} · Mairie d'Adja-Ouèrè</title>
 <style>
   @page {
     size: A4 landscape;
     margin: 1.2cm 0.8cm 1.8cm 0.8cm;
-    @bottom-left  { content: "Mairie d'Adja-Ouèrè — Plan Annuel d'Investissement {{ annee.annee if annee }}"; font-size:6pt; color:#444; font-weight:bold; }
+    @bottom-left  { content: "Mairie d'Adja-Ouèrè · Plan Annuel d'Investissement {{ annee.annee if annee }}"; font-size:6pt; color:#444; font-weight:bold; }
     @bottom-center{ content: ""; }
     @bottom-right { content: "Page " counter(page) " / " counter(pages); font-size:6pt; color:#444; font-weight:bold; }
   }
@@ -99,7 +99,7 @@
 <body>
 
 <div class="screen-bar">
-  <span>PAI {{ annee.annee if annee }} — Vue impression</span>
+  <span>PAI {{ annee.annee if annee }} · aperçu avant impression</span>
   <button class="btn-p" onclick="window.print()">Imprimer / PDF</button>
   <button class="btn-c" onclick="window.close()">&#10005; Fermer</button>
 </div>
@@ -122,7 +122,7 @@
 <!-- Titre -->
 <div class="titre-pai">
   <h1>Plan Annuel d'Investissement (PAI) {{ annee.annee if annee }}</h1>
-  <h2>Commune d'Adja-Ouèrè — Département du Plateau</h2>
+  <h2>Commune d'Adja-Ouèrè, département du Plateau</h2>
   <div class="montant-total">
     Montant total : {{ (total_global / 1000) | fcfa }} milliers de F CFA
   </div>

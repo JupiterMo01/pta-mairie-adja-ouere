@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Exécution du Budget — {{ annee.annee }}{% endblock %}
+{% block title %}Exécution du Budget · {{ annee.annee }}{% endblock %}
 {% block page_title %}
   <i class="fas fa-coins me-2 text-warning"></i>Exécution du Budget
   {% if annee %}<span class="badge bg-warning text-dark ms-1">{{ annee.annee }}</span>{% endif %}
@@ -165,7 +165,7 @@
           <input type="number" id="inpPrev" class="form-control form-control-sm"
                  min="0" step="1">
           <div class="form-text text-warning" id="pvLockMsg" style="display:none;">
-            <i class="fas fa-lock me-1"></i>Prévisions verrouillées — seul l'admin peut les modifier.
+            <i class="fas fa-lock me-1"></i>Prévisions verrouillées : seul l'administrateur peut les modifier.
           </div>
         </div>
         <div class="mb-3">
@@ -244,7 +244,7 @@ function openEdit(row) {
   var labels  = { fonctionnement: 'Dépenses de Fonctionnement',
                   investissement: "Dépenses d'Investissement" };
 
-  document.getElementById('editModalTitle').textContent = 'Saisie — ' + labels[type];
+  document.getElementById('editModalTitle').textContent = 'Saisie : ' + labels[type];
   document.getElementById('editType').value = type;
 
   var inpPrev = document.getElementById('inpPrev');

@@ -142,8 +142,8 @@ def user_add():
         f'Utilisateur <strong>{escape(prenom)} {escape(nom)}</strong> créé.<br>'
         f'{lbl_mdp} : '
         f'<code class="fs-6 fw-bold px-2 py-1 bg-light border rounded">{escape(password)}</code><br>'
-        f'<span class="text-muted small">Communiquez-le à l\'utilisateur — '
-        f'il pourra le modifier via son menu en haut à droite.</span>'
+        f'<span class="text-muted small">Communiquez-le à l\'utilisateur. '
+        f'Il pourra le modifier via son menu en haut à droite.</span>'
     ), 'success')
     return redirect(url_for('admin.users'))
 
@@ -1000,7 +1000,7 @@ def _mail_html(cfg, titre, date_str, corps, couleur='#0F3529', largeur=600,
       <a href="mailto:{cfg['EXPEDITEUR_EMAIL']}" style="color:#006B40;">{cfg['EXPEDITEUR_EMAIL']}</a>
     </p>
     <p style="margin:6px 0 0;color:#8a958f;font-size:11px;">
-      &#x1F1E7;&#x1F1EF; République du Bénin &nbsp;·&nbsp; Commune d'Adja-Ouèrè — Union · Travail · Prospérité
+      &#x1F1E7;&#x1F1EF; République du Bénin &nbsp;·&nbsp; Commune d'Adja-Ouèrè : Union · Travail · Prospérité
     </p>
   </td></tr>
 </table>
@@ -1093,35 +1093,54 @@ def rappel_saisie():
         return redirect(url_for('admin.index'))
 
     copies_fixes = _get_copies_fixes(cfg)
-    sujet = f"[{_MARQUE} · PTA {annee_label}] Rappel — Renseigner les données d'exécution"
+    sujet = f"[{_MARQUE} · PTA {annee_label}] Rappel : renseignez le suivi de votre PTA"
+
+    etapes = [
+        f"Connectez-vous à <strong>{_MARQUE}</strong> avec votre identifiant.",
+        "Ouvrez le menu (bouton <strong>☰</strong> en haut à gauche), puis "
+        "<strong>Suivi &amp; Évaluation PTA</strong>.",
+        "Sélectionnez l'onglet du trimestre concerné (<strong>T1</strong> à <strong>T4</strong>), "
+        "puis cliquez sur le bouton jaune <strong>Faire le suivi de mon PTA</strong>.",
+        "Pour chaque tâche, indiquez le statut (<em>Exécutée</em>, <em>En cours</em> ou "
+        "<em>Non exécutée</em>). Si la tâche est en cours, précisez son taux d'avancement. "
+        "Ajoutez vos observations ou difficultés si nécessaire.",
+        "Cliquez sur <strong>Valider les saisies</strong> (en haut ou en bas du tableau). "
+        "Sans cette validation, rien n'est enregistré.",
+    ]
+    lignes_etapes = ''.join(
+        f"<tr><td valign='top' style='padding:0 12px 14px 0;'>"
+        f"<div style='width:26px;height:26px;border-radius:13px;background:#0F3529;color:#FCD116;"
+        f"font-weight:bold;font-size:13px;line-height:26px;text-align:center;'>{i}</div></td>"
+        f"<td valign='top' style='padding:3px 0 14px;color:#374151;font-size:14px;line-height:1.6;'>{e}</td></tr>"
+        for i, e in enumerate(etapes, 1)
+    )
 
     corps = f"""
     <p style="margin:0 0 16px;color:#374151;">Madame, Monsieur,</p>
-    <p style="margin:0 0 16px;color:#374151;line-height:1.7;">
+    <p style="margin:0 0 20px;color:#374151;line-height:1.7;">
       Dans le cadre de l'évaluation du Plan de Travail Annuel (PTA) {annee_label}
-      de la Mairie d'Adja-Ouèrè, vous êtes prié(e) de <strong>vous connecter sur
-      {_MARQUE}</strong> et de renseigner le niveau réel d'avancement
-      de votre PTA avant la fin du trimestre en cours.
+      de la Mairie d'Adja-Ouèrè, nous vous prions de renseigner l'état d'avancement
+      de vos tâches sur <strong>{_MARQUE}</strong> avant la fin du trimestre en cours.
     </p>
-    {_mail_bouton(plateforme, f"Se connecter à {_MARQUE} →")}
-    <p style="margin:0 0 8px;color:#374151;line-height:1.7;">
-      Une fois connecté(e), rendez-vous dans l'onglet <strong>« Faire suivi »</strong>
-      pour mettre à jour vos données d'exécution.
-    </p>
+    <p style="margin:0 0 12px;color:#0F3529;font-weight:bold;font-size:15px;">Comment procéder</p>
+    <table cellpadding="0" cellspacing="0" style="margin:0 0 8px;">{lignes_etapes}</table>
+    {_mail_bouton(plateforme, f"Ouvrir {_MARQUE}")}
     <p style="margin:16px 0 0;color:#6b7280;font-size:13px;line-height:1.6;">
       Pour toute difficulté de connexion ou de saisie, contactez l'administrateur du système.
     </p>"""
-    html_body = _mail_html(cfg, "Rappel — Saisie des données d'exécution", date_str, corps,
+    html_body = _mail_html(cfg, "Rappel : saisie du suivi de votre PTA", date_str, corps,
                            surtitre=f"Mairie d'Adja-Ouèrè · PTA {annee_label}")
 
+    import re as _re
     texte_brut = (
-        f"Rappel — Saisie des données d'exécution PTA {annee_label}\n"
+        f"Rappel : saisie du suivi de votre PTA {annee_label}\n"
         f"Date : {date_str}\n\n"
         f"Madame, Monsieur,\n\n"
-        f"Dans le cadre de l'évaluation du PTA {annee_label}, vous êtes prié(e) de vous "
-        f"connecter sur {_MARQUE} ({plateforme}) et de renseigner le niveau réel "
-        f"d'avancement de votre PTA avant la fin du trimestre.\n\n"
-        f"Onglet : Faire suivi"
+        f"Dans le cadre de l'évaluation du PTA {annee_label}, nous vous prions de renseigner "
+        f"l'état d'avancement de vos tâches sur {_MARQUE} ({plateforme}) avant la fin du trimestre.\n\n"
+        "Comment procéder :\n"
+        + '\n'.join(f"{i}. {_re.sub(r'<[^>]+>', '', e).replace('&amp;', '&')}"
+                    for i, e in enumerate(etapes, 1))
     )
 
     msg = _construire_mail(cfg, sujet, texte_brut, html_body, destinataires, copies_fixes)
@@ -1357,7 +1376,7 @@ def bilan_pta():
         f"style='border-collapse:collapse;font-size:14px;'>"
         f"<tr style='background:#f1f5f9;'>"
         f"<td style='padding:12px;font-weight:700;color:#1e3a5f;'>"
-        f"TOTAL — {total_glob} activité(s)</td>"
+        f"TOTAL : {total_glob} activité(s)</td>"
         f"<td style='padding:12px;text-align:center;'>"
         f"<span style='color:{VERT};font-weight:700;font-size:18px;'>{glob_a['execute']}</span><br>"
         f"<span style='font-size:11px;color:#6b7280;'>exécutée(s) ({pct_e}%)</span></td>"
@@ -1380,11 +1399,11 @@ def bilan_pta():
     <p style="margin:0 0 20px;color:#374151;line-height:1.6;">
       Bonjour,<br>Bilan d'avancement du PTA {annee_label} à la date du <strong>{date_str}</strong>.
     </p>
-    {sec('📊 Par direction — activités')}
+    {sec('📊 Activités par direction')}
     {bloc_dir}
-    {sec('🏢 Par service — activités')}
+    {sec('🏢 Activités par service')}
     {bloc_svc}
-    {sec('🏷️ Par nature — activités')}
+    {sec('🏷️ Activités par nature')}
     {bloc_nat}
     {sec('🌐 Synthèse globale')}
     {bloc_glob}
@@ -1395,17 +1414,17 @@ def bilan_pta():
                            largeur=720, surtitre=f"Mairie d'Adja-Ouèrè · PTA {annee_label}")
 
     texte_brut = (
-        f"Bilan global PTA {annee_label} — État au {date_str}\n\n"
+        f"Bilan global du PTA {annee_label}, état au {date_str}\n\n"
         f"GLOBAL : {total_glob} activité(s) | {glob_a['execute']} exéc. | "
         f"{glob_a['en_cours']} en cours | {glob_a['non_execute']} non exéc. | Taux : {taux_global}%\n\n"
         "PAR DIRECTION :\n"
         + '\n'.join(
-            f"  {item['direction'].code} — {item['direction'].nom} : Taux {round(item['taux'], 1)}%"
+            f"  {item['direction'].code} · {item['direction'].nom} : taux {round(item['taux'], 1)}%"
             for item in synthese if item['nb_taches'] > 0
         )
         + "\n\nPAR SERVICE :\n"
         + '\n'.join(
-            f"  {sv['service'].code} ({item['direction'].code}) — "
+            f"  {sv['service'].code} ({item['direction'].code}) · "
             f"{sv['service'].nom} : Taux {round(sv['taux'], 1)}%"
             for item in synthese
             for sv in item['services'] if sv['nb_taches'] > 0
@@ -1415,7 +1434,7 @@ def bilan_pta():
         f"  Fonctionnement : {fct_a['total']} act. | Taux {taux_fct}%"
     )
 
-    sujet = f"[{_MARQUE} · PTA {annee_label}] Bilan global — État au {date_str}"
+    sujet = f"[{_MARQUE} · PTA {annee_label}] Bilan global au {date_str}"
 
     msg = _construire_mail(cfg, sujet, texte_brut, html_body, destinataires, copies_fixes)
 

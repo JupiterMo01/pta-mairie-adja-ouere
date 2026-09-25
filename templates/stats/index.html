@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Statistiques PTA {{ annee.annee if annee }} — Mairie d'Adja-Ouèrè{% endblock %}
+{% block title %}Statistiques PTA {{ annee.annee if annee }} · Mairie d'Adja-Ouèrè{% endblock %}
 
 {% block page_title %}
   <i class="fas fa-chart-pie me-2 text-primary"></i>
@@ -265,10 +265,10 @@
   </div>
 </div>
 
-{# ── Section 2 : Programmes — Projets — Activités — Tâches ─────────────── #}
+{# ── Section 2 : Programmes, projets, activités et tâches ─────────────── #}
 <div class="card border-0 shadow-sm mb-4">
   <div class="card-header bg-warning text-dark fw-bold">
-    <i class="fas fa-sitemap me-2"></i>Programmes — Projets — Activités — Tâches
+    <i class="fas fa-sitemap me-2"></i>Programmes, projets, activités et tâches
   </div>
   <div class="card-body">
     <ul class="nav nav-pills mb-3" id="tabProg" role="tablist">
@@ -429,7 +429,7 @@
   <div class="card-header text-white fw-bold" style="background:#1A5276;">
     <i class="fas fa-bullseye me-2"></i>Cibles trimestrielles d'exécution
     <small class="fw-normal ms-2" style="font-size:.78rem;">
-      — Taux attendu si chaque tâche est réalisée à 100 % dans ses délais
+      Taux attendu si chaque tâche est réalisée à 100 % dans ses délais
     </small>
   </div>
   <div class="card-body p-2">
@@ -492,7 +492,7 @@
                 <td>
                   <i class="fas fa-chevron-down caret me-1" style="font-size:.7rem;transition:transform .2s;"></i>
                   <span class="fw-semibold">Programme {{ prog['code'] }}</span>
-                  — {{ prog['nom'] }}
+                  · {{ prog['nom'] }}
                 </td>
                 {{ cible_cell(prog['cibles'][1]) }}
                 {{ cible_cell(prog['cibles'][2]) }}
@@ -503,7 +503,7 @@
               <tr class="cible-proj pg{{ prog['code'] }}" style="background:#EBF5FB;">
                 <td class="ps-4" style="font-size:.8rem;">
                   <i class="fas fa-folder-open me-1 text-info" style="font-size:.72rem;"></i>
-                  <span class="text-muted">{{ proj['code'] }}</span> — {{ proj['nom'] }}
+                  <span class="text-muted">{{ proj['code'] }}</span> · {{ proj['nom'] }}
                 </td>
                 {{ cible_cell(proj['cibles'][1]) }}
                 {{ cible_cell(proj['cibles'][2]) }}

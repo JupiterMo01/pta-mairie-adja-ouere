@@ -55,7 +55,7 @@
   <input type="text" name="imputation_budgetaire" class="form-control"
          id="imp_act_text_{{ uid }}"
          value="{{ act.imputation_budgetaire if act and act.imputation_budgetaire and act.imputation_budgetaire != 'NÉANT' else '' }}"
-         placeholder="Ex: 6.3.1 — Fonctionnement"
+         placeholder="Ex : 6.3.1 Fonctionnement"
          {% if not act or not act.imputation_budgetaire or act.imputation_budgetaire == 'NÉANT' %}style="display:none;"{% endif %}>
   <small class="text-muted">Si NÉANT ici, toutes les tâches seront aussi NÉANT.</small>
 </div>
@@ -65,7 +65,7 @@
 <div class="col-md-4">
   <label class="form-label fw-semibold">Période de début *</label>
   <select name="periode_debut" class="form-select">
-    <option value="">— Choisir —</option>
+    <option value="">Choisir…</option>
     {% for m in mois %}
     <option value="{{ m }}" {% if act and act.periode_debut == m %}selected{% endif %}>{{ m }}</option>
     {% endfor %}
@@ -75,7 +75,7 @@
 <div class="col-md-4">
   <label class="form-label fw-semibold">Période de fin *</label>
   <select name="periode_fin" class="form-select">
-    <option value="">— Choisir —</option>
+    <option value="">Choisir…</option>
     {% for m in mois %}
     <option value="{{ m }}" {% if act and act.periode_fin == m %}selected{% endif %}>{{ m }}</option>
     {% endfor %}
@@ -144,11 +144,11 @@
 <div class="col-md-6">
   <label class="form-label fw-semibold">Direction responsable *</label>
   <select name="direction_responsable_id" class="form-select">
-    <option value="">— Choisir —</option>
+    <option value="">Choisir…</option>
     {% for d in directions %}
     <option value="{{ d.id }}"
             {% if act and act.direction_responsable_id == d.id %}selected{% endif %}>
-      {{ d.code }} — {{ d.nom }}
+      {{ d.code }} · {{ d.nom }}
     </option>
     {% endfor %}
   </select>
@@ -176,7 +176,7 @@
         {% for s in services %}
         <option value="{{ s.id }}"
                 {% if act and s in act.services_intervenants %}selected{% endif %}>
-          {{ s.code }} — {{ s.nom }}
+          {{ s.code }} · {{ s.nom }}
         </option>
         {% endfor %}
       </select>
@@ -188,7 +188,7 @@
         {% for d in directions %}
         <option value="{{ d.id }}"
                 {% if act and d in act.directions_associees %}selected{% endif %}>
-          {{ d.code }} — {{ d.nom }}
+          {{ d.code }} · {{ d.nom }}
         </option>
         {% endfor %}
       </select>
@@ -222,7 +222,7 @@
     </option>
     {% endfor %}
   </select>
-  <small class="text-muted">Maintenez Ctrl pour sélectionner plusieurs — gérez la liste dans <a href="{{ url_for('admin.structures_externes') }}" target="_blank">Administration</a></small>
+  <small class="text-muted">Maintenez Ctrl pour en sélectionner plusieurs. Gérez la liste dans <a href="{{ url_for('admin.structures_externes') }}" target="_blank">Administration</a></small>
 </div>
 
 {# ── Description ── #}
@@ -269,16 +269,16 @@
            oninput="filterBiblioSel(this, 'pta_sel_{{ pid }}')">
     <select class="form-select mb-1" id="pta_sel_{{ pid }}"
             onchange="setImportId('{{ pid }}', this.value)">
-      <option value="">— Sélectionner une activité du PTA —</option>
+      <option value="">Sélectionner une activité du PTA</option>
       {% for prog in programmes %}
         {% for pj in prog.projets %}
           {% for a in pj.activites %}
-          <option value="{{ a.id }}">{{ a.code }} — {{ a.nom }}</option>
+          <option value="{{ a.id }}">{{ a.code }} · {{ a.nom }}</option>
           {% endfor %}
         {% endfor %}
       {% endfor %}
     </select>
-    <small class="text-muted">Tâches importées avec tous leurs détails — les champs déjà remplis ci-dessus ne seront pas écrasés</small>
+    <small class="text-muted">Tâches importées avec tous leurs détails. Les champs déjà remplis ci-dessus ne seront pas écrasés</small>
   </div>
   <div id="impBiblio_{{ pid }}" style="display:none;">
     <input type="text" class="form-control form-control-sm mb-1"
@@ -286,7 +286,7 @@
            oninput="filterBiblioSel(this, 'biblio_sel_{{ pid }}')">
     <select class="form-select mb-1" id="biblio_sel_{{ pid }}"
             onchange="setImportId('{{ pid }}', this.value)">
-      <option value="">— Sélectionner dans la bibliothèque —</option>
+      <option value="">Sélectionner dans la bibliothèque</option>
       {% for ba in biblio_activites %}
       <option value="{{ ba.id }}">{{ ba.nom }}</option>
       {% endfor %}

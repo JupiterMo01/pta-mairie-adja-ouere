@@ -2,7 +2,7 @@
 <div class="modal-dialog modal-xl">
   <div class="modal-content">
     <div class="modal-header bg-success text-white">
-      <h5 class="modal-title"><i class="fas fa-plus me-2"></i>Ajouter une activité — Projet {{ projet.code }}</h5>
+      <h5 class="modal-title"><i class="fas fa-plus me-2"></i>Ajouter une activité au projet {{ projet.code }}</h5>
       <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
     </div>
     <form method="POST" action="{{ url_for('pta.activite_add') }}" id="formAddActiviteDyn" novalidate>

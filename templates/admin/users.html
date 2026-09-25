@@ -39,8 +39,8 @@
             {% endif %}
           </td>
           <td>
-            {% if u.direction %}{{ u.direction.code }} — {{ u.direction.nom[:30] }}{% endif %}
-            {% if u.service %}{{ u.service.code }} — {{ u.service.nom[:30] }}{% endif %}
+            {% if u.direction %}{{ u.direction.code }} · {{ u.direction.nom[:30] }}{% endif %}
+            {% if u.service %}{{ u.service.code }} · {{ u.service.nom[:30] }}{% endif %}
             {% if not u.direction and not u.service %}<span class="text-muted">—</span>{% endif %}
           </td>
           <td class="small">
@@ -142,7 +142,7 @@
               <select name="direction_id" class="form-select">
                 <option value="">-- Aucune --</option>
                 {% for d in directions %}
-                <option value="{{ d.id }}">{{ d.code }} — {{ d.nom }}</option>
+                <option value="{{ d.id }}">{{ d.code }} · {{ d.nom }}</option>
                 {% endfor %}
               </select>
             </div>
@@ -151,7 +151,7 @@
               <select name="service_id" class="form-select">
                 <option value="">-- Aucun --</option>
                 {% for s in services %}
-                <option value="{{ s.id }}">{{ s.code }} — {{ s.nom }}</option>
+                <option value="{{ s.id }}">{{ s.code }} · {{ s.nom }}</option>
                 {% endfor %}
               </select>
             </div>
@@ -161,7 +161,7 @@
                      placeholder="ex: prenom.nom@mairie.bj">
               <div class="form-text text-muted">
                 <i class="fas fa-info-circle me-1"></i>
-                Facultatif — sert à l'envoi des alertes trimestrielles.
+                Facultatif. Sert à l'envoi des alertes trimestrielles.
               </div>
             </div>
           </div>

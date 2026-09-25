@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Statistiques PAI {{ annee.annee if annee }} — Mairie d'Adja-Ouèrè{% endblock %}
+{% block title %}Statistiques PAI {{ annee.annee if annee }} · Mairie d'Adja-Ouèrè{% endblock %}
 
 {% block page_title %}
   <i class="fas fa-chart-bar me-2 text-warning"></i>
@@ -257,14 +257,14 @@
     </tr>
     {% for prog in cibles.programmes %}
     <tr style="background:#D4E6F1;">
-      <td class="fw-semibold ps-2">Programme {{ prog.code }} — {{ prog.nom }}</td>
+      <td class="fw-semibold ps-2">Programme {{ prog.code }} · {{ prog.nom }}</td>
       {% for t in [1,2,3,4] %}
       <td class="text-center">{{ cible_badge(prog.cibles[t]) }}</td>
       {% endfor %}
     </tr>
     {% for proj in prog.projets %}
     <tr style="background:#EBF5FB;">
-      <td class="ps-4 text-muted"><i class="fas fa-chevron-right fa-xs me-1"></i>Projet {{ proj.code }} — {{ proj.nom }}</td>
+      <td class="ps-4 text-muted"><i class="fas fa-chevron-right fa-xs me-1"></i>Projet {{ proj.code }} · {{ proj.nom }}</td>
       {% for t in [1,2,3,4] %}
       <td class="text-center">{{ cible_badge(proj.cibles[t]) }}</td>
       {% endfor %}

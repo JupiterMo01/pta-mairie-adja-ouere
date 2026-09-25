@@ -48,7 +48,7 @@
 {# ── Période d'exécution ── #}
 {% set mois_list = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'] %}
 <div class="col-md-4">
-  <label class="form-label fw-semibold">Période — Début <small class="text-muted">(optionnel)</small></label>
+  <label class="form-label fw-semibold">Période : début <small class="text-muted">(optionnel)</small></label>
   <select name="periode_debut" class="form-select">
     <option value="">—</option>
     {% for m in mois_list %}
@@ -57,7 +57,7 @@
   </select>
 </div>
 <div class="col-md-4">
-  <label class="form-label fw-semibold">Période — Fin <small class="text-muted">(optionnel)</small></label>
+  <label class="form-label fw-semibold">Période : fin <small class="text-muted">(optionnel)</small></label>
   <select name="periode_fin" class="form-select">
     <option value="">—</option>
     {% for m in mois_list %}
@@ -73,7 +73,7 @@
   <select name="after_id" class="form-select form-select-sm">
     <option value="">En dernier (après la tâche n°{{ activite.taches|length }})</option>
     {% for t_ref in activite.taches|sort(attribute='numero') %}
-    <option value="{{ t_ref.id }}">Après tâche n°{{ t_ref.numero }} — {{ t_ref.nom[:60] }}</option>
+    <option value="{{ t_ref.id }}">Après la tâche n°{{ t_ref.numero }} · {{ t_ref.nom[:60] }}</option>
     {% endfor %}
   </select>
 </div>
@@ -101,7 +101,7 @@
   <input type="text" name="imputation_budgetaire" class="form-control"
          id="bt_imp_text_{{ tid }}"
          value="{{ tache.imputation_budgetaire if tache and tache.imputation_budgetaire and tache.imputation_budgetaire != 'NÉANT' else '' }}"
-         placeholder="Ex: 6.3.1 — Fonctionnement"
+         placeholder="Ex : 6.3.1 Fonctionnement"
          {% if not tache or not tache.imputation_budgetaire or tache.imputation_budgetaire == 'NÉANT' %}style="display:none;"{% endif %}>
 </div>
 
@@ -109,18 +109,18 @@
 <div class="col-md-6">
   <label class="form-label fw-semibold">Responsable * <small class="text-muted">(service ou direction)</small></label>
   <select name="responsable_ref" class="form-select" required>
-    <option value="">— Choisir —</option>
+    <option value="">Choisir…</option>
     <optgroup label="Services">
     {% for s in services %}
     <option value="s_{{ s.id }}" {% if tache and tache.service_responsable_id == s.id %}selected{% endif %}>
-      {{ s.code }} — {{ s.nom }}
+      {{ s.code }} · {{ s.nom }}
     </option>
     {% endfor %}
     </optgroup>
     <optgroup label="Directions">
     {% for d in directions %}
     <option value="d_{{ d.id }}" {% if tache and tache.direction_responsable_id == d.id %}selected{% endif %}>
-      {{ d.code }} — {{ d.nom }}
+      {{ d.code }} · {{ d.nom }}
     </option>
     {% endfor %}
     </optgroup>
@@ -147,7 +147,7 @@
       <select name="services_concernes" class="form-select" multiple size="3">
         {% for s in services %}
         <option value="{{ s.id }}" {% if tache and s in tache.services_concernes %}selected{% endif %}>
-          {{ s.code }} — {{ s.nom }}
+          {{ s.code }} · {{ s.nom }}
         </option>
         {% endfor %}
       </select>
@@ -158,7 +158,7 @@
       <select name="directions_associees" class="form-select" multiple size="3">
         {% for d in directions %}
         <option value="{{ d.id }}" {% if tache and d in tache.directions_associees %}selected{% endif %}>
-          {{ d.code }} — {{ d.nom }}
+          {{ d.code }} · {{ d.nom }}
         </option>
         {% endfor %}
       </select>
@@ -222,7 +222,7 @@
     </option>
     {% endfor %}
   </select>
-  <small class="text-muted">Ctrl+clic — gérez dans <a href="{{ url_for('admin.structures_externes') }}" target="_blank">Administration</a></small>
+  <small class="text-muted">Ctrl+clic pour en choisir plusieurs. Gérez dans <a href="{{ url_for('admin.structures_externes') }}" target="_blank">Administration</a></small>
 </div>
 
 {# ── Description ── #}

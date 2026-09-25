@@ -2,12 +2,12 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8">
-  <title>PTA {{ service.code }} {{ annee.annee }} — Mairie d'Adja-Ouèrè</title>
+  <title>PTA {{ service.code }} {{ annee.annee }} · Mairie d'Adja-Ouèrè</title>
   <style>
     @page {
       size: A4 landscape;
       margin: 1.8cm 1cm 2.2cm 1cm;
-      @bottom-left  { content: "Mairie d'Adja-Ouèrè — PTA {{ annee.annee }} — {{ service.code }}"; font-size:7pt; color:#555; font-weight:bold; }
+      @bottom-left  { content: "Mairie d'Adja-Ouèrè · PTA {{ annee.annee }} · {{ service.code }}"; font-size:7pt; color:#555; font-weight:bold; }
       @bottom-center{ content: ""; }
       @bottom-right { content: "Page " counter(page) " / " counter(pages); font-size:7pt; color:#555; font-weight:bold; }
     }
@@ -100,7 +100,7 @@
 <body>
 
 <div class="screen-bar">
-  <span>📄 PTA {{ annee.annee }} — Service : {{ service.code }} — {{ service.nom }}</span>
+  <span>📄 PTA {{ annee.annee }} · Service : {{ service.code }} · {{ service.nom }}</span>
   <button class="btn-p" onclick="window.print()">🖨️ Imprimer / Enregistrer PDF</button>
   <button class="btn-c" onclick="window.close()">✕ Fermer</button>
 </div>
@@ -125,8 +125,8 @@
 <div class="titre-pta">
   <div class="titre-pta-h1">PLAN DE TRAVAIL ANNUEL</div>
   <div class="titre-pta-h2">Exercice {{ annee.annee }}</div>
-  <div class="titre-pta-h3">Service : {{ service.code }} — {{ service.nom }}</div>
-  <div class="titre-pta-h4">Direction parente : {{ service.direction.code }} — {{ service.direction.nom }}</div>
+  <div class="titre-pta-h3">Service : {{ service.code }} · {{ service.nom }}</div>
+  <div class="titre-pta-h4">Direction parente : {{ service.direction.code }} · {{ service.direction.nom }}</div>
 </div>
 
 {% if annee.objectif_general %}

@@ -2,7 +2,7 @@
   <div class="modal-dialog modal-xl">
     <div class="modal-content">
       <div class="modal-header bg-warning">
-        <h5 class="modal-title fw-bold">Modifier tâche — {{ tache.nom[:50] }}</h5>
+        <h5 class="modal-title fw-bold">Modifier la tâche : {{ tache.nom[:50] }}</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <form method="POST" action="{{ url_for('biblio.tache_edit', tache_id=tache.id) }}">

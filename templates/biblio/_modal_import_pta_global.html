@@ -11,7 +11,7 @@
           {% if pta_acts %}
           <label class="form-label fw-semibold">Activité PTA à importer *</label>
           <select name="pta_activite_id" class="form-select" required>
-            <option value="">— Choisir une activité —</option>
+            <option value="">Choisir une activité</option>
             {% set ns = namespace(current_year=none) %}
             {% for ann, aid, anom in pta_acts %}
               {% if ann != ns.current_year %}

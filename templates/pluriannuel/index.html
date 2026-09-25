@@ -107,7 +107,7 @@
 </div>
 
 <h6 class="fw-bold text-secondary mt-3 mb-1" style="font-size:.85rem;">
-  <i class="fas fa-chart-area me-1"></i>Évolution graphique — T4 (taux annuel cumulé)
+  <i class="fas fa-chart-area me-1"></i>Évolution graphique du T4 (taux annuel cumulé)
 </h6>
 {% set chart_min_w = [rows|length * 90, 500]|max %}
 <div style="overflow-x:auto;">
@@ -123,7 +123,7 @@
     <div class="modal-content">
       <div class="modal-header py-2">
         <h6 class="modal-title fw-bold" style="color:{{ couleur }};">
-          <i class="fas fa-pencil-alt me-1"></i>{{ titre }} — {{ row.annee }}
+          <i class="fas fa-pencil-alt me-1"></i>{{ titre }} · {{ row.annee }}
         </h6>
         <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal"></button>
       </div>
@@ -275,7 +275,7 @@
     <div class="modal-content">
       <div class="modal-header py-2">
         <h6 class="modal-title fw-bold" style="color:{{ couleur }};">
-          <i class="fas fa-pencil-alt me-1"></i>{{ titre }} — {{ row.annee }}
+          <i class="fas fa-pencil-alt me-1"></i>{{ titre }} · {{ row.annee }}
         </h6>
         <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal"></button>
       </div>
@@ -311,7 +311,7 @@
 {% endif %}
 {% endmacro %}
 
-{% block title %}Suivi Pluriannuel — Mairie d'Adja-Ouèrè{% endblock %}
+{% block title %}Suivi Pluriannuel · Mairie d'Adja-Ouèrè{% endblock %}
 
 {% block page_title %}
   <i class="fas fa-calendar-alt me-2 text-warning"></i>Tableau de suivi pluriannuel
@@ -650,7 +650,7 @@
   <div class="modal-dialog modal-sm">
     <div class="modal-content">
       <div class="modal-header py-2">
-        <h6 class="modal-title fw-bold"><i class="fas fa-pencil-alt me-1"></i>PTA — Modifier {{ row.annee }}</h6>
+        <h6 class="modal-title fw-bold"><i class="fas fa-pencil-alt me-1"></i>PTA : modifier {{ row.annee }}</h6>
         <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal"></button>
       </div>
       <form method="post" action="{{ url_for('pluriannuel.edit_pta', row_id=row.id) }}">
@@ -804,7 +804,7 @@
   <div class="modal-dialog modal-sm">
     <div class="modal-content">
       <div class="modal-header py-2">
-        <h6 class="modal-title fw-bold"><i class="fas fa-pencil-alt me-1"></i>PAI — Modifier {{ row.annee }}</h6>
+        <h6 class="modal-title fw-bold"><i class="fas fa-pencil-alt me-1"></i>PAI : modifier {{ row.annee }}</h6>
         <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal"></button>
       </div>
       <form method="post" action="{{ url_for('pluriannuel.edit_pai', row_id=row.id) }}">
@@ -937,7 +937,7 @@
   <div class="modal-dialog modal-sm">
     <div class="modal-content">
       <div class="modal-header py-2">
-        <h6 class="modal-title fw-bold"><i class="fas fa-pencil-alt me-1"></i>Taux PTA — {{ row.annee }}</h6>
+        <h6 class="modal-title fw-bold"><i class="fas fa-pencil-alt me-1"></i>Taux PTA · {{ row.annee }}</h6>
         <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal"></button>
       </div>
       <form method="post" action="{{ url_for('pluriannuel.edit_pta_exec', row_id=row.id) }}">
@@ -1067,7 +1067,7 @@
   <div class="modal-dialog modal-sm">
     <div class="modal-content">
       <div class="modal-header py-2">
-        <h6 class="modal-title fw-bold"><i class="fas fa-pencil-alt me-1"></i>Taux PAI — {{ row.annee }}</h6>
+        <h6 class="modal-title fw-bold"><i class="fas fa-pencil-alt me-1"></i>Taux PAI · {{ row.annee }}</h6>
         <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal"></button>
       </div>
       <form method="post" action="{{ url_for('pluriannuel.edit_pai_exec', row_id=row.id) }}">
@@ -1201,9 +1201,9 @@
       <div class="col-12 col-sm-4">
         <label class="form-label small mb-1">Direction</label>
         <select name="direction_id" class="form-select form-select-sm" required>
-          <option value="">— Sélectionner —</option>
+          <option value="">Sélectionner…</option>
           {% for d in directions %}
-          <option value="{{ d.id }}">{{ d.code }} — {{ d.nom }}</option>
+          <option value="{{ d.id }}">{{ d.code }} · {{ d.nom }}</option>
           {% endfor %}
         </select>
       </div>
@@ -1254,7 +1254,7 @@
         </button>
         <form method="post" action="{{ url_for('pluriannuel.delete_dir_exec', row_id=row.id) }}"
               style="display:inline;"
-              onsubmit="return confirm('Supprimer {{ row.annee }} — {{ row.direction.code }} ?');">
+              onsubmit="return confirm('Supprimer {{ row.annee }} · {{ row.direction.code }} ?');">
           <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
           <button type="submit" class="btn btn-outline-danger btn-sm py-0 px-1" title="Supprimer">
             <i class="fas fa-trash fa-xs"></i>
@@ -1269,7 +1269,7 @@
 </div>
 
 <h6 class="fw-bold text-secondary mt-3 mb-1" style="font-size:.85rem;">
-  <i class="fas fa-chart-bar me-1"></i>T4 par direction — année filtrée
+  <i class="fas fa-chart-bar me-1"></i>T4 par direction (année filtrée)
 </h6>
 {% set dir_chart_w = [dir_exec_rows|length * 70, 400]|max %}
 <div style="overflow-x:auto;">
@@ -1285,7 +1285,7 @@
     <div class="modal-content">
       <div class="modal-header py-2">
         <h6 class="modal-title fw-bold" style="color:#1A237E;">
-          <i class="fas fa-pencil-alt me-1"></i>{{ row.direction.code }} — {{ row.annee }}
+          <i class="fas fa-pencil-alt me-1"></i>{{ row.direction.code }} · {{ row.annee }}
         </h6>
         <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal"></button>
       </div>
@@ -1355,9 +1355,9 @@
       <div class="col-12 col-sm-4">
         <label class="form-label small mb-1">Service</label>
         <select name="service_id" class="form-select form-select-sm" required>
-          <option value="">— Sélectionner —</option>
+          <option value="">Sélectionner…</option>
           {% for s in services %}
-          <option value="{{ s.id }}">{{ s.code }} — {{ s.nom }}</option>
+          <option value="{{ s.id }}">{{ s.code }} · {{ s.nom }}</option>
           {% endfor %}
         </select>
       </div>
@@ -1408,7 +1408,7 @@
         </button>
         <form method="post" action="{{ url_for('pluriannuel.delete_svc_exec', row_id=row.id) }}"
               style="display:inline;"
-              onsubmit="return confirm('Supprimer {{ row.annee }} — {{ row.service.code }} ?');">
+              onsubmit="return confirm('Supprimer {{ row.annee }} · {{ row.service.code }} ?');">
           <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
           <button type="submit" class="btn btn-outline-danger btn-sm py-0 px-1" title="Supprimer">
             <i class="fas fa-trash fa-xs"></i>
@@ -1423,7 +1423,7 @@
 </div>
 
 <h6 class="fw-bold text-secondary mt-3 mb-1" style="font-size:.85rem;">
-  <i class="fas fa-chart-bar me-1"></i>T4 par service — année filtrée
+  <i class="fas fa-chart-bar me-1"></i>T4 par service (année filtrée)
 </h6>
 {% set svc_chart_w = [svc_exec_rows|length * 60, 400]|max %}
 <div style="overflow-x:auto;">
@@ -1439,7 +1439,7 @@
     <div class="modal-content">
       <div class="modal-header py-2">
         <h6 class="modal-title fw-bold" style="color:#006064;">
-          <i class="fas fa-pencil-alt me-1"></i>{{ row.service.code }} — {{ row.annee }}
+          <i class="fas fa-pencil-alt me-1"></i>{{ row.service.code }} · {{ row.annee }}
         </h6>
         <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal"></button>
       </div>
@@ -2084,9 +2084,9 @@ function updateEntiteSelect() {
   var currentCode = select.value;
   select.innerHTML = options.length
     ? options.map(function(o) {
-        return '<option value="' + o.code + '">' + o.code + ' — ' + o.nom + '</option>';
+        return '<option value="' + o.code + '">' + o.code + ' · ' + o.nom + '</option>';
       }).join('')
-    : '<option value="">— Aucune donnée —</option>';
+    : '<option value="">Aucune donnée</option>';
   if (options.some(function(o) { return o.code === currentCode; })) {
     select.value = currentCode;
   }
@@ -2111,7 +2111,7 @@ function renderEntiteChart() {
   var typeLabel = type === 'dir' ? 'Direction' : 'Service';
   var entiteNom = data.length ? data[0].nom : code;
   if (title) {
-    title.innerHTML = '<i class="fas fa-chart-line me-1"></i>' + typeLabel + ' : <strong>' + code + '</strong> — ' + entiteNom;
+    title.innerHTML = '<i class="fas fa-chart-line me-1"></i>' + typeLabel + ' : <strong>' + code + '</strong> · ' + entiteNom;
   }
 
   if (chartEntiteEvoInst) { chartEntiteEvoInst.destroy(); chartEntiteEvoInst = null; }

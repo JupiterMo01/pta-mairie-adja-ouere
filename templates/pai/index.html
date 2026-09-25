@@ -9,7 +9,7 @@
   <span class="badge bg-primary fs-6 px-3">{{ annee.annee }}</span>
   <span class="text-muted small">
     <i class="fas fa-hammer me-1"></i>{{ total_nb }} activité{{ 's' if total_nb != 1 }} d'investissement
-    &nbsp;—&nbsp;
+    &nbsp;·&nbsp;
     Total : <strong>{{ (total_global / 1000) | fcfa }} milliers F CFA</strong>
   </span>
   {% endif %}
@@ -38,9 +38,9 @@
 {# ── Bannière de validation poids des programmes (calculés automatiquement) ── #}
 {% set sum_prog_poids = pai_data | sum(attribute='poids') %}
 {% if (sum_prog_poids - 100)|abs < 1 %}
-<div class="alert alert-success py-1 small mb-2"><i class="fas fa-check-circle me-1"></i>Poids des programmes : {{ sum_prog_poids }}% — ✓ Total = 100%</div>
+<div class="alert alert-success py-1 small mb-2"><i class="fas fa-check-circle me-1"></i>Poids des programmes : {{ sum_prog_poids }} % ✓ Total = 100 %</div>
 {% else %}
-<div class="alert alert-danger py-1 small mb-2"><i class="fas fa-exclamation-triangle me-1"></i>Poids des programmes : {{ sum_prog_poids }}% — ⚠ La somme doit être égale à 100%</div>
+<div class="alert alert-danger py-1 small mb-2"><i class="fas fa-exclamation-triangle me-1"></i>Poids des programmes : {{ sum_prog_poids }} %. ⚠ La somme doit être égale à 100%</div>
 {% endif %}
 
 {# ── Tableau PAI ─────────────────────────────────────────────────────────── #}
@@ -313,7 +313,7 @@
     <div class="modal-content">
       <div class="modal-header" style="background:#1a3a5c; color:#fff;">
         <h5 class="modal-title" id="editPaiLabel">
-          <i class="fas fa-edit me-2"></i>Modifier champs PAI —
+          <i class="fas fa-edit me-2"></i>Modifier les champs PAI :
           <span id="modal-act-code" class="font-monospace"></span>
         </h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>

@@ -2,12 +2,12 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<title>Suivi PTA {{ annee.annee if annee }} — {{ titre }}</title>
+<title>Suivi PTA {{ annee.annee if annee }} · {{ titre }}</title>
 <style>
   @page {
     size: A4 landscape;
     margin: 1.8cm 1cm 2.2cm 1cm;
-    @bottom-left  { content: "Mairie d'Adja-Ouèrè — Suivi PTA {{ annee.annee if annee }} — {{ titre | replace('"', "'") | safe }}"; font-size:7pt; color:#555; font-weight:bold; }
+    @bottom-left  { content: "Mairie d'Adja-Ouèrè · Suivi PTA {{ annee.annee if annee }} · {{ titre | replace('"', "'") | safe }}"; font-size:7pt; color:#555; font-weight:bold; }
     @bottom-center{ content: ""; }
     @bottom-right { content: "Page " counter(page) " / " counter(pages); font-size:7pt; color:#555; font-weight:bold; }
   }
@@ -123,7 +123,7 @@
 
 {# ── Barre écran ── #}
 <div class="screen-bar">
-  <span>📄 Suivi PTA {{ annee.annee if annee }} — {{ titre }}{% if trimestre > 0 %} — T{{ trimestre }}{% endif %}</span>
+  <span>📄 Suivi PTA {{ annee.annee if annee }} · {{ titre }}{% if trimestre > 0 %} · T{{ trimestre }}{% endif %}</span>
   <button class="btn-p" onclick="window.print()">🖨️ Imprimer / Enregistrer PDF</button>
   <button class="btn-c" onclick="window.close()">✕ Fermer</button>
 </div>
@@ -147,13 +147,13 @@
 
 {# ── Titre ── #}
 <div class="titre-pta">
-  <div class="titre-pta-h1">PLAN DE TRAVAIL ANNUEL — SUIVI &amp; ÉVALUATION</div>
+  <div class="titre-pta-h1">PLAN DE TRAVAIL ANNUEL : SUIVI &amp; ÉVALUATION</div>
   <div class="titre-pta-h2">Exercice {{ annee.annee if annee }}</div>
   <div class="titre-pta-h3">{{ titre }}</div>
   {% if trimestre > 0 %}
-  <div class="titre-pta-h3">Trimestre {{ trimestre }}{% if nature_lbl %} — {{ nature_lbl }}{% endif %}</div>
+  <div class="titre-pta-h3">Trimestre {{ trimestre }}{% if nature_lbl %} · {{ nature_lbl }}{% endif %}</div>
   {% else %}
-  <div class="titre-pta-h3">Vue globale — état consolidé{% if nature_lbl %} — {{ nature_lbl }}{% endif %}</div>
+  <div class="titre-pta-h3">Vue globale, état consolidé{% if nature_lbl %} · {{ nature_lbl }}{% endif %}</div>
   {% endif %}
   <div>
     <span class="titre-pta-taux">Taux d'exécution : {{ '%.2f'|format(taux_global) }}&thinsp;%</span>

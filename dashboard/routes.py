@@ -266,7 +266,7 @@ def index():
             return redirect(url_for('suivi.index'))
         from svcpta.routes import _compute_pta_service
         data   = _compute_pta_service(annee, service)
-        titre  = f"{service.code} — {service.nom}"
+        titre  = f"{service.code} · {service.nom}"
         entite = service
         cibles = _cibles_service(annee, service)
 
@@ -286,13 +286,13 @@ def index():
             svc = db.session.get(Service, sel_svc_id)
             from svcpta.routes import _compute_pta_service
             data   = _compute_pta_service(annee, svc)
-            titre  = f"{svc.code} — {svc.nom}"
+            titre  = f"{svc.code} · {svc.nom}"
             entite = svc
             cibles = _cibles_service(annee, svc)
         else:
             from dirpta.routes import _compute_pta_direction
             data   = _compute_pta_direction(annee, direction)
-            titre  = f"{direction.code} — {direction.nom}"
+            titre  = f"{direction.code} · {direction.nom}"
             entite = direction
             cibles = _cibles_direction(annee, direction)
 
@@ -313,7 +313,7 @@ def index():
                 sel_dir_id = None
                 from svcpta.routes import _compute_pta_service
                 data   = _compute_pta_service(annee, svc)
-                titre  = f"Service — {svc.code} · {svc.nom}"
+                titre  = f"Service {svc.code} · {svc.nom}"
                 entite = svc
                 cibles = _cibles_service(annee, svc)
 
@@ -324,14 +324,14 @@ def index():
             else:
                 from dirpta.routes import _compute_pta_direction
                 data   = _compute_pta_direction(annee, direction)
-                titre  = f"Direction — {direction.code} · {direction.nom}"
+                titre  = f"Direction {direction.code} · {direction.nom}"
                 entite = direction
                 cibles = _cibles_direction(annee, direction)
 
         if not sel_svc_id and not sel_dir_id:
             from suivi.routes import _compute_pta_global
             data   = _compute_pta_global(annee)
-            titre  = "PTA Global — Mairie d'Adja-Ouèrè"
+            titre  = "PTA global · Mairie d'Adja-Ouèrè"
             entite = None
             cibles = _cibles_global(annee)
 
@@ -750,7 +750,7 @@ def _build_dashboard_word(annee, titre, stats, synthese, static_img_path):
             taux_items.append((item['direction'].nom, td))
             r = tbl_syn.add_row()
             data_cell(r.cells[0],
-                      f"{item['direction'].code} — {item['direction'].nom}",
+                      f"{item['direction'].code} · {item['direction'].nom}",
                       bold=True, size=9, bg='E8EAF6')
             data_cell(r.cells[1], f"{_fr(td)} %",
                       align='center', bold=True, size=9,
@@ -761,7 +761,7 @@ def _build_dashboard_word(annee, titre, stats, synthese, static_img_path):
                 taux_items.append((f"  └ {sv['service'].nom}", ts))
                 rs = tbl_syn.add_row()
                 data_cell(rs.cells[0],
-                          f"   {sv['service'].code} — {sv['service'].nom}",
+                          f"   {sv['service'].code} · {sv['service'].nom}",
                           size=9, bg='FDFEFE')
                 data_cell(rs.cells[1], f"{_fr(ts)} %",
                           align='center', size=9,
@@ -816,7 +816,7 @@ def rapport_word():
                 sel_dir_id = None
                 from svcpta.routes import _compute_pta_service
                 data   = _compute_pta_service(annee, svc)
-                titre  = f"Service — {svc.code} · {svc.nom}"
+                titre  = f"Service {svc.code} · {svc.nom}"
                 cibles = _cibles_service(annee, svc)
 
         if not sel_svc_id and sel_dir_id:
@@ -824,13 +824,13 @@ def rapport_word():
             if direction:
                 from dirpta.routes import _compute_pta_direction
                 data   = _compute_pta_direction(annee, direction)
-                titre  = f"Direction — {direction.code} · {direction.nom}"
+                titre  = f"Direction {direction.code} · {direction.nom}"
                 cibles = _cibles_direction(annee, direction)
 
         if not sel_svc_id and not sel_dir_id:
             from suivi.routes import _compute_pta_global
             data   = _compute_pta_global(annee)
-            titre  = "PTA Global — Mairie d'Adja-Ouèrè"
+            titre  = "PTA global · Mairie d'Adja-Ouèrè"
             cibles = _cibles_global(annee)
 
         stats    = _compute_dashboard_stats(annee, data, cibles, with_nature=True) if data else None

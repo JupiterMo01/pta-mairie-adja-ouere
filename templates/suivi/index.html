@@ -1,11 +1,11 @@
 {% extends "base.html" %}
-{% block title %}Suivi — {{ titre }} — {{ annee.libelle if annee }}{% endblock %}
+{% block title %}Suivi · {{ titre }} · {{ annee.libelle if annee }}{% endblock %}
 {% block page_title %}
   <i class="fas fa-tasks me-2 text-success"></i>Suivi &amp; Évaluation
   {% if annee %}<span class="badge bg-success ms-1">{{ annee.annee }}</span>{% endif %}
   {% if edit_mode %}
   <span class="badge bg-warning text-dark ms-2">
-    <i class="fas fa-pencil-alt me-1"></i>Mode édition — T{{ trimestre }}
+    <i class="fas fa-pencil-alt me-1"></i>Mode édition · T{{ trimestre }}
   </span>
   {% endif %}
   {# Boutons export/impression : masqués en mode édition #}
@@ -41,19 +41,19 @@
       </label>
       <select name="direction_id" class="form-select form-select-sm" style="max-width:260px;"
               onchange="this.form.service_id.value='';this.form.submit()">
-        <option value="">— Toutes directions (global) —</option>
+        <option value="">Toutes directions (global)</option>
         {% for d in directions %}
         <option value="{{ d.id }}" {% if sel_dir_id == d.id %}selected{% endif %}>
-          {{ d.code }} — {{ d.nom }}
+          {{ d.code }} · {{ d.nom }}
         </option>
         {% endfor %}
       </select>
       <select name="service_id" class="form-select form-select-sm" style="max-width:260px;"
               onchange="this.form.direction_id.value='';this.form.submit()">
-        <option value="">— Tous services —</option>
+        <option value="">Tous services</option>
         {% for s in services_list %}
         <option value="{{ s.id }}" {% if sel_svc_id == s.id %}selected{% endif %}>
-          {{ s.code }} — {{ s.nom }}
+          {{ s.code }} · {{ s.nom }}
         </option>
         {% endfor %}
       </select>
@@ -119,7 +119,7 @@
     <span class="text-muted small">
       {% if trimestre == 0 %}Taux global :{% else %}Taux T{{ trimestre }} :{% endif %}
     </span>
-    <span class="badge bg-success fs-6 px-3 py-2" title="Taux d'exécution — vue actuelle">
+    <span class="badge bg-success fs-6 px-3 py-2" title="Taux d'exécution de la vue actuelle">
       <span id="taux-global">{{ '%.2f'|format(taux_global) }}</span>&thinsp;%
     </span>
     {# ── Taux fonctionnement / investissement (toujours affichés) ── #}
@@ -130,7 +130,7 @@
     <a href="{{ url_for('suivi.index', **_q_fct) }}"
        class="badge text-decoration-none px-2 py-1
               {% if nature == 'fct' %}bg-primary{% else %}bg-secondary bg-opacity-50{% endif %}"
-       title="Taux d'exécution — Fonctionnement uniquement (cliquer pour filtrer)">
+       title="Taux d'exécution du fonctionnement (cliquer pour filtrer)">
       <i class="fas fa-cogs me-1"></i>Fct&thinsp;:&thinsp;<strong>{{ '%.1f'|format(taux_fct|default(0)) }}%</strong>
     </a>
     {%- set _q_inv = {'trimestre': trimestre, 'nature': '' if nature == 'inv' else 'inv'} -%}
@@ -139,7 +139,7 @@
     <a href="{{ url_for('suivi.index', **_q_inv) }}"
        class="badge text-decoration-none px-2 py-1
               {% if nature == 'inv' %}bg-warning text-dark{% else %}bg-secondary bg-opacity-50{% endif %}"
-       title="Taux d'exécution — Investissement uniquement (cliquer pour filtrer)">
+       title="Taux d'exécution de l'investissement (cliquer pour filtrer)">
       <i class="fas fa-hard-hat me-1"></i>Inv&thinsp;:&thinsp;<strong>{{ '%.1f'|format(taux_inv|default(0)) }}%</strong>
     </a>
     {% if nature %}
@@ -183,20 +183,20 @@
 {% if edit_mode and trimestre == 0 %}
 <div class="alert alert-warning border py-1 mb-2 small">
   <i class="fas fa-pencil-alt me-1"></i>
-  <strong>Mode édition — Vue globale</strong> — toutes les tâches sont visibles.
+  <strong>Mode édition, vue globale :</strong> toutes les tâches sont visibles.
   Saisissez les statuts et taux puis cliquez <strong>Valider</strong>.
 </div>
 {% elif edit_mode %}
 <div class="alert alert-warning border py-1 mb-2 small">
   <i class="fas fa-pencil-alt me-1"></i>
-  <strong>Mode édition — T{{ trimestre }}</strong>.
+  <strong>Mode édition, T{{ trimestre }}.</strong>
   Saisissez les statuts et taux, puis cliquez <strong>Valider</strong>.
   Impression et export disponibles après validation.
 </div>
 {% elif trimestre == 0 %}
 <div class="alert alert-light border py-1 mb-2 small">
   <i class="fas fa-info-circle text-primary me-1"></i>
-  <strong>Vue globale</strong> — état le plus récent (tous trimestres).
+  <strong>Vue globale :</strong> état le plus récent (tous trimestres).
   {% if peut_editer_pta %}
     Cliquez sur <strong>Faire le suivi de mon PTA</strong> pour saisir.
   {% endif %}
@@ -227,7 +227,7 @@
 {% if peut_modifier_page %}
 <div class="d-flex justify-content-between align-items-center mb-1">
   <span class="small fw-semibold text-secondary">
-    <i class="fas fa-edit me-1"></i>{{ titre }}{% if trimestre > 0 %} — Trimestre {{ trimestre }}{% else %} — Vue globale{% endif %}
+    <i class="fas fa-edit me-1"></i>{{ titre }}{% if trimestre > 0 %} · Trimestre {{ trimestre }}{% else %} · Vue globale{% endif %}
   </span>
   <button id="btnValider" class="btn btn-success btn-sm px-3">
     <i class="fas fa-check me-1"></i>Valider les saisies

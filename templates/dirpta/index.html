@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}PTA — {{ direction.code if direction else 'Direction' }} — {{ annee.annee if annee }}{% endblock %}
+{% block title %}PTA · {{ direction.code if direction else 'Direction' }} · {{ annee.annee if annee }}{% endblock %}
 {% block page_title %}
   <i class="fas fa-building me-2 text-info"></i>PTA par Direction
   {% if annee %}<span class="badge bg-primary ms-1">{{ annee.annee }}</span>{% endif %}
@@ -10,17 +10,17 @@
     {# Vue service depuis direction : print/excel du service actif #}
     <a href="{{ url_for('svcpta.export_excel', service_id=sel_service.id) }}"
        class="btn btn-sm btn-outline-success" title="Exporter le PTA de ce service en Excel">
-      <i class="fas fa-file-excel me-1"></i>Excel — {{ sel_service.code }}
+      <i class="fas fa-file-excel me-1"></i>Excel {{ sel_service.code }}
     </a>
     <a href="{{ url_for('svcpta.print_view', service_id=sel_service.id) }}"
        target="_blank" class="btn btn-sm btn-outline-secondary" title="Imprimer le PTA de ce service">
-      <i class="fas fa-print me-1"></i>Imprimer — {{ sel_service.code }}
+      <i class="fas fa-print me-1"></i>Imprimer {{ sel_service.code }}
     </a>
     {% else %}
     {# Vue direction complète #}
     <a href="{{ url_for('dirpta.export_excel', direction_id=direction.id) }}"
        class="btn btn-sm btn-outline-success" title="Exporter la direction en Excel">
-      <i class="fas fa-file-excel me-1"></i>Excel — {{ direction.code }}
+      <i class="fas fa-file-excel me-1"></i>Excel {{ direction.code }}
     </a>
     <a href="{{ url_for('dirpta.print_view', direction_id=direction.id) }}"
        target="_blank" class="btn btn-sm btn-outline-secondary" title="Imprimer le PTA de cette direction">
@@ -52,7 +52,7 @@
   <div class="card-body py-2 d-flex align-items-center gap-3 flex-wrap">
     <div>
       <i class="fas fa-building text-info me-2"></i>
-      <strong>{{ direction.code }} — {{ direction.nom }}</strong>
+      <strong>{{ direction.code }} · {{ direction.nom }}</strong>
     </div>
     {# Pills de filtrage par service si la direction a des services #}
     {% if dir_services %}
@@ -85,16 +85,16 @@
       </label>
       <select name="direction_id" class="form-select form-select-sm" style="max-width:400px;"
               onchange="this.form.submit()">
-        <option value="">— Choisir une direction —</option>
+        <option value="">Choisir une direction</option>
         {% for d in directions %}
         <option value="{{ d.id }}" {% if direction and direction.id == d.id %}selected{% endif %}>
-          {{ d.code }} — {{ d.nom }}
+          {{ d.code }} · {{ d.nom }}
         </option>
         {% endfor %}
       </select>
       {% if direction and data %}
       <span class="badge bg-info text-dark ms-2">
-        <i class="fas fa-building me-1"></i>{{ direction.code }} — {{ direction.nom }}
+        <i class="fas fa-building me-1"></i>{{ direction.code }} · {{ direction.nom }}
       </span>
       {% endif %}
     </form>
@@ -111,7 +111,7 @@
 {% elif not data %}
 <div class="alert alert-warning">
   <i class="fas fa-exclamation-triangle me-2"></i>
-  La direction <strong>{{ direction.code }} — {{ direction.nom }}</strong>
+  La direction <strong>{{ direction.code }} · {{ direction.nom }}</strong>
   n'a aucune tâche assignée dans le PTA {{ annee.annee }}.
 </div>
 

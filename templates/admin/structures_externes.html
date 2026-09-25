@@ -63,7 +63,7 @@
                   <div class="mb-3">
                     <label class="form-label fw-semibold">Type</label>
                     <select name="type_org" class="form-select">
-                      <option value="">— Aucun —</option>
+                      <option value="">Aucun</option>
                       {% for t in ['ONG','Prestataire','Partenaire technique','Bailleur','Institution publique','Autre'] %}
                       <option value="{{ t }}" {% if se.type_org == t %}selected{% endif %}>{{ t }}</option>
                       {% endfor %}
@@ -113,7 +113,7 @@
           <div class="mb-3">
             <label class="form-label fw-semibold">Type</label>
             <select name="type_org" class="form-select">
-              <option value="">— Aucun —</option>
+              <option value="">Aucun</option>
               {% for t in ['ONG','Prestataire','Partenaire technique','Bailleur','Institution publique','Autre'] %}
               <option value="{{ t }}">{{ t }}</option>
               {% endfor %}

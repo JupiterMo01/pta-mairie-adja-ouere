@@ -3,7 +3,19 @@ from flask_login import login_user, logout_user, login_required, current_user
 from models import User, Annee
 from auth import auth_bp
 from utils import log_audit, valider_mdp
-from extensions import limiter
+from extensions import limiter, adresse_client
+
+_MSG_LIMITE = 'Trop de tentatives de connexion. Veuillez patienter quelques minutes.'
+
+
+def _cle_identifiant():
+    """Compteur propre à chaque identifiant : un agent qui se trompe ne bloque pas ses collègues du même réseau."""
+    return f"{adresse_client()}|{(request.form.get('login') or '').strip().lower()}"
+
+
+def _echec(response):
+    # Une connexion réussie redirige (302) : seules les tentatives échouées sont comptées
+    return response.status_code != 302
 
 
 @auth_bp.route('/')
@@ -14,7 +26,10 @@ def index():
 
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
-@limiter.limit('10 per minute; 30 per hour', error_message='Trop de tentatives de connexion. Veuillez patienter quelques minutes.')
+@limiter.limit('5 per minute; 20 per hour', key_func=_cle_identifiant, methods=['POST'],
+               deduct_when=_echec, error_message=_MSG_LIMITE)
+@limiter.limit('30 per minute; 100 per hour', methods=['POST'],
+               deduct_when=_echec, error_message=_MSG_LIMITE)
 def login():
     if current_user.is_authenticated:
         return redirect(url_for('auth.index'))

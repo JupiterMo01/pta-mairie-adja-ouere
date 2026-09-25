@@ -90,12 +90,10 @@
             <i class="fas fa-database me-2"></i>Sauvegarder maintenant
           </button>
         </form>
-        <form method="POST" action="{{ url_for('admin.rappel_saisie') }}"
-              onsubmit="return confirm('Envoyer un rappel à tous les utilisateurs pour qu\'ils renseignent leurs données PTA ?')">
-          <button type="submit" class="btn btn-outline-info w-100">
-            <i class="fas fa-bell me-2"></i>Rappel de saisie PTA
-          </button>
-        </form>
+        <button type="button" class="btn btn-outline-info w-100"
+                data-bs-toggle="modal" data-bs-target="#modalRappel">
+          <i class="fas fa-bell me-2"></i>Rappel de saisie PTA
+        </button>
         <form method="POST" action="{{ url_for('admin.bilan_pta') }}"
               onsubmit="return confirm('Envoyer le bilan global du PTA (par direction, service, nature) à tous les utilisateurs ?')">
           <button type="submit" class="btn btn-outline-primary w-100">
@@ -212,6 +210,129 @@
     </div>
   </div>
 </div>
+
+{% if current_user.role == 'admin_editeur' %}
+{# ── Fenêtre : rappel de saisie ciblé ─────────────────────────────────────── #}
+{% macro liste_entites(prefixe) %}
+<div class="rappel-liste" data-groupe="{{ prefixe }}">
+  {% for d in rappel_directions %}
+  {% set md = mails_dir.get(d.id, []) %}
+  <div class="rappel-dir">
+    <label class="rappel-ligne fw-semibold {% if not md %}sans-mail{% endif %}"
+           {% if not md %}title="Aucun compte direction avec une adresse email"{% endif %}>
+      <input type="checkbox" class="form-check-input rappel-cb" name="{{ prefixe }}_dir" value="{{ d.id }}"
+             data-mails="{{ md|join(',') }}" data-type="dir" data-id="{{ d.id }}" {% if not md %}disabled{% endif %}>
+      <span class="rappel-code">{{ d.code }}</span>
+      <span class="rappel-nom">{{ d.nom }}</span>
+      <span class="rappel-nb">{% if md %}{{ md|length }} email{{ 's' if md|length > 1 }}{% else %}sans email{% endif %}</span>
+    </label>
+    {% for s in d.services|sort(attribute='code') %}
+    {% set ms = mails_svc.get(s.id, []) %}
+    <label class="rappel-ligne rappel-svc {% if not ms %}sans-mail{% endif %}"
+           {% if not ms %}title="Aucun compte service avec une adresse email"{% endif %}>
+      <input type="checkbox" class="form-check-input rappel-cb" name="{{ prefixe }}_svc" value="{{ s.id }}"
+             data-mails="{{ ms|join(',') }}" data-type="svc" data-dir="{{ d.id }}" {% if not ms %}disabled{% endif %}>
+      <span class="rappel-code">{{ s.code }}</span>
+      <span class="rappel-nom">{{ s.nom }}</span>
+      <span class="rappel-nb">{% if ms %}{{ ms|length }} email{{ 's' if ms|length > 1 }}{% else %}sans email{% endif %}</span>
+    </label>
+    {% endfor %}
+  </div>
+  {% endfor %}
+</div>
+{% endmacro %}
+
+<div class="modal fade" id="modalRappel" tabindex="-1" aria-labelledby="titreRappel">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <form method="POST" action="{{ url_for('admin.rappel_saisie') }}" id="formRappel">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold" id="titreRappel">
+            <i class="fas fa-bell me-2 text-info"></i>Rappel de saisie PTA
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+        </div>
+        <div class="modal-body">
+          <p class="small text-muted mb-3">
+            Choisissez les directions et services qui recevront le rappel, puis ceux à mettre en copie.
+            Les adresses sont celles des comptes utilisateurs actifs.
+          </p>
+          <div class="row g-3">
+            <div class="col-lg-6">
+              <div class="rappel-panneau">
+                <div class="rappel-entete">
+                  <span><i class="fas fa-paper-plane me-1"></i>Destinataires <span class="text-muted fw-normal">(À)</span></span>
+                  <span class="d-flex gap-1">
+                    <button type="button" class="btn btn-xs btn-outline-secondary" data-tout="dest">Tout</button>
+                    <button type="button" class="btn btn-xs btn-outline-secondary" data-aucun="dest">Aucun</button>
+                  </span>
+                </div>
+                {{ liste_entites('dest') }}
+              </div>
+            </div>
+            <div class="col-lg-6">
+              <div class="rappel-panneau">
+                <div class="rappel-entete">
+                  <span><i class="fas fa-copy me-1"></i>En copie <span class="text-muted fw-normal">(Cc)</span></span>
+                  <span class="d-flex gap-1">
+                    <button type="button" class="btn btn-xs btn-outline-secondary" data-aucun="cc">Aucun</button>
+                  </span>
+                </div>
+                <label class="rappel-tutelle">
+                  <input type="checkbox" class="form-check-input" name="cc_tutelle" id="ccTutelle" value="1">
+                  <span>Mettre en copie les <strong>directions de tutelle</strong> des services destinataires</span>
+                </label>
+                {{ liste_entites('cc') }}
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer justify-content-between">
+          <div class="small" id="rappelResume">Aucun destinataire sélectionné.</div>
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+            <button type="submit" class="btn btn-info text-white" id="btnEnvoyerRappel" disabled>
+              <i class="fas fa-paper-plane me-1"></i>Envoyer le rappel
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<style>
+  .rappel-panneau { border: 1px solid var(--abj-ligne); border-radius: 12px; overflow: hidden; background: #fff; }
+  .rappel-entete {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: .55rem .8rem; background: #F4F7F5; border-bottom: 1px solid var(--abj-ligne);
+    font-weight: 700; font-size: .88rem;
+  }
+  .rappel-liste { max-height: 48vh; overflow-y: auto; padding: .35rem 0; }
+  .rappel-dir + .rappel-dir { border-top: 1px dashed var(--abj-ligne); margin-top: .2rem; padding-top: .2rem; }
+  .rappel-ligne {
+    display: flex; align-items: center; gap: .5rem;
+    padding: .3rem .8rem; margin: 0; cursor: pointer; font-size: .85rem;
+  }
+  .rappel-ligne:hover { background: rgba(0,135,81,.05); }
+  .rappel-ligne .form-check-input { margin: 0; flex: none; }
+  .rappel-svc { padding-left: 2.1rem; font-weight: 400; }
+  .rappel-code {
+    flex: none; min-width: 3.4rem; font-size: .72rem; font-weight: 700; letter-spacing: .03em;
+    padding: .05rem .4rem; border-radius: 5px; background: #EAF0EC; color: var(--abj-foret); text-align: center;
+  }
+  .rappel-nom { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rappel-nb { flex: none; font-size: .72rem; color: var(--abj-doux); }
+  .sans-mail { cursor: not-allowed; opacity: .55; }
+  .sans-mail .rappel-nb { color: #B4232C; }
+  .rappel-tutelle {
+    display: flex; align-items: flex-start; gap: .5rem; margin: 0; cursor: pointer;
+    padding: .6rem .8rem; font-size: .84rem; background: #FFFBEA; border-bottom: 1px solid var(--abj-ligne);
+  }
+  .rappel-tutelle .form-check-input { margin-top: .2rem; flex: none; }
+</style>
+{% endif %}
 {% endblock %}
 
 {% block scripts %}
@@ -225,5 +346,65 @@ function _confirmNotif(form) {
     : 'Notifier tous les utilisateurs d\'une mise à jour du PTA et PAI (' + anneeLabel + ') ?';
   return confirm(msg);
 }
+
+(function () {
+  var form = document.getElementById('formRappel');
+  if (!form) return;
+  var resume = document.getElementById('rappelResume');
+  var btn = document.getElementById('btnEnvoyerRappel');
+  var tutelle = document.getElementById('ccTutelle');
+
+  function cases(groupe) {
+    return form.querySelectorAll('.rappel-liste[data-groupe="' + groupe + '"] .rappel-cb');
+  }
+  function mails(cb) { return (cb.dataset.mails || '').split(',').filter(Boolean); }
+
+  function calculer() {
+    var a = new Set(), cc = new Set(), dirsTutelle = new Set(), nbEntites = 0;
+    cases('dest').forEach(function (cb) {
+      if (!cb.checked) return;
+      nbEntites++;
+      mails(cb).forEach(function (m) { a.add(m); });
+      if (cb.dataset.type === 'svc') dirsTutelle.add(cb.dataset.dir);
+    });
+    cases('cc').forEach(function (cb) {
+      var viaTutelle = tutelle.checked && cb.dataset.type === 'dir' && dirsTutelle.has(cb.dataset.id);
+      if (cb.checked || viaTutelle) mails(cb).forEach(function (m) { cc.add(m); });
+    });
+    a.forEach(function (m) { cc.delete(m); });
+    if (!a.size) {
+      resume.innerHTML = nbEntites
+        ? '<span class="text-danger">Les entités choisies n\'ont aucune adresse email.</span>'
+        : 'Aucun destinataire sélectionné.';
+    } else {
+      resume.innerHTML = '<strong>À :</strong> ' + a.size + ' adresse' + (a.size > 1 ? 's' : '') +
+        ' &nbsp;·&nbsp; <strong>Cc :</strong> ' + cc.size + ' adresse' + (cc.size > 1 ? 's' : '');
+    }
+    btn.disabled = !a.size;
+    form.dataset.nbA = a.size;
+    form.dataset.nbCc = cc.size;
+  }
+
+  form.addEventListener('change', calculer);
+  form.querySelectorAll('[data-tout]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      cases(b.dataset.tout).forEach(function (cb) { if (!cb.disabled) cb.checked = true; });
+      calculer();
+    });
+  });
+  form.querySelectorAll('[data-aucun]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      cases(b.dataset.aucun).forEach(function (cb) { cb.checked = false; });
+      if (b.dataset.aucun === 'cc') tutelle.checked = false;
+      calculer();
+    });
+  });
+  form.addEventListener('submit', function (e) {
+    var msg = 'Envoyer le rappel de saisie à ' + form.dataset.nbA + ' adresse(s)' +
+              (Number(form.dataset.nbCc) ? ', avec ' + form.dataset.nbCc + ' en copie' : '') + ' ?';
+    if (!confirm(msg)) e.preventDefault();
+  });
+  calculer();
+})();
 </script>
 {% endblock %}

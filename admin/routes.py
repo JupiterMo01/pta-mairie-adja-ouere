@@ -75,7 +75,10 @@ def index():
         'services': Service.query.count(),
         'annees': Annee.query.count(),
     }
-    return render_template('admin/index.html', stats=stats)
+    par_dir, par_svc = _emails_par_entite()
+    return render_template('admin/index.html', stats=stats,
+                           rappel_directions=Direction.query.order_by(Direction.code).all(),
+                           mails_dir=par_dir, mails_svc=par_svc)
 
 
 # ─── Utilisateurs ───────────────────────────────────────────────────────────
@@ -956,6 +959,24 @@ def _get_destinataires():
     ]
 
 
+def _emails_par_entite():
+    """({direction_id: [emails]}, {service_id: [emails]}) des comptes actifs direction / service."""
+    par_dir, par_svc = {}, {}
+    for u in User.query.filter(User.actif.is_(True)).all():
+        email = (u.email or '').strip()
+        if not email:
+            continue
+        if u.role == 'direction' and u.direction_id:
+            par_dir.setdefault(u.direction_id, []).append(email)
+        elif u.role == 'service' and u.service_id:
+            par_svc.setdefault(u.service_id, []).append(email)
+    return par_dir, par_svc
+
+
+def _ids_formulaire(nom):
+    return {int(v) for v in request.form.getlist(nom) if str(v).isdigit()}
+
+
 _MARQUE     = "Àbójútó"
 _LOGO_CID   = "logo_abojuto"
 _TRICOLORE  = ("<table width='100%' cellpadding='0' cellspacing='0'><tr>"
@@ -1016,8 +1037,10 @@ def _mail_bouton(url, libelle, couleur='#0F3529'):
             f"font-size:15px;display:inline-block;'>{libelle}</a></div>")
 
 
-def _construire_mail(cfg, sujet, texte_brut, html_body, destinataires, copies_fixes):
-    """Message multipart (texte + HTML) avec le logo de la commune intégré en pièce inline."""
+def _construire_mail(cfg, sujet, texte_brut, html_body, destinataires, copies_fixes, copies=None):
+    """Message multipart (texte + HTML) avec le logo de la commune intégré en pièce inline.
+    copies=None : envoi groupé (destinataires en Cc). Sinon destinataires en À, copies en Cc.
+    Les copies fixes passent uniquement par l'enveloppe SMTP (copie cachée réelle)."""
     import os
     from email.header import Header
     from email.mime.image import MIMEImage
@@ -1028,9 +1051,13 @@ def _construire_mail(cfg, sujet, texte_brut, html_body, destinataires, copies_fi
 
     msg = MIMEMultipart('related')
     msg['From']     = formataddr((f"{_MARQUE} · Mairie d'Adja-Ouèrè", cfg['GMAIL_USER']), charset='utf-8')
-    msg['To']       = cfg['GMAIL_USER']
-    msg['Cc']       = ', '.join(destinataires)    # users visibles (voient qui a reçu)
-    msg['Bcc']      = ', '.join(copies_fixes)     # copie silencieuse
+    if copies is None:
+        msg['To'] = cfg['GMAIL_USER']
+        msg['Cc'] = ', '.join(destinataires)
+    else:
+        msg['To'] = ', '.join(destinataires)
+        if copies:
+            msg['Cc'] = ', '.join(copies)
     msg['Subject']  = Header(sujet, 'utf-8')
     msg['Reply-To'] = cfg['EXPEDITEUR_EMAIL']
 
@@ -1049,12 +1076,12 @@ def _construire_mail(cfg, sujet, texte_brut, html_body, destinataires, copies_fi
     return msg
 
 
-def _envoyer_smtp(cfg, msg, destinataires, copies_fixes=None):
-    """Envoie via Gmail SMTP. copies_fixes : liste d'adresses toujours en copie."""
+def _envoyer_smtp(cfg, msg, destinataires, copies_fixes=None, copies=None):
+    """Envoie via Gmail SMTP. copies_fixes : liste d'adresses toujours en copie cachée."""
     import smtplib
     if copies_fixes is None:
         copies_fixes = _get_copies_fixes(cfg)
-    tous = [cfg['GMAIL_USER']] + destinataires + copies_fixes
+    tous = list(dict.fromkeys([cfg['GMAIL_USER']] + destinataires + (copies or []) + copies_fixes))
     with smtplib.SMTP('smtp.gmail.com', 587) as srv:
         srv.ehlo()
         srv.starttls()
@@ -1063,10 +1090,10 @@ def _envoyer_smtp(cfg, msg, destinataires, copies_fixes=None):
 
 
 @admin_bp.route('/rappel-saisie', methods=['POST'])
-@limiter.limit('5 per hour')
+@limiter.limit('20 per hour')
 @editeur_required
 def rappel_saisie():
-    """Envoie un rappel aux utilisateurs pour qu'ils renseignent leurs données PTA."""
+    """Envoie un rappel de saisie aux directions / services choisis, avec copies choisies."""
     import datetime
     from utils import get_annee
 
@@ -1075,9 +1102,24 @@ def rappel_saisie():
     date_str    = datetime.date.today().strftime('%d/%m/%Y')
     plateforme  = request.host_url.rstrip('/')
 
-    destinataires = _get_destinataires()
+    par_dir, par_svc = _emails_par_entite()
+    dest_dir = _ids_formulaire('dest_dir')
+    dest_svc = _ids_formulaire('dest_svc')
+    cc_dir   = _ids_formulaire('cc_dir')
+    cc_svc   = _ids_formulaire('cc_svc')
+    if request.form.get('cc_tutelle'):
+        cc_dir |= {s.direction_id for s in Service.query.filter(Service.id.in_(dest_svc)).all()}
+
+    def _emails(ids_dir, ids_svc):
+        out = [e for i in sorted(ids_dir) for e in par_dir.get(i, [])]
+        out += [e for i in sorted(ids_svc) for e in par_svc.get(i, [])]
+        return list(dict.fromkeys(out))
+
+    destinataires = _emails(dest_dir, dest_svc)
+    copies = [e for e in _emails(cc_dir, cc_svc) if e not in destinataires]
     if not destinataires:
-        flash("Aucun utilisateur actif n'a d'adresse email renseignée.", 'warning')
+        flash("Aucune adresse email trouvée pour les destinataires choisis. "
+              "Sélectionnez au moins une direction ou un service dont le compte a un email.", 'warning')
         return redirect(url_for('admin.index'))
 
     try:
@@ -1118,9 +1160,13 @@ def rappel_saisie():
     corps = f"""
     <p style="margin:0 0 16px;color:#374151;">Madame, Monsieur,</p>
     <p style="margin:0 0 20px;color:#374151;line-height:1.7;">
-      Dans le cadre de l'évaluation du Plan de Travail Annuel (PTA) {annee_label}
-      de la Mairie d'Adja-Ouèrè, nous vous prions de renseigner l'état d'avancement
-      de vos tâches sur <strong>{_MARQUE}</strong> dès que possible.
+      Dans le cadre du suivi et de l'évaluation du Plan de Travail Annuel (PTA) {annee_label}
+      de la Mairie d'Adja-Ouèrè, nous vous prions de bien vouloir renseigner l'état
+      d'avancement de vos tâches sur <strong>{_MARQUE}</strong>.
+    </p>
+    <p style="margin:0 0 20px;color:#374151;line-height:1.7;">
+      Nous comptons sur votre diligence habituelle pour que ce renseignement soit
+      effectué dans les meilleurs délais.
     </p>
     <p style="margin:0 0 12px;color:#0F3529;font-weight:bold;font-size:15px;">Comment procéder</p>
     <table cellpadding="0" cellspacing="0" style="margin:0 0 8px;">{lignes_etapes}</table>
@@ -1136,24 +1182,31 @@ def rappel_saisie():
         f"Rappel : saisie du suivi de votre PTA {annee_label}\n"
         f"Date : {date_str}\n\n"
         f"Madame, Monsieur,\n\n"
-        f"Dans le cadre de l'évaluation du PTA {annee_label}, nous vous prions de renseigner "
-        f"l'état d'avancement de vos tâches sur {_MARQUE} ({plateforme}) dès que possible.\n\n"
+        f"Dans le cadre du suivi et de l'évaluation du PTA {annee_label}, nous vous prions de bien "
+        f"vouloir renseigner l'état d'avancement de vos tâches sur {_MARQUE} ({plateforme}).\n\n"
+        "Nous comptons sur votre diligence habituelle pour que ce renseignement soit effectué "
+        "dans les meilleurs délais.\n\n"
         "Comment procéder :\n"
         + '\n'.join(f"{i}. {_re.sub(r'<[^>]+>', '', e).replace('&amp;', '&')}"
                     for i, e in enumerate(etapes, 1))
     )
 
-    msg = _construire_mail(cfg, sujet, texte_brut, html_body, destinataires, copies_fixes)
+    msg = _construire_mail(cfg, sujet, texte_brut, html_body, destinataires, copies_fixes,
+                           copies=copies)
 
     try:
-        _envoyer_smtp(cfg, msg, destinataires, copies_fixes)
+        _envoyer_smtp(cfg, msg, destinataires, copies_fixes, copies=copies)
     except Exception as e:
         flash(f"Erreur lors de l'envoi : {e}", 'danger')
         return redirect(url_for('admin.index'))
 
+    codes = sorted({d.code for d in Direction.query.filter(Direction.id.in_(dest_dir)).all()}
+                   | {s.code for s in Service.query.filter(Service.id.in_(dest_svc)).all()})
     log_audit('rappel_saisie',
-              f"Rappel de saisie PTA {annee_label} envoyé à {len(destinataires)} destinataire(s)")
-    flash(f"Rappel envoyé à {len(destinataires)} destinataire(s) + {len(copies_fixes)} copie(s).", 'success')
+              f"Rappel de saisie PTA {annee_label} : {', '.join(codes)} "
+              f"({len(destinataires)} destinataire(s), {len(copies)} en copie)")
+    flash(f"Rappel envoyé à {len(destinataires)} destinataire(s)"
+          f"{f', {len(copies)} en copie' if copies else ''}.", 'success')
     return redirect(url_for('admin.index'))
 
 

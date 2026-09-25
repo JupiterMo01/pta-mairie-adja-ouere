@@ -956,6 +956,99 @@ def _get_destinataires():
     ]
 
 
+_MARQUE     = "Àbójútó"
+_LOGO_CID   = "logo_abojuto"
+_TRICOLORE  = ("<table width='100%' cellpadding='0' cellspacing='0'><tr>"
+               "<td height='4' style='background:#008751;font-size:0;line-height:0;'>&nbsp;</td>"
+               "<td height='4' style='background:#FCD116;font-size:0;line-height:0;'>&nbsp;</td>"
+               "<td height='4' style='background:#E8112D;font-size:0;line-height:0;'>&nbsp;</td>"
+               "</tr></table>")
+
+
+def _mail_html(cfg, titre, date_str, corps, couleur='#0F3529', largeur=600,
+               surtitre="Mairie d'Adja-Ouèrè · PTA &amp; PAI"):
+    """Gabarit commun des mails Àbójútó : en-tête logo + marque, corps, pied de page."""
+    return f"""<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#eef2f0;font-family:Arial,Helvetica,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#eef2f0;padding:28px 0;">
+<tr><td align="center">
+<table width="{largeur}" cellpadding="0" cellspacing="0"
+       style="background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 6px 20px rgba(0,0,0,.08);">
+  <tr><td style="background:{couleur};padding:22px 32px 20px;">
+    <table cellpadding="0" cellspacing="0"><tr>
+      <td style="background:#fff;border-radius:10px;padding:6px 10px;" valign="middle">
+        <img src="cid:{_LOGO_CID}" alt="Commune d'Adja-Ouèrè" height="46" style="display:block;height:46px;">
+      </td>
+      <td style="padding-left:16px;" valign="middle">
+        <div style="font-family:Georgia,'Times New Roman',serif;font-size:28px;font-weight:bold;
+                    color:#FCD116;line-height:1;">{_MARQUE}</div>
+        <div style="margin-top:5px;color:rgba(255,255,255,.75);font-size:11px;
+                    letter-spacing:1px;text-transform:uppercase;">{surtitre}</div>
+      </td>
+    </tr></table>
+    <h1 style="margin:20px 0 0;color:#fff;font-size:20px;line-height:1.35;font-weight:bold;">{titre}</h1>
+    <p style="margin:4px 0 0;color:rgba(255,255,255,.7);font-size:13px;">{date_str}</p>
+  </td></tr>
+  <tr><td style="padding:0;">{_TRICOLORE}</td></tr>
+  <tr><td style="padding:28px 32px;">{corps}</td></tr>
+  <tr><td style="background:#f7f9f8;padding:18px 32px;border-top:1px solid #e3e8e5;">
+    <p style="margin:0;color:#8a958f;font-size:11px;line-height:1.7;">
+      Message envoyé depuis <strong style="color:#0F3529;">{_MARQUE}</strong>,
+      la plateforme de planification et de suivi de la Mairie d'Adja-Ouèrè.<br>
+      Émis par : <strong>{cfg['EXPEDITEUR_NOM']}</strong> ·
+      <a href="mailto:{cfg['EXPEDITEUR_EMAIL']}" style="color:#006B40;">{cfg['EXPEDITEUR_EMAIL']}</a>
+    </p>
+    <p style="margin:6px 0 0;color:#8a958f;font-size:11px;">
+      &#x1F1E7;&#x1F1EF; République du Bénin &nbsp;·&nbsp; Commune d'Adja-Ouèrè — Union · Travail · Prospérité
+    </p>
+  </td></tr>
+</table>
+</td></tr>
+</table>
+</body></html>"""
+
+
+def _mail_bouton(url, libelle, couleur='#0F3529'):
+    return (f"<div style='text-align:center;margin:24px 0;'>"
+            f"<a href='{url}' target='_blank' style='background:{couleur};color:#FCD116;"
+            f"text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:700;"
+            f"font-size:15px;display:inline-block;'>{libelle}</a></div>")
+
+
+def _construire_mail(cfg, sujet, texte_brut, html_body, destinataires, copies_fixes):
+    """Message multipart (texte + HTML) avec le logo de la commune intégré en pièce inline."""
+    import os
+    from email.header import Header
+    from email.mime.image import MIMEImage
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.text import MIMEText
+    from email.utils import formataddr
+    from flask import current_app
+
+    msg = MIMEMultipart('related')
+    msg['From']     = formataddr((f"{_MARQUE} · Mairie d'Adja-Ouèrè", cfg['GMAIL_USER']), charset='utf-8')
+    msg['To']       = cfg['GMAIL_USER']
+    msg['Cc']       = ', '.join(destinataires)    # users visibles (voient qui a reçu)
+    msg['Bcc']      = ', '.join(copies_fixes)     # copie silencieuse
+    msg['Subject']  = Header(sujet, 'utf-8')
+    msg['Reply-To'] = cfg['EXPEDITEUR_EMAIL']
+
+    alt = MIMEMultipart('alternative')
+    alt.attach(MIMEText(texte_brut + f"\n\n---\n{_MARQUE} · Mairie d'Adja-Ouèrè", 'plain', 'utf-8'))
+    alt.attach(MIMEText(html_body, 'html', 'utf-8'))
+    msg.attach(alt)
+
+    logo = os.path.join(current_app.root_path, 'static', 'img', 'logo_commune.png')
+    if os.path.exists(logo):
+        with open(logo, 'rb') as f:
+            img = MIMEImage(f.read(), _subtype='png')
+        img.add_header('Content-ID', f'<{_LOGO_CID}>')
+        img.add_header('Content-Disposition', 'inline', filename='logo_commune.png')
+        msg.attach(img)
+    return msg
+
+
 def _envoyer_smtp(cfg, msg, destinataires, copies_fixes=None):
     """Envoie via Gmail SMTP. copies_fixes : liste d'adresses toujours en copie."""
     import smtplib
@@ -975,8 +1068,6 @@ def _envoyer_smtp(cfg, msg, destinataires, copies_fixes=None):
 def rappel_saisie():
     """Envoie un rappel aux utilisateurs pour qu'ils renseignent leurs données PTA."""
     import datetime
-    from email.mime.multipart import MIMEMultipart
-    from email.mime.text import MIMEText
     from utils import get_annee
 
     annee       = get_annee()
@@ -1002,83 +1093,38 @@ def rappel_saisie():
         return redirect(url_for('admin.index'))
 
     copies_fixes = _get_copies_fixes(cfg)
-    sujet = f"[PTA Mairie {annee_label}] Rappel — Renseigner les données d'exécution"
+    sujet = f"[{_MARQUE} · PTA {annee_label}] Rappel — Renseigner les données d'exécution"
 
-    html_body = f"""<!DOCTYPE html>
-<html lang="fr"><head><meta charset="UTF-8"></head>
-<body style="margin:0;padding:0;background:#f3f4f6;font-family:Arial,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:24px 0;">
-<tr><td align="center">
-<table width="600" cellpadding="0" cellspacing="0"
-       style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,.08);">
-  <tr><td style="background:#1e3a5f;padding:24px 32px;">
-    <p style="margin:0;color:#fcd116;font-size:11px;letter-spacing:1px;text-transform:uppercase;">
-      Mairie d'Adja-Ouèrè · Système PTA {annee_label}</p>
-    <h1 style="margin:8px 0 0;color:#fff;font-size:20px;line-height:1.3;">
-      Rappel — Saisie des données d'exécution</h1>
-    <p style="margin:4px 0 0;color:rgba(255,255,255,.7);font-size:13px;">{date_str}</p>
-  </td></tr>
-  <tr><td style="padding:28px 32px;">
+    corps = f"""
     <p style="margin:0 0 16px;color:#374151;">Madame, Monsieur,</p>
     <p style="margin:0 0 16px;color:#374151;line-height:1.7;">
       Dans le cadre de l'évaluation du Plan de Travail Annuel (PTA) {annee_label}
-      de la Mairie d'Adja-Ouèrè, vous êtes prié(e) de <strong>vous connecter sur la
-      plateforme de gestion du PTA</strong> et de renseigner le niveau réel d'avancement
+      de la Mairie d'Adja-Ouèrè, vous êtes prié(e) de <strong>vous connecter sur
+      {_MARQUE}</strong> et de renseigner le niveau réel d'avancement
       de votre PTA avant la fin du trimestre en cours.
     </p>
-    <div style="text-align:center;margin:24px 0;">
-      <a href="{plateforme}" target="_blank"
-         style="background:#1e3a5f;color:#fcd116;text-decoration:none;
-                padding:12px 28px;border-radius:8px;font-weight:700;font-size:15px;
-                display:inline-block;">
-        Se connecter à la plateforme →
-      </a>
-    </div>
+    {_mail_bouton(plateforme, f"Se connecter à {_MARQUE} →")}
     <p style="margin:0 0 8px;color:#374151;line-height:1.7;">
       Une fois connecté(e), rendez-vous dans l'onglet <strong>« Faire suivi »</strong>
       pour mettre à jour vos données d'exécution.
     </p>
     <p style="margin:16px 0 0;color:#6b7280;font-size:13px;line-height:1.6;">
       Pour toute difficulté de connexion ou de saisie, contactez l'administrateur du système.
-    </p>
-  </td></tr>
-  <tr><td style="background:#f9fafb;padding:16px 32px;border-top:1px solid #e5e7eb;">
-    <p style="margin:0;color:#9ca3af;font-size:11px;line-height:1.7;">
-      Ce message a été envoyé depuis le Système PTA de la Mairie d'Adja-Ouèrè.<br>
-      Émis par : <strong>{cfg['EXPEDITEUR_NOM']}</strong> ·
-      <a href="mailto:{cfg['EXPEDITEUR_EMAIL']}" style="color:#1e3a5f;">{cfg['EXPEDITEUR_EMAIL']}</a>
-    </p>
-    <p style="margin:6px 0 0;color:#9ca3af;font-size:11px;">
-      &#x1F1E7;&#x1F1EF; République du Bénin &nbsp;·&nbsp; Mairie d'Adja-Ouèrè
-    </p>
-  </td></tr>
-</table>
-</td></tr>
-</table>
-</body></html>"""
+    </p>"""
+    html_body = _mail_html(cfg, "Rappel — Saisie des données d'exécution", date_str, corps,
+                           surtitre=f"Mairie d'Adja-Ouèrè · PTA {annee_label}")
 
     texte_brut = (
         f"Rappel — Saisie des données d'exécution PTA {annee_label}\n"
         f"Date : {date_str}\n\n"
         f"Madame, Monsieur,\n\n"
         f"Dans le cadre de l'évaluation du PTA {annee_label}, vous êtes prié(e) de vous "
-        f"connecter sur la plateforme ({plateforme}) et de renseigner le niveau réel "
+        f"connecter sur {_MARQUE} ({plateforme}) et de renseigner le niveau réel "
         f"d'avancement de votre PTA avant la fin du trimestre.\n\n"
-        f"Onglet : Faire suivi\n\n"
-        f"---\nMairie d'Adja-Ouèrè · Système PTA"
+        f"Onglet : Faire suivi"
     )
 
-    from email.mime.multipart import MIMEMultipart
-    from email.mime.text import MIMEText
-    msg = MIMEMultipart('alternative')
-    msg['From']     = f"Mairie d'Adja-Ouèrè PTA <{cfg['GMAIL_USER']}>"
-    msg['To']       = cfg['GMAIL_USER']
-    msg['Cc']       = ', '.join(destinataires)    # users visibles (voient qui a reçu)
-    msg['Bcc']      = ', '.join(copies_fixes)     # copie silencieuse (voit la liste CC)
-    msg['Subject']  = sujet
-    msg['Reply-To'] = cfg['EXPEDITEUR_EMAIL']
-    msg.attach(MIMEText(texte_brut, 'plain', 'utf-8'))
-    msg.attach(MIMEText(html_body,  'html',  'utf-8'))
+    msg = _construire_mail(cfg, sujet, texte_brut, html_body, destinataires, copies_fixes)
 
     try:
         _envoyer_smtp(cfg, msg, destinataires, copies_fixes)
@@ -1164,8 +1210,6 @@ def purge_pei():
 def bilan_pta():
     """Envoie le bilan global PTA — taux et statuts identiques à l'interface Suivi."""
     import datetime
-    from email.mime.multipart import MIMEMultipart
-    from email.mime.text import MIMEText
     from utils import get_annee
 
     annee       = get_annee()
@@ -1332,20 +1376,7 @@ def bilan_pta():
 
     def sec(t): return f"<h2 style='margin:20px 0 6px;color:#1e3a5f;font-size:15px;border-bottom:2px solid #1e3a5f;padding-bottom:5px;'>{t}</h2>"
 
-    html_body = f"""<!DOCTYPE html>
-<html lang="fr"><head><meta charset="UTF-8"></head>
-<body style="margin:0;padding:0;background:#f3f4f6;font-family:Arial,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:24px 0;">
-<tr><td align="center">
-<table width="720" cellpadding="0" cellspacing="0"
-       style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,.08);">
-  <tr><td style="background:#1e3a5f;padding:24px 32px;">
-    <p style="margin:0;color:#fcd116;font-size:11px;letter-spacing:1px;text-transform:uppercase;">
-      Mairie d'Adja-Ouèrè · Système PTA {annee_label}</p>
-    <h1 style="margin:8px 0 0;color:#fff;font-size:20px;line-height:1.3;">Bilan global du PTA</h1>
-    <p style="margin:4px 0 0;color:rgba(255,255,255,.7);font-size:13px;">État au {date_str}</p>
-  </td></tr>
-  <tr><td style="padding:28px 32px;">
+    corps = f"""
     <p style="margin:0 0 20px;color:#374151;line-height:1.6;">
       Bonjour,<br>Bilan d'avancement du PTA {annee_label} à la date du <strong>{date_str}</strong>.
     </p>
@@ -1358,23 +1389,10 @@ def bilan_pta():
     {sec('🌐 Synthèse globale')}
     {bloc_glob}
     <p style="margin:20px 0 0;color:#6b7280;font-size:12px;">
-      Pour le détail complet, connectez-vous au système PTA.
-    </p>
-  </td></tr>
-  <tr><td style="background:#f9fafb;padding:16px 32px;border-top:1px solid #e5e7eb;">
-    <p style="margin:0;color:#9ca3af;font-size:11px;line-height:1.7;">
-      Message envoyé automatiquement depuis le Système PTA de la Mairie d'Adja-Ouèrè.<br>
-      Émis par : <strong>{cfg['EXPEDITEUR_NOM']}</strong> ·
-      <a href="mailto:{cfg['EXPEDITEUR_EMAIL']}" style="color:#1e3a5f;">{cfg['EXPEDITEUR_EMAIL']}</a>
-    </p>
-    <p style="margin:6px 0 0;color:#9ca3af;font-size:11px;">
-      &#x1F1E7;&#x1F1EF; République du Bénin &nbsp;·&nbsp; Mairie d'Adja-Ouèrè
-    </p>
-  </td></tr>
-</table>
-</td></tr>
-</table>
-</body></html>"""
+      Pour le détail complet, connectez-vous à {_MARQUE}.
+    </p>"""
+    html_body = _mail_html(cfg, "Bilan global du PTA", f"État au {date_str}", corps,
+                           largeur=720, surtitre=f"Mairie d'Adja-Ouèrè · PTA {annee_label}")
 
     texte_brut = (
         f"Bilan global PTA {annee_label} — État au {date_str}\n\n"
@@ -1395,20 +1413,11 @@ def bilan_pta():
         + f"\n\nPAR NATURE :\n"
         f"  Investissement : {inv_a['total']} act. | Taux {taux_inv}%\n"
         f"  Fonctionnement : {fct_a['total']} act. | Taux {taux_fct}%"
-        + "\n\n---\nMairie d'Adja-Ouèrè · Système PTA"
     )
 
-    sujet = f"[PTA Mairie {annee_label}] Bilan global — État au {date_str}"
+    sujet = f"[{_MARQUE} · PTA {annee_label}] Bilan global — État au {date_str}"
 
-    msg = MIMEMultipart('alternative')
-    msg['From']     = f"Mairie d'Adja-Ouèrè PTA <{cfg['GMAIL_USER']}>"
-    msg['To']       = cfg['GMAIL_USER']
-    msg['Cc']       = ', '.join(destinataires)    # users visibles (voient qui a reçu)
-    msg['Bcc']      = ', '.join(copies_fixes)      # copie silencieuse (voit la liste CC)
-    msg['Subject']  = sujet
-    msg['Reply-To'] = cfg['EXPEDITEUR_EMAIL']
-    msg.attach(MIMEText(texte_brut, 'plain', 'utf-8'))
-    msg.attach(MIMEText(html_body,  'html',  'utf-8'))
+    msg = _construire_mail(cfg, sujet, texte_brut, html_body, destinataires, copies_fixes)
 
     try:
         _envoyer_smtp(cfg, msg, destinataires, copies_fixes)
@@ -1429,8 +1438,6 @@ def bilan_pta():
 def notifier_pta_pai():
     """Informe tous les utilisateurs d'une mise à jour PTA/PAI ou de la disponibilité d'une nouvelle année."""
     import datetime
-    from email.mime.multipart import MIMEMultipart
-    from email.mime.text import MIMEText
     from models import Annee
 
     type_notif  = request.form.get('type_notif', 'maj')   # 'maj' ou 'nouvelle_annee'
@@ -1461,7 +1468,7 @@ def notifier_pta_pai():
     copies_fixes = _get_copies_fixes(cfg)
 
     if type_notif == 'nouvelle_annee':
-        sujet      = f"[PTA Mairie {annee_label}] Nouveau PTA et PAI {annee_label} disponibles"
+        sujet      = f"[{_MARQUE} · PTA {annee_label}] Nouveau PTA et PAI {annee_label} disponibles"
         titre_mail = f"Nouveau PTA & PAI {annee_label} disponibles"
         intro      = (
             f"Le Plan de Travail Annuel (PTA) et le Plan Annuel d'Investissement (PAI) "
@@ -1470,7 +1477,7 @@ def notifier_pta_pai():
         badge_couleur = '#0f6f3a'
         badge_texte   = f'Nouvelle année {annee_label}'
     else:
-        sujet      = f"[PTA Mairie {annee_label}] PTA et PAI {annee_label} mis à jour"
+        sujet      = f"[{_MARQUE} · PTA {annee_label}] PTA et PAI {annee_label} mis à jour"
         titre_mail = f"PTA & PAI {annee_label} mis à jour"
         intro      = (
             f"Le Plan de Travail Annuel (PTA) et le Plan Annuel d'Investissement (PAI) "
@@ -1480,65 +1487,22 @@ def notifier_pta_pai():
         badge_couleur = '#1e3a5f'
         badge_texte   = f'Mise à jour {annee_label}'
 
-    html_body = f"""<!DOCTYPE html>
-<html lang="fr"><head><meta charset="UTF-8"></head>
-<body style="margin:0;padding:0;background:#f3f4f6;font-family:Arial,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:24px 0;">
-<tr><td align="center">
-<table width="600" cellpadding="0" cellspacing="0"
-       style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,.08);">
-  <tr><td style="background:{badge_couleur};padding:24px 32px;">
-    <p style="margin:0;color:#fcd116;font-size:11px;letter-spacing:1px;text-transform:uppercase;">
-      Mairie d'Adja-Ouèrè · Système PTA &amp; PAI</p>
-    <h1 style="margin:8px 0 0;color:#fff;font-size:20px;line-height:1.3;">{titre_mail}</h1>
-    <p style="margin:4px 0 0;color:rgba(255,255,255,.7);font-size:13px;">{date_str}</p>
-  </td></tr>
-  <tr><td style="padding:28px 32px;">
+    corps = f"""
     <p style="margin:0 0 16px;color:#374151;">Madame, Monsieur,</p>
     <p style="margin:0 0 20px;color:#374151;line-height:1.7;">{intro}</p>
-    <div style="text-align:center;margin:24px 0;">
-      <a href="{plateforme}" target="_blank"
-         style="background:{badge_couleur};color:#fcd116;text-decoration:none;
-                padding:12px 28px;border-radius:8px;font-weight:700;font-size:15px;
-                display:inline-block;">
-        Se connecter à la plateforme
-      </a>
-    </div>
+    {_mail_bouton(plateforme, f"Se connecter à {_MARQUE}", badge_couleur)}
     <p style="margin:16px 0 0;color:#6b7280;font-size:12px;">
       En cas de difficulté de connexion, contactez votre administrateur.
-    </p>
-  </td></tr>
-  <tr><td style="background:#f9fafb;padding:16px 32px;border-top:1px solid #e5e7eb;">
-    <p style="margin:0;color:#9ca3af;font-size:11px;line-height:1.7;">
-      Message envoyé automatiquement depuis le Système PTA de la Mairie d'Adja-Ouèrè.<br>
-      Émis par : <strong>{cfg['EXPEDITEUR_NOM']}</strong> ·
-      <a href="mailto:{cfg['EXPEDITEUR_EMAIL']}" style="color:#1e3a5f;">{cfg['EXPEDITEUR_EMAIL']}</a>
-    </p>
-    <p style="margin:6px 0 0;color:#9ca3af;font-size:11px;">
-      &#x1F1E7;&#x1F1EF; République du Bénin &nbsp;·&nbsp; Mairie d'Adja-Ouèrè
-    </p>
-  </td></tr>
-</table>
-</td></tr>
-</table>
-</body></html>"""
+    </p>"""
+    html_body = _mail_html(cfg, titre_mail, date_str, corps, couleur=badge_couleur)
 
     texte_brut = (
         f"{titre_mail}\n\n"
         f"{intro.replace('<strong>','').replace('</strong>','')}\n\n"
-        f"Connectez-vous : {plateforme}\n\n"
-        "---\nMairie d'Adja-Ouèrè · Système PTA"
+        f"Connectez-vous : {plateforme}"
     )
 
-    msg = MIMEMultipart('alternative')
-    msg['From']     = f"Mairie d'Adja-Ouèrè PTA <{cfg['GMAIL_USER']}>"
-    msg['To']       = cfg['GMAIL_USER']
-    msg['Cc']       = ', '.join(destinataires)
-    msg['Bcc']      = ', '.join(copies_fixes)
-    msg['Subject']  = sujet
-    msg['Reply-To'] = cfg['EXPEDITEUR_EMAIL']
-    msg.attach(MIMEText(texte_brut, 'plain', 'utf-8'))
-    msg.attach(MIMEText(html_body,  'html',  'utf-8'))
+    msg = _construire_mail(cfg, sujet, texte_brut, html_body, destinataires, copies_fixes)
 
     try:
         _envoyer_smtp(cfg, msg, destinataires, copies_fixes)

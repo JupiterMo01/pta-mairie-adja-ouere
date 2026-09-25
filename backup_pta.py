@@ -88,7 +88,7 @@ def envoyer_backup(cfg, db_path, nom_fichier):
         msg = MIMEMultipart()
         msg['From']    = cfg['GMAIL_USER']
         msg['To']      = cfg['DEST_EMAIL']
-        msg['Subject'] = f"[PTA Mairie] Sauvegarde automatique — {date_lisible}"
+        msg['Subject'] = f"[Àbójútó] Sauvegarde automatique — {date_lisible}"
 
         corps = (
             f"Bonjour,\n\n"

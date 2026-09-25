@@ -128,7 +128,7 @@ def create_app(test_config=None):
             "default-src 'self'; "
             "script-src 'self' 'unsafe-inline' cdn.jsdelivr.net cdnjs.cloudflare.com; "
             "style-src 'self' 'unsafe-inline' cdn.jsdelivr.net cdnjs.cloudflare.com; "
-            "font-src 'self' cdnjs.cloudflare.com data:; "
+            "font-src 'self' cdnjs.cloudflare.com cdn.jsdelivr.net data:; "
             "img-src 'self' data: blob:; "
             "connect-src 'self'; "
             "object-src 'none'; "

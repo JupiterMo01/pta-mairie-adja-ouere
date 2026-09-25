@@ -3,199 +3,472 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Connexion — PTA Mairie d'Adja-Ouèrè</title>
+  <title>Connexion — Àbójútó · Mairie d'Adja-Ouèrè</title>
+  <link rel="icon" href="{{ url_for('static', filename='img/logo_commune.png') }}">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/@fontsource/fraunces@5/600.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/@fontsource/dm-sans@5/400.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/@fontsource/dm-sans@5/500.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/@fontsource/dm-sans@5/700.css" rel="stylesheet">
   <style>
-    /* ── Fond ── */
+    :root {
+      --vert:      #008751;
+      --vert-f:    #006B40;
+      --jaune:     #FCD116;
+      --rouge:     #E8112D;
+      --nuit:      #0A1E2E;
+      --foret:     #0B3D20;
+      --encre:     #13241C;
+      --gris:      #5F6B66;
+      --ligne:     #DCE3DF;
+      --serif: 'Fraunces', Georgia, 'Times New Roman', serif;
+      --sans:  'DM Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
     body {
       min-height: 100vh;
       margin: 0;
+      font-family: var(--sans);
+      color: #fff;
       background: linear-gradient(150deg, #0B3D20 0%, #0F3529 30%, #102A4A 65%, #0A1E38 100%);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 2rem 1rem 3rem;
-      position: relative;
+      background-attachment: fixed;
       overflow-x: hidden;
+      position: relative;
     }
 
-    /* ── Drapeau du Bénin en filigrane ── */
+    /* ── Ambiance : halos lumineux qui dérivent lentement ── */
+    .halo {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(80px);
+      pointer-events: none;
+      z-index: 0;
+      opacity: .35;
+    }
+    .halo-1 { width: 420px; height: 420px; background: #008751; top: -120px; left: -100px; animation: derive1 22s ease-in-out infinite alternate; }
+    .halo-2 { width: 360px; height: 360px; background: #FCD116; bottom: -140px; right: 10%; opacity: .16; animation: derive2 26s ease-in-out infinite alternate; }
+    .halo-3 { width: 300px; height: 300px; background: #1C4E8A; top: 30%; right: -80px; opacity: .4; animation: derive1 30s ease-in-out infinite alternate-reverse; }
+    @keyframes derive1 { to { transform: translate(90px, 70px) scale(1.12); } }
+    @keyframes derive2 { to { transform: translate(-110px, -60px) scale(1.08); } }
+
+    /* ── Drapeau du Bénin en filigrane (conservé) ── */
     .flag-bg {
       position: fixed;
-      top: 50%;
-      left: 50%;
+      top: 50%; left: 50%;
       transform: translate(-50%, -50%) rotate(-8deg);
       width: min(560px, 90vw);
-      height: auto;
-      opacity: 0.065;
+      opacity: 0.05;
       pointer-events: none;
       z-index: 0;
     }
 
-    /* ── Bandeau tricolore fixé en bas ── */
-    .benin-bandeau {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      height: 7px;
-      display: flex;
-      z-index: 100;
-    }
-    .benin-bandeau .b-vert  { flex: 1; background: #008751; }
-    .benin-bandeau .b-jaune { flex: 1; background: #FCD116; }
-    .benin-bandeau .b-rouge { flex: 1; background: #E8112D; }
+    /* ── Bandeau tricolore fixé en bas (conservé) ── */
+    .benin-bandeau { position: fixed; bottom: 0; left: 0; right: 0; height: 7px; display: flex; z-index: 100; }
+    .benin-bandeau div { flex: 1; transform-origin: left; animation: bande 1s cubic-bezier(.2,.8,.2,1) both; }
+    .benin-bandeau .b-vert  { background: var(--vert); }
+    .benin-bandeau .b-jaune { background: var(--jaune); animation-delay: .12s; }
+    .benin-bandeau .b-rouge { background: var(--rouge); animation-delay: .24s; }
+    @keyframes bande { from { transform: scaleX(0); } }
 
-    /* ── Carte de connexion ── */
-    .card-login {
-      border: none;
-      border-radius: 16px;
-      box-shadow: 0 24px 64px rgba(0,0,0,0.45);
-      background: #ffffff;
+    /* ── Mise en page ── */
+    .scene {
       position: relative;
       z-index: 1;
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 1.1fr 1fr;
+      align-items: center;
+      gap: clamp(2rem, 5vw, 5rem);
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 3rem clamp(1rem, 4vw, 3rem) 4rem;
     }
 
-    /* ── Icône mairie ── */
-    .brand-icon {
-      font-size: 2.8rem;
-      color: #FCD116;
-      filter: drop-shadow(0 2px 6px rgba(252,209,22,0.35));
-    }
+    /* ── Colonne accueil ── */
+    .accueil { max-width: 540px; }
 
-    /* ── Bouton connexion ── */
-    .btn-connexion {
-      background: linear-gradient(135deg, #008751 0%, #006B40 100%);
-      border: none;
-      color: #fff;
+    .logo-tuile {
+      display: inline-flex;
+      background: #fff;
+      border-radius: 20px;
+      padding: 14px 18px;
+      box-shadow: 0 18px 50px rgba(0,0,0,.35), 0 0 0 1px rgba(255,255,255,.08);
+      animation: montee .9s cubic-bezier(.2,.8,.2,1) both, flotte 7s ease-in-out 1.2s infinite;
+    }
+    .logo-tuile img { height: 92px; width: auto; display: block; }
+    @keyframes flotte { 50% { transform: translateY(-6px); } }
+
+    .surtitre {
+      margin: 2rem 0 .6rem;
+      font-size: .74rem;
       font-weight: 700;
-      letter-spacing: .03em;
-      transition: opacity .2s;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: var(--jaune);
+      animation: montee .8s .25s cubic-bezier(.2,.8,.2,1) both;
     }
-    .btn-connexion:hover { opacity: .88; color: #fff; }
 
-    /* ── Texte bas de page ── */
-    .footer-text    { color: rgba(255,255,255,.45); font-size: .72rem; line-height: 1.7; }
-    .footer-text a  { color: rgba(255,255,255,.38); text-decoration: none; }
-    .footer-text a:hover { color: rgba(255,255,255,.65); text-decoration: underline; }
-    .footer-strong  { color: rgba(255,255,255,.62); font-weight: 600; }
+    .marque {
+      font-family: var(--serif);
+      font-weight: 600;
+      font-size: clamp(3.2rem, 7vw, 5.2rem);
+      line-height: 1;
+      letter-spacing: -.01em;
+      margin: 0;
+      display: inline-flex;
+      position: relative;
+      padding-bottom: .9rem;
+    }
+    .marque span {
+      display: inline-block;
+      animation: lettre .9s cubic-bezier(.2,.8,.2,1) both;
+      animation-delay: calc(.4s + var(--i) * .07s);
+    }
+    @keyframes lettre {
+      from { opacity: 0; transform: translateY(.45em) rotate(4deg); filter: blur(6px); }
+    }
+    .marque::after {
+      content: "";
+      position: absolute;
+      left: 0; bottom: 0;
+      height: 4px; width: 100%;
+      border-radius: 4px;
+      background: linear-gradient(90deg, var(--vert) 0 33%, var(--jaune) 33% 66%, var(--rouge) 66%);
+      transform-origin: left;
+      animation: trait 1.1s 1.05s cubic-bezier(.7,0,.2,1) both;
+    }
+    @keyframes trait { from { transform: scaleX(0); } }
+
+    .salut {
+      margin: 1.6rem 0 .5rem;
+      font-size: 1.35rem;
+      font-weight: 500;
+      animation: montee .8s 1.1s cubic-bezier(.2,.8,.2,1) both;
+    }
+    .intro {
+      margin: 0;
+      color: rgba(255,255,255,.72);
+      font-size: 1rem;
+      line-height: 1.7;
+      max-width: 46ch;
+      animation: montee .8s 1.2s cubic-bezier(.2,.8,.2,1) both;
+    }
+
+    .modules {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .5rem;
+      margin: 1.6rem 0 0;
+      padding: 0;
+      list-style: none;
+    }
+    .modules li {
+      display: inline-flex;
+      align-items: center;
+      gap: .45rem;
+      padding: .42rem .8rem;
+      border-radius: 999px;
+      font-size: .8rem;
+      font-weight: 500;
+      color: rgba(255,255,255,.88);
+      background: rgba(255,255,255,.07);
+      border: 1px solid rgba(255,255,255,.12);
+      backdrop-filter: blur(6px);
+      animation: montee .7s cubic-bezier(.2,.8,.2,1) both;
+      animation-delay: calc(1.35s + var(--i) * .08s);
+    }
+    .modules i { color: var(--jaune); font-size: .75rem; }
+
+    @keyframes montee { from { opacity: 0; transform: translateY(18px); } }
+
+    /* ── Carte de connexion ── */
+    .carte {
+      background: #fff;
+      color: var(--encre);
+      border-radius: 22px;
+      padding: clamp(1.8rem, 4vw, 2.6rem);
+      box-shadow: 0 30px 80px rgba(0,0,0,.45), 0 0 0 1px rgba(255,255,255,.06);
+      width: 100%;
+      max-width: 430px;
+      justify-self: end;
+      animation: carte 1s .35s cubic-bezier(.2,.8,.2,1) both;
+      position: relative;
+      overflow: hidden;
+    }
+    .carte::before {
+      content: "";
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 5px;
+      background: linear-gradient(90deg, var(--vert) 0 33%, var(--jaune) 33% 66%, var(--rouge) 66%);
+    }
+    @keyframes carte { from { opacity: 0; transform: translateY(30px) scale(.97); } }
+
+    .carte h2 {
+      font-family: var(--serif);
+      font-weight: 600;
+      font-size: 1.7rem;
+      margin: 0 0 .25rem;
+      color: var(--encre);
+    }
+    .carte .sous { color: var(--gris); font-size: .9rem; margin: 0 0 1.6rem; }
+
+    .champ { margin-bottom: 1.1rem; }
+    .champ label {
+      display: block;
+      font-size: .78rem;
+      font-weight: 700;
+      letter-spacing: .04em;
+      color: var(--encre);
+      margin-bottom: .4rem;
+    }
+    .saisie {
+      display: flex;
+      align-items: center;
+      border: 1.5px solid var(--ligne);
+      border-radius: 12px;
+      background: #F7FAF8;
+      transition: border-color .2s, box-shadow .2s, background .2s;
+    }
+    .saisie:focus-within {
+      border-color: var(--vert);
+      background: #fff;
+      box-shadow: 0 0 0 4px rgba(0,135,81,.14);
+    }
+    .saisie > i { width: 44px; text-align: center; color: #8A9892; transition: color .2s; }
+    .saisie:focus-within > i { color: var(--vert); }
+    .saisie input {
+      flex: 1;
+      min-width: 0;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      padding: .85rem .2rem;
+      font-size: 1rem;
+      font-family: var(--sans);
+      color: var(--encre);
+    }
+    .oeil {
+      border: 0;
+      background: transparent;
+      width: 44px;
+      height: 44px;
+      color: #8A9892;
+      border-radius: 10px;
+    }
+    .oeil:hover, .oeil:focus-visible { color: var(--vert); outline: none; }
+
+    .btn-entrer {
+      position: relative;
+      overflow: hidden;
+      width: 100%;
+      margin-top: .6rem;
+      border: 0;
+      border-radius: 12px;
+      padding: .95rem 1rem;
+      font-family: var(--sans);
+      font-weight: 700;
+      font-size: 1rem;
+      letter-spacing: .02em;
+      color: #fff;
+      background: linear-gradient(135deg, var(--vert) 0%, var(--vert-f) 100%);
+      box-shadow: 0 10px 24px rgba(0,107,64,.32);
+      transition: transform .15s, box-shadow .2s;
+    }
+    .btn-entrer::after {
+      content: "";
+      position: absolute;
+      top: 0; left: -60%;
+      width: 40%; height: 100%;
+      background: linear-gradient(100deg, transparent, rgba(255,255,255,.35), transparent);
+      transform: skewX(-20deg);
+      transition: left .7s;
+    }
+    .btn-entrer:hover { transform: translateY(-1px); box-shadow: 0 14px 30px rgba(0,107,64,.4); }
+    .btn-entrer:hover::after { left: 130%; }
+    .btn-entrer:focus-visible { outline: 3px solid var(--jaune); outline-offset: 2px; }
+    .btn-entrer:disabled { opacity: .85; cursor: progress; }
+
+    .oubli {
+      display: block;
+      text-align: center;
+      margin-top: 1.1rem;
+      font-size: .85rem;
+      color: var(--gris);
+      text-decoration: none;
+    }
+    .oubli:hover { color: var(--vert); text-decoration: underline; }
+
+    .alert { border-radius: 10px; font-size: .85rem; }
+
+    /* ── Pied de page (conservé) ── */
+    .pied {
+      grid-column: 1 / -1;
+      text-align: center;
+      color: rgba(255,255,255,.45);
+      font-size: .72rem;
+      line-height: 1.7;
+      animation: montee .8s 1.6s both;
+    }
+    .pied a { color: rgba(255,255,255,.4); text-decoration: none; }
+    .pied a:hover { color: rgba(255,255,255,.7); text-decoration: underline; }
+    .pied strong { color: rgba(255,255,255,.65); font-weight: 600; }
+    .pied p { margin: 0 0 .25rem; }
+
+    /* ── Mobile / tablette ── */
+    .accueil, .carte { min-width: 0; }
+    @media (max-width: 900px) {
+      .scene { grid-template-columns: minmax(0, 1fr); padding-top: 2rem; gap: 2rem; }
+      .surtitre { font-size: .66rem; letter-spacing: .12em; }
+      .accueil { text-align: center; margin: 0 auto; }
+      .intro { margin: 0 auto; }
+      .modules { justify-content: center; }
+      .carte { justify-self: center; }
+      .logo-tuile img { height: 72px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+    }
   </style>
 </head>
 <body>
 
-  <!-- Drapeau du Bénin en filigrane -->
+  <div class="halo halo-1" aria-hidden="true"></div>
+  <div class="halo halo-2" aria-hidden="true"></div>
+  <div class="halo halo-3" aria-hidden="true"></div>
+
   <svg class="flag-bg" viewBox="0 0 300 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-    <!-- Bande verte (gauche) -->
-    <rect x="0"   y="0" width="120" height="200" fill="#008751"/>
-    <!-- Bande jaune (haut droite) -->
-    <rect x="120" y="0" width="180" height="100" fill="#FCD116"/>
-    <!-- Bande rouge (bas droite) -->
+    <rect x="0"   y="0"   width="120" height="200" fill="#008751"/>
+    <rect x="120" y="0"   width="180" height="100" fill="#FCD116"/>
     <rect x="120" y="100" width="180" height="100" fill="#E8112D"/>
   </svg>
 
-  <!-- Contenu principal -->
-  <div class="container" style="max-width:420px; position:relative; z-index:1;">
-    <div class="card card-login">
-      <div class="card-body p-5">
+  <main class="scene">
 
-        <!-- En-tête -->
-        <div class="text-center mb-4">
-          <i class="fas fa-city brand-icon"></i>
-          <h4 class="fw-bold mt-2 mb-0" style="color:#0F3529;">Mairie d'Adja-Ouèrè</h4>
-          <p class="text-muted small mb-0">Système de gestion du PTA</p>
-        </div>
-
-        <!-- Messages flash -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-          {% if messages %}
-            {% for category, message in messages %}
-            <div class="alert alert-{{ category }} py-2 small">{{ message }}</div>
-            {% endfor %}
-          {% endif %}
-        {% endwith %}
-
-        {% if erreur_limite is defined and erreur_limite %}
-        <div class="alert alert-danger py-2 small">
-          <i class="fas fa-lock me-1"></i>{{ erreur_limite }}
-        </div>
-        {% endif %}
-
-        <!-- Formulaire -->
-        <form method="POST" action="{{ url_for('auth.login') }}">
-          <div class="mb-3">
-            <label class="form-label fw-semibold small">Identifiant</label>
-            <div class="input-group">
-              <span class="input-group-text"><i class="fas fa-user"></i></span>
-              <input type="text" name="login" class="form-control form-control-lg"
-                     placeholder="Votre identifiant" required autofocus>
-            </div>
-          </div>
-          <div class="mb-4">
-            <label class="form-label fw-semibold small">Mot de passe</label>
-            <div class="input-group">
-              <span class="input-group-text"><i class="fas fa-lock"></i></span>
-              <input type="password" name="password" id="passwordInput"
-                     class="form-control form-control-lg"
-                     placeholder="••••••••" required>
-              <button type="button" class="btn btn-outline-secondary"
-                      id="togglePassword" title="Afficher / Masquer le mot de passe"
-                      style="border-left:none;">
-                <i class="fas fa-eye" id="eyeIcon"></i>
-              </button>
-            </div>
-          </div>
-          <button type="submit" class="btn btn-connexion btn-lg w-100">
-            <i class="fas fa-sign-in-alt me-2"></i>Se connecter
-          </button>
-        </form>
-
-        <div class="text-center mt-3">
-          <a href="{{ url_for('auth.mdp_oublie') }}" class="text-muted small">
-            <i class="fas fa-question-circle me-1"></i>Identifiant ou mot de passe oublié ?
-          </a>
-        </div>
-
+    <!-- ── Accueil ── -->
+    <section class="accueil" aria-label="Présentation de la plateforme">
+      <div class="logo-tuile">
+        <img src="{{ url_for('static', filename='img/logo_commune.png') }}"
+             alt="Logo de la Commune d'Adja-Ouèrè — Union, Travail, Prospérité">
       </div>
-    </div>
 
-    <!-- Pied de page -->
-    <p class="text-center footer-text mt-3 mb-1">
-      &copy; 2026 Mairie d'Adja-Ouèrè — Tous droits réservés
-    </p>
-    <p class="text-center footer-text mb-1" style="font-size:.68rem;">
-      Version 1.0
-    </p>
-    <p class="text-center footer-text mt-1">
-      Développé par <span class="footer-strong">GBOYOU A. Jupiter</span><br>
-      Statisticien · Collaborateur DDLP · Passionné de développement web, programmation, automatisation &amp; IA<br>
-      <a href="mailto:jupiter.gboyou@mairie.bj">jupiter.gboyou@mairie.bj</a>
-      &nbsp;·&nbsp;
-      <a href="tel:+2290162004627">+229 01 62 00 46 27</a>
-    </p>
-  </div>
+      <p class="surtitre">Mairie d'Adja-Ouèrè · République du Bénin</p>
 
-  <!-- Bandeau tricolore Bénin -->
+      <h1 class="marque" aria-label="Àbójútó">
+        {%- for l in ['À','b','ó','j','ú','t','ó'] -%}
+        <span style="--i:{{ loop.index0 }}" aria-hidden="true">{{ l }}</span>
+        {%- endfor -%}
+      </h1>
+
+      <p class="salut"><span id="salutation">Bienvenue</span>, heureux de vous revoir.</p>
+      <p class="intro">
+        La plateforme de planification et de suivi de la commune : Plan de Travail Annuel,
+        Plan Annuel d'Investissement, exécution du budget et suivi pluriannuel, réunis
+        au même endroit pour piloter l'action municipale.
+      </p>
+
+      <ul class="modules">
+        <li style="--i:0"><i class="fas fa-clipboard-list"></i>PTA</li>
+        <li style="--i:1"><i class="fas fa-file-invoice"></i>PAI</li>
+        <li style="--i:2"><i class="fas fa-coins"></i>Budget</li>
+        <li style="--i:3"><i class="fas fa-chart-line"></i>Suivi &amp; Évaluation</li>
+      </ul>
+    </section>
+
+    <!-- ── Connexion ── -->
+    <section class="carte" aria-labelledby="titre-connexion">
+      <h2 id="titre-connexion">Connexion</h2>
+      <p class="sous">Accédez à votre espace de travail.</p>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+        <div class="alert alert-{{ category }} py-2">{{ message }}</div>
+        {% endfor %}
+      {% endwith %}
+
+      {% if erreur_limite is defined and erreur_limite %}
+      <div class="alert alert-danger py-2">
+        <i class="fas fa-lock me-1"></i>{{ erreur_limite }}
+      </div>
+      {% endif %}
+
+      <form method="POST" action="{{ url_for('auth.login') }}" id="formConnexion">
+        <div class="champ">
+          <label for="loginInput">Identifiant</label>
+          <div class="saisie">
+            <i class="fas fa-user" aria-hidden="true"></i>
+            <input type="text" name="login" id="loginInput"
+                   placeholder="Votre identifiant" autocomplete="username" required autofocus>
+          </div>
+        </div>
+        <div class="champ">
+          <label for="passwordInput">Mot de passe</label>
+          <div class="saisie">
+            <i class="fas fa-lock" aria-hidden="true"></i>
+            <input type="password" name="password" id="passwordInput"
+                   placeholder="••••••••" autocomplete="current-password" required>
+            <button type="button" class="oeil" id="togglePassword"
+                    aria-label="Afficher le mot de passe" title="Afficher / masquer">
+              <i class="fas fa-eye" id="eyeIcon"></i>
+            </button>
+          </div>
+        </div>
+        <button type="submit" class="btn-entrer" id="btnEntrer">
+          <i class="fas fa-arrow-right-to-bracket me-2"></i>Se connecter
+        </button>
+      </form>
+
+      <a href="{{ url_for('auth.mdp_oublie') }}" class="oubli">
+        <i class="fas fa-question-circle me-1"></i>Identifiant ou mot de passe oublié ?
+      </a>
+    </section>
+
+    <!-- ── Pied de page ── -->
+    <footer class="pied">
+      <p>&copy; 2026 Mairie d'Adja-Ouèrè — Tous droits réservés · Àbójútó v1.0</p>
+      <p>
+        Développé par <strong>GBOYOU A. Jupiter</strong><br>
+        Statisticien · Collaborateur DDLP · Passionné de développement web, programmation, automatisation &amp; IA<br>
+        <a href="mailto:jupiter.gboyou@mairie.bj">jupiter.gboyou@mairie.bj</a>
+        &nbsp;·&nbsp;
+        <a href="tel:+2290162004627">+229 01 62 00 46 27</a>
+      </p>
+    </footer>
+  </main>
+
   <div class="benin-bandeau" aria-hidden="true">
     <div class="b-vert"></div>
     <div class="b-jaune"></div>
     <div class="b-rouge"></div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-    document.getElementById('togglePassword').addEventListener('click', function () {
-      var input = document.getElementById('passwordInput');
-      var icon  = document.getElementById('eyeIcon');
-      if (input.type === 'password') {
-        input.type = 'text';
-        icon.classList.replace('fa-eye', 'fa-eye-slash');
-      } else {
-        input.type = 'password';
-        icon.classList.replace('fa-eye-slash', 'fa-eye');
-      }
-    });
+    (function () {
+      var h = new Date().getHours();
+      var el = document.getElementById('salutation');
+      if (el) el.textContent = (h >= 5 && h < 18) ? 'Bonjour' : 'Bonsoir';
+
+      var btn = document.getElementById('togglePassword');
+      btn.addEventListener('click', function () {
+        var input = document.getElementById('passwordInput');
+        var icon  = document.getElementById('eyeIcon');
+        var montrer = input.type === 'password';
+        input.type = montrer ? 'text' : 'password';
+        icon.classList.toggle('fa-eye', !montrer);
+        icon.classList.toggle('fa-eye-slash', montrer);
+        btn.setAttribute('aria-label', montrer ? 'Masquer le mot de passe' : 'Afficher le mot de passe');
+      });
+
+      document.getElementById('formConnexion').addEventListener('submit', function () {
+        var b = document.getElementById('btnEntrer');
+        b.disabled = true;
+        b.innerHTML = '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Connexion…';
+      });
+    })();
   </script>
 </body>
 </html>

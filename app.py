@@ -97,6 +97,16 @@ def create_app(test_config=None):
     def mois_court_filter(v):
         return _MOIS_COURT.get(str(v or '').strip(), str(v or ''))
 
+    @app.url_defaults
+    def version_fichiers_statiques(endpoint, values):
+        # ?v=<date de modification> : force le navigateur à recharger CSS/JS après chaque mise à jour
+        if endpoint == 'static' and 'filename' in values and 'v' not in values:
+            import os as _os
+            try:
+                values['v'] = int(_os.stat(_os.path.join(app.static_folder, values['filename'])).st_mtime)
+            except OSError:
+                pass
+
     @app.context_processor
     def inject_csrf():
         if '_csrf_token' not in session:

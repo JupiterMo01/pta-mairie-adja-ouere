@@ -147,6 +147,84 @@ h1, h2, h3, h4, h5, h6 { text-wrap: balance; }
 .dropdown-item { border-radius: 8px; }
 .list-group-item { border-color: var(--abj-ligne); }
 
+/* ── En-tête d'entité (tableau de bord) ── */
+.abj-entete {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 1.1rem;
+  padding: 1.1rem 1.5rem 1.25rem;
+  border-radius: 16px;
+  color: #fff;
+  background:
+    radial-gradient(120% 140% at 100% 0%, rgba(252,209,22,.14) 0%, transparent 45%),
+    linear-gradient(120deg, var(--abj-foret) 0%, #123F32 55%, #16324F 100%);
+  box-shadow: 0 10px 28px rgba(15,53,41,.18);
+  overflow: hidden;
+}
+.abj-entete::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--abj-vert) 0 33.3%, var(--abj-jaune) 33.3% 66.6%, var(--abj-rouge) 66.6%);
+}
+.abj-entete-icone {
+  flex: none;
+  width: 52px; height: 52px;
+  display: grid; place-items: center;
+  border-radius: 14px;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.14);
+  color: var(--abj-jaune);
+  font-size: 1.4rem;
+}
+.abj-entete-texte { min-width: 0; }
+.abj-entete-sur {
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--abj-jaune);
+}
+.abj-entete-nom {
+  font-family: 'Fraunces', Georgia, 'Times New Roman', serif;
+  font-weight: 600;
+  font-size: clamp(1.25rem, 2.2vw, 1.65rem);
+  line-height: 1.2;
+  margin-top: .15rem;
+  text-wrap: balance;
+}
+.abj-entete-code {
+  display: inline-block;
+  font-family: var(--bs-body-font-family);
+  font-size: .72em;
+  font-weight: 700;
+  letter-spacing: .04em;
+  padding: .1em .5em;
+  margin-right: .5rem;
+  border-radius: 6px;
+  background: rgba(255,255,255,.12);
+  vertical-align: .12em;
+}
+.abj-entete-sous { font-size: .82rem; color: rgba(255,255,255,.65); margin-top: .2rem; }
+.abj-entete-taux { margin-left: auto; text-align: right; flex: none; }
+.abj-entete-valeur {
+  font-size: 2.1rem;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.abj-entete-valeur small { font-size: .55em; font-weight: 600; opacity: .85; }
+.abj-entete-valeur.bon    { color: #5BE39A; }
+.abj-entete-valeur.moyen  { color: var(--abj-jaune); }
+.abj-entete-valeur.faible { color: #FF8A8A; }
+.abj-entete-legende { font-size: .72rem; color: rgba(255,255,255,.65); margin-top: .3rem; }
+@media (max-width: 575.98px) {
+  .abj-entete { flex-wrap: wrap; }
+  .abj-entete-taux { margin-left: 0; text-align: left; width: 100%; }
+}
+
 /* ── Pied de page de l'application ── */
 .abj-pied {
   font-size: .72rem;

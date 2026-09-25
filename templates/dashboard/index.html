@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Tableau de bord · {{ titre }} · {{ annee.annee if annee }}{% endblock %}
+{% block title %}Tableau de bord PTA {{ annee.annee if annee }}{% endblock %}
 {% block page_title %}
   <i class="fas fa-tachometer-alt me-2 text-primary"></i>Tableau de bord
   {% if annee %}<span class="badge bg-primary ms-1">{{ annee.annee }}</span>{% endif %}
@@ -142,29 +142,33 @@
 {% endif %}
 
 {# ── Bandeau titre entité ────────────────────────────────────────────────── #}
-<div class="card border-0 shadow-sm mb-3" style="background:linear-gradient(90deg,#1a1a2e,#16213e);">
-  <div class="card-body py-3 px-4 d-flex align-items-center gap-3">
-    {% if is_admin and not sel_dir_id and not sel_svc_id %}
-      <i class="fas fa-globe fa-2x text-warning"></i>
-    {% elif role == 'service' or sel_svc_id %}
-      <i class="fas fa-users fa-2x text-warning"></i>
-    {% else %}
-      <i class="fas fa-building fa-2x text-warning"></i>
-    {% endif %}
-    <div>
-      <div class="text-white fw-bold fs-5">{{ titre }}</div>
-      <div class="text-muted small">{{ annee.libelle if annee }}</div>
+{% if not entite %}
+  {% set ent_type, ent_icone, ent_code, ent_nom = "Vue d'ensemble", 'fa-globe-africa', none, "Mairie d'Adja-Ouèrè" %}
+{% elif role == 'service' or sel_svc_id %}
+  {% set ent_type, ent_icone, ent_code, ent_nom = 'Service', 'fa-users', entite.code, entite.nom %}
+{% else %}
+  {% set ent_type, ent_icone, ent_code, ent_nom = 'Direction', 'fa-building', entite.code, entite.nom %}
+{% endif %}
+<div class="abj-entete mb-3">
+  <div class="abj-entete-icone"><i class="fas {{ ent_icone }}"></i></div>
+  <div class="abj-entete-texte">
+    <div class="abj-entete-sur">{{ ent_type }}{% if annee %} · PTA {{ annee.annee }}{% endif %}</div>
+    <div class="abj-entete-nom">
+      {% if ent_code %}<span class="abj-entete-code">{{ ent_code }}</span>{% endif %}{{ ent_nom }}
     </div>
-    {% if stats %}
-    <div class="ms-auto">
-      <span class="badge fs-4 px-4 py-2"
-            style="background:{% if stats.suivi[0].taux >= 75 %}#198754{% elif stats.suivi[0].taux >= 40 %}#ffc107;color:#000{% else %}#dc3545{% endif %};">
-        {{ '%.1f'|format(stats.suivi[0].taux) }}&thinsp;%
-      </span>
-      <div class="text-muted small text-center mt-1">Taux global</div>
-    </div>
+    {% if annee and annee.libelle and annee.libelle != annee.annee|string %}
+    <div class="abj-entete-sous">{{ annee.libelle }}</div>
     {% endif %}
   </div>
+  {% if stats %}
+  {% set tg = stats.suivi[0].taux %}
+  <div class="abj-entete-taux">
+    <div class="abj-entete-valeur {% if tg >= 75 %}bon{% elif tg >= 40 %}moyen{% else %}faible{% endif %}">
+      {{ '%.1f'|format(tg) }}<small>&thinsp;%</small>
+    </div>
+    <div class="abj-entete-legende">Taux d'exécution global</div>
+  </div>
+  {% endif %}
 </div>
 
 {% if not stats %}

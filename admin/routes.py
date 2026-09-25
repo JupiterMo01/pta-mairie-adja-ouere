@@ -1120,7 +1120,7 @@ def rappel_saisie():
     <p style="margin:0 0 20px;color:#374151;line-height:1.7;">
       Dans le cadre de l'évaluation du Plan de Travail Annuel (PTA) {annee_label}
       de la Mairie d'Adja-Ouèrè, nous vous prions de renseigner l'état d'avancement
-      de vos tâches sur <strong>{_MARQUE}</strong> avant la fin du trimestre en cours.
+      de vos tâches sur <strong>{_MARQUE}</strong> dès que possible.
     </p>
     <p style="margin:0 0 12px;color:#0F3529;font-weight:bold;font-size:15px;">Comment procéder</p>
     <table cellpadding="0" cellspacing="0" style="margin:0 0 8px;">{lignes_etapes}</table>
@@ -1137,7 +1137,7 @@ def rappel_saisie():
         f"Date : {date_str}\n\n"
         f"Madame, Monsieur,\n\n"
         f"Dans le cadre de l'évaluation du PTA {annee_label}, nous vous prions de renseigner "
-        f"l'état d'avancement de vos tâches sur {_MARQUE} ({plateforme}) avant la fin du trimestre.\n\n"
+        f"l'état d'avancement de vos tâches sur {_MARQUE} ({plateforme}) dès que possible.\n\n"
         "Comment procéder :\n"
         + '\n'.join(f"{i}. {_re.sub(r'<[^>]+>', '', e).replace('&amp;', '&')}"
                     for i, e in enumerate(etapes, 1))

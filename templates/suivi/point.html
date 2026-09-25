@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% block title %}Point des activités PTA {{ annee.annee }}{% endblock %}
+{% block page_title %}
+  <i class="fas fa-list-ol me-2"></i>Point des activités
+  <span class="badge bg-primary ms-1">{{ annee.annee }}</span>
+{% endblock %}
+
+{% block content %}
+{% set p = perimetre %}
+
+{# ── Périmètre ─────────────────────────────────────────────────────────────── #}
+{% if p.role in ('admin_editeur', 'admin_lecteur') %}
+<div class="card border-0 shadow-sm mb-3 mt-1">
+  <div class="card-body py-2">
+    <form method="GET" action="{{ url_for('suivi.point_activites') }}" class="d-flex align-items-center gap-2 flex-wrap">
+      {% if nature %}<input type="hidden" name="nature" value="{{ nature }}">{% endif %}
+      {% if statut %}<input type="hidden" name="statut" value="{{ statut }}">{% endif %}
+      <a href="{{ url_for('suivi.point_activites', **params(direction_id=None, service_id=None)) }}"
+         class="btn btn-sm {% if p.niveau == 'global' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+        <i class="fas fa-globe-africa me-1"></i>Global
+      </a>
+      <select name="direction_id" class="form-select form-select-sm" style="max-width:280px;"
+              onchange="this.form.service_id.value='';this.form.submit()" aria-label="Direction">
+        <option value="">Toutes directions</option>
+        {% for d in p.directions %}
+        <option value="{{ d.id }}" {% if p.sel_dir_id == d.id %}selected{% endif %}>{{ d.code }} · {{ d.nom }}</option>
+        {% endfor %}
+      </select>
+      <select name="service_id" class="form-select form-select-sm" style="max-width:280px;"
+              onchange="this.form.direction_id.value='';this.form.submit()" aria-label="Service">
+        <option value="">Tous services</option>
+        {% for s in p.services %}
+        <option value="{{ s.id }}" {% if p.sel_svc_id == s.id %}selected{% endif %}>{{ s.code }} · {{ s.nom }}</option>
+        {% endfor %}
+      </select>
+    </form>
+  </div>
+</div>
+{% elif p.role == 'direction' and p.services_dir %}
+<div class="card border-0 shadow-sm mb-3 mt-1">
+  <div class="card-body py-2 d-flex align-items-center gap-2 flex-wrap">
+    <span class="small fw-semibold text-muted me-1">Voir :</span>
+    <a href="{{ url_for('suivi.point_activites', **params(service_id=None)) }}"
+       class="btn btn-sm {% if not p.sel_svc_id %}btn-primary{% else %}btn-outline-primary{% endif %}">
+      <i class="fas fa-building me-1"></i>Ma direction (total)
+    </a>
+    {% for s in p.services_dir %}
+    <a href="{{ url_for('suivi.point_activites', **params(service_id=s.id)) }}"
+       class="btn btn-sm {% if p.sel_svc_id == s.id %}btn-secondary{% else %}btn-outline-secondary{% endif %}"
+       title="{{ s.nom }}">{{ s.code }}</a>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{# ── Statuts (compteurs cliquables) ──────────────────────────────────────── #}
+<div class="pa-tuiles mb-3">
+  {% for cle, lib, icone in [('', 'Toutes les activités', 'fa-layer-group'),
+                              ('execute', 'Exécutées', 'fa-circle-check'),
+                              ('en_cours', 'En cours', 'fa-spinner'),
+                              ('non_execute', 'Non exécutées', 'fa-circle-pause')] %}
+  <a class="pa-tuile pa-{{ cle or 'tout' }} {% if statut == cle %}active{% endif %}"
+     href="{{ url_for('suivi.point_activites', **params(statut=cle or None)) }}"
+     {% if statut == cle %}aria-current="true"{% endif %}>
+    <i class="fas {{ icone }}"></i>
+    <span class="pa-nombre">{{ compteurs[cle or 'tout'] }}</span>
+    <span class="pa-lib">{{ lib }}</span>
+  </a>
+  {% endfor %}
+</div>
+
+{# ── Nature, titre et actions ─────────────────────────────────────────────── #}
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+  <div class="btn-group btn-group-sm" role="group" aria-label="Nature des activités">
+    {% for cle, lib in [('', 'Toutes natures'), ('fct', 'Fonctionnement'), ('inv', 'Investissement')] %}
+    <a href="{{ url_for('suivi.point_activites', **params(nature=cle or None)) }}"
+       class="btn {% if nature == cle %}btn-dark{% else %}btn-outline-dark{% endif %}">{{ lib }}</a>
+    {% endfor %}
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('suivi.point_imprimer', **params()) }}" target="_blank" class="btn btn-sm btn-outline-secondary">
+      <i class="fas fa-print me-1"></i>Imprimer
+    </a>
+    <a href="{{ url_for('suivi.point_excel', **params()) }}" class="btn btn-sm btn-success">
+      <i class="fas fa-file-excel me-1"></i>Excel
+    </a>
+  </div>
+</div>
+
+<div class="small text-muted mb-2">
+  <strong class="text-body">{{ p.titre }}</strong> · {{ libelle_filtres }} ·
+  {{ lignes|length }} activité{{ 's' if lignes|length > 1 }}
+  <span class="ms-1" title="Aucune saisie ici : tout est lu depuis Suivi & Évaluation du PTA (état le plus récent de chaque tâche)">
+    <i class="fas fa-circle-info"></i> lu en direct depuis Suivi &amp; Évaluation
+  </span>
+</div>
+
+{% if not lignes %}
+<div class="card border-0 shadow-sm">
+  <div class="card-body text-center text-muted py-5">
+    <i class="fas fa-inbox fa-2x mb-3 opacity-50"></i>
+    <div>Aucune activité pour cette sélection.</div>
+  </div>
+</div>
+{% else %}
+<div class="card border-0 shadow-sm">
+  <div class="table-responsive">
+    <table class="table align-middle mb-0 pa-table">
+      <thead>
+        <tr>
+          <th class="text-center" style="width:3.5rem;">N°</th>
+          <th>Activité</th>
+          <th class="text-center">Période d'exécution</th>
+          <th class="text-center">Direction resp.</th>
+          <th class="text-center" style="min-width:9rem;">Taux d'exécution physique</th>
+          <th class="text-center">Statut</th>
+          <th style="min-width:18rem;">Observations / Difficultés</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for l in lignes %}
+        <tr>
+          <td class="text-center text-muted fw-semibold">{{ l.num }}</td>
+          <td class="fw-semibold">{{ l.libelle }}</td>
+          <td class="text-center text-nowrap small">{{ l.periode or '—' }}</td>
+          <td class="text-center">
+            {% if l.direction_code %}<span class="badge text-bg-light border" title="{{ l.direction_nom }}">{{ l.direction_code }}</span>{% else %}—{% endif %}
+          </td>
+          <td>
+            <div class="pa-taux">
+              <span class="pa-taux-val">{{ '%.2f'|format(l.taux)|replace('.', ',') }} %</span>
+              <span class="pa-barre" aria-hidden="true"><span class="pa-{{ l.statut }}" style="width:{{ [l.taux, 100]|min }}%;"></span></span>
+            </div>
+          </td>
+          <td class="text-center"><span class="pa-statut pa-{{ l.statut }}">{{ statuts[l.statut] }}</span></td>
+          <td class="small pa-obs">{{ l.observations or '' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<style>
+  .pa-tuiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: .75rem; }
+  .pa-tuile {
+    display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: .75rem;
+    align-items: center; padding: .8rem 1rem; border-radius: 14px; text-decoration: none;
+    background: #fff; border: 1.5px solid var(--abj-ligne); color: var(--abj-encre);
+    transition: border-color .15s, box-shadow .15s, transform .15s;
+  }
+  .pa-tuile i { grid-row: span 2; font-size: 1.3rem; width: 2.4rem; height: 2.4rem; border-radius: 12px;
+    display: grid; place-items: center; }
+  .pa-nombre { font-size: 1.5rem; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+  .pa-lib { font-size: .8rem; color: var(--abj-doux); }
+  .pa-tuile:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(15,53,41,.08); color: var(--abj-encre); }
+  .pa-tuile:focus-visible { outline: 2px solid var(--abj-vert); outline-offset: 2px; }
+  .pa-tout i        { background: #EEF3F0; color: var(--abj-foret); }
+  .pa-execute i     { background: #D4EDDA; color: #155724; }
+  .pa-en_cours i    { background: #FFF3CD; color: #856404; }
+  .pa-non_execute i { background: #E9ECEF; color: #495057; }
+  .pa-tuile.active { border-color: var(--abj-foret); box-shadow: 0 0 0 3px rgba(15,53,41,.12); }
+  .pa-tuile.pa-execute.active { border-color: #198754; box-shadow: 0 0 0 3px rgba(25,135,84,.15); }
+  .pa-tuile.pa-en_cours.active { border-color: #E0A800; box-shadow: 0 0 0 3px rgba(255,193,7,.2); }
+  .pa-tuile.pa-non_execute.active { border-color: #6C757D; box-shadow: 0 0 0 3px rgba(108,117,125,.15); }
+
+  .pa-table th { font-size: .74rem; text-transform: uppercase; letter-spacing: .05em; color: var(--abj-doux);
+    white-space: normal; vertical-align: middle; }
+  .pa-table td { font-size: .86rem; }
+  .pa-taux { display: flex; flex-direction: column; align-items: center; gap: .25rem; }
+  .pa-taux-val { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .pa-barre { width: 100%; max-width: 110px; height: 5px; border-radius: 5px; background: #E9ECEF; overflow: hidden; }
+  .pa-barre span { display: block; height: 100%; border-radius: 5px; }
+  .pa-barre .pa-execute { background: #198754; }
+  .pa-barre .pa-en_cours { background: #E0A800; }
+  .pa-barre .pa-non_execute { background: #ADB5BD; }
+  .pa-statut { display: inline-block; padding: .2rem .6rem; border-radius: 999px; font-size: .74rem; font-weight: 700; white-space: nowrap; }
+  .pa-statut.pa-execute { background: #D4EDDA; color: #155724; }
+  .pa-statut.pa-en_cours { background: #FFF3CD; color: #856404; }
+  .pa-statut.pa-non_execute { background: #E9ECEF; color: #495057; }
+  .pa-obs { color: #3D4A44; line-height: 1.45; }
+</style>
+{% endblock %}

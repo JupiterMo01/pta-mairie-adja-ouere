@@ -114,9 +114,15 @@
       {# ── Suivi & Évaluation PTA : service et direction (hors admin) ── #}
       {% if current_user.role in ('service', 'direction') %}
       <li class="nav-item">
-        <a class="nav-link text-white py-2 px-3 {% if request.blueprint == 'suivi' %}active-link{% endif %}"
+        <a class="nav-link text-white py-2 px-3 {% if request.blueprint == 'suivi' and not (request.endpoint or '').startswith('suivi.point') %}active-link{% endif %}"
            href="{{ url_for('suivi.index') }}">
           <i class="fas fa-tasks me-2 fa-fw"></i>Suivi &amp; Évaluation PTA
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link text-white py-2 px-3 {% if (request.endpoint or '').startswith('suivi.point') %}active-link{% endif %}"
+           href="{{ url_for('suivi.point_activites') }}">
+          <i class="fas fa-list-ol me-2 fa-fw"></i>Point des activités
         </a>
       </li>
       {% endif %}
@@ -164,9 +170,15 @@
         </a>
       </li>
       <li class="nav-item">
-        <a class="nav-link text-white py-2 px-3 {% if request.blueprint == 'suivi' %}active-link{% endif %}"
+        <a class="nav-link text-white py-2 px-3 {% if request.blueprint == 'suivi' and not (request.endpoint or '').startswith('suivi.point') %}active-link{% endif %}"
            href="{{ url_for('suivi.index') }}">
           <i class="fas fa-tasks me-2 fa-fw"></i>Suivi &amp; Évaluation PTA
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link text-white py-2 px-3 {% if (request.endpoint or '').startswith('suivi.point') %}active-link{% endif %}"
+           href="{{ url_for('suivi.point_activites') }}">
+          <i class="fas fa-list-ol me-2 fa-fw"></i>Point des activités
         </a>
       </li>
       <li class="nav-item">

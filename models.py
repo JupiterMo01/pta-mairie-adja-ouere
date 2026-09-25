@@ -757,7 +757,8 @@ class PaiActivite(db.Model):
     fadec_type       = db.Column(db.String(300), nullable=True)
     observations_pai = db.Column(db.Text,        nullable=True)
 
-    activite = db.relationship('Activite', backref=db.backref('pai_extra', uselist=False))
+    activite = db.relationship('Activite', backref=db.backref('pai_extra', uselist=False,
+                                                                   cascade='all, delete-orphan'))
 
 
 class PaiProgramme(db.Model):
@@ -767,7 +768,8 @@ class PaiProgramme(db.Model):
     programme_id = db.Column(db.Integer, db.ForeignKey('programmes.id'), nullable=False, unique=True)
     poids_pai    = db.Column(db.Float, default=0.0)
 
-    programme = db.relationship('Programme', backref=db.backref('pai_extra_prog', uselist=False))
+    programme = db.relationship('Programme', backref=db.backref('pai_extra_prog', uselist=False,
+                                                                     cascade='all, delete-orphan'))
 
 
 class PaiProjet(db.Model):
@@ -777,7 +779,8 @@ class PaiProjet(db.Model):
     projet_id = db.Column(db.Integer, db.ForeignKey('projets.id'), nullable=False, unique=True)
     poids_pai = db.Column(db.Float, default=0.0)
 
-    projet = db.relationship('Projet', backref=db.backref('pai_extra_proj', uselist=False))
+    projet = db.relationship('Projet', backref=db.backref('pai_extra_proj', uselist=False,
+                                                               cascade='all, delete-orphan'))
 
 
 class PeiActivite(db.Model):
@@ -792,7 +795,8 @@ class PeiActivite(db.Model):
     taux_physique      = db.Column(db.Float,   default=0.0)
     observations       = db.Column(db.Text)
 
-    activite = db.relationship('Activite', backref=db.backref('pei_extra', uselist=False))
+    activite = db.relationship('Activite', backref=db.backref('pei_extra', uselist=False,
+                                                                   cascade='all, delete-orphan'))
 
 
 class BudgetExecution(db.Model):

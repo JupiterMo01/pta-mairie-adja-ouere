@@ -700,6 +700,13 @@ def activite_copy_to(act_id):
 
 # ─── Tâches ──────────────────────────────────────────────────────────────────
 
+def _trimestre_naturel(t):
+    """Trimestre auquel le suivi rattache la tâche (même règle que suivi.save)."""
+    from utils import MOIS_ORDRE
+    debut = MOIS_ORDRE.get(t.periode_debut or '', 0) or MOIS_ORDRE.get(t.periode_fin or '', 0)
+    return ((debut - 1) // 3 + 1) if debut > 0 else 1
+
+
 def _tache_from_form(t, activite):
     t.nom = request.form.get('nom', '').strip()
     t.poids = _parse_float(request.form.get('poids'))
@@ -838,7 +845,15 @@ def tache_duplicate(tache_id):
 def tache_edit(tache_id):
     t = db.get_or_404(Tache, tache_id)
     activite = t.activite
+    ancien_trim = _trimestre_naturel(t)
     _tache_from_form(t, activite)
+    nouveau_trim = _trimestre_naturel(t)
+    if nouveau_trim != ancien_trim:
+        # La saisie de suivi suit la tâche dans son nouveau trimestre
+        occupes = {(s.service_id, s.annee_id) for s in t.suivis if s.trimestre == nouveau_trim}
+        for s in t.suivis:
+            if s.trimestre == ancien_trim and (s.service_id, s.annee_id) not in occupes:
+                s.trimestre = nouveau_trim
     db.session.commit()
     flash('Tâche mise à jour.', 'success')
     return redirect(url_for('pta.global_pta', go=f'tache-{tache_id}'))

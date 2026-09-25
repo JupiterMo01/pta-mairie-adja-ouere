@@ -139,7 +139,7 @@ h1, h2, h3, h4, h5, h6 { text-wrap: balance; }
 /* ── Alertes, badges, modales, menus ── */
 .alert { border-radius: 10px; }
 .badge { font-weight: 600; letter-spacing: .01em; border-radius: .4rem; }
-.modal-content { border: 0; border-radius: 16px; box-shadow: 0 24px 60px rgba(10,30,22,.25); overflow: hidden; }
+.modal-content { border: 0; border-radius: 16px; box-shadow: 0 24px 60px rgba(10,30,22,.25); }
 .modal-header { border-bottom-color: var(--abj-ligne); }
 .modal-footer { border-top-color: var(--abj-ligne); background: #FAFBFA; }
 .modal-backdrop.show { opacity: .45; }
@@ -248,13 +248,6 @@ h1, h2, h3, h4, h5, h6 { text-wrap: balance; }
 /* Barres de défilement discrètes */
 * { scrollbar-width: thin; scrollbar-color: #C3CEC8 transparent; }
 
-/* Apparition douce du contenu */
-@keyframes abj-apparition { from { opacity: 0; transform: translateY(6px); } }
-main.abj-contenu { animation: abj-apparition .35s ease-out both; }
-@media (prefers-reduced-motion: reduce) {
-  main.abj-contenu { animation: none; }
-}
-
 /* Impression */
 @media print {
   #sidebar, .navbar, .btn, .modal, .alert-dismissible .btn-close, .abj-pied,
@@ -262,7 +255,6 @@ main.abj-contenu { animation: abj-apparition .35s ease-out both; }
   .card { box-shadow: none !important; border: 1px solid #ccc !important; }
   body { background: white; }
   .collapse { display: block !important; }
-  main.abj-contenu { animation: none; }
 }
 
 /* Ancres URL : décalage pour la barre d'en-tête collante */

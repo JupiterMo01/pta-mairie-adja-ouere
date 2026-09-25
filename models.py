@@ -435,6 +435,40 @@ class BiblioTache(db.Model):
 
 # ─── Backup PTA ───────────────────────────────────────────────────────────────
 
+class Archive(db.Model):
+    """Copie figée (classeur Excel) du PTA ou du suivi à une date donnée.
+    Le fichier est rangé dans instance/archives/ : seule sa fiche est en base,
+    pour ne pas alourdir la sauvegarde nocturne envoyée par courriel."""
+    __tablename__ = 'archives'
+    id            = db.Column(db.Integer, primary_key=True)
+    annee_label   = db.Column(db.Integer, nullable=False)
+    type_archive  = db.Column(db.String(30), nullable=False)   # voir TYPES
+    trimestre     = db.Column(db.Integer, nullable=True)       # 1 à 4 ; 0 = vue globale / année entière
+    libelle       = db.Column(db.String(200), nullable=False)
+    fichier       = db.Column(db.String(255), nullable=False)  # chemin relatif à instance/archives
+    taille        = db.Column(db.Integer, default=0)
+    nb_feuilles   = db.Column(db.Integer, default=0)
+    created_at    = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    created_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+
+    created_by = db.relationship('User', foreign_keys=[created_by_id])
+
+    TYPES = {
+        'pta_initial': 'PTA initial',
+        'pta_revise':  'PTA révisé',
+        'suivi':       'Suivi & Évaluation du PTA',
+        'pai_initial': 'PAI initial',
+        'pai_revise':  'PAI révisé',
+        'pei':         "Point d'exécution du PAI",
+        'budget':      'Exécution du budget',
+    }
+    AVEC_TRIMESTRE = ('suivi', 'pei', 'budget')
+
+    @property
+    def type_label(self):
+        return self.TYPES.get(self.type_archive, self.type_archive)
+
+
 class PTABackup(db.Model):
     __tablename__ = 'pta_backups'
     id = db.Column(db.Integer, primary_key=True)

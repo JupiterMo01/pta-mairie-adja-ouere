@@ -54,6 +54,78 @@
   </div>
 </div>
 
+{% if current_user.role == 'admin_editeur' %}
+<div class="maint-carte {% if maintenance_info %}active{% endif %} mt-4">
+  <div class="maint-etat">
+    <span class="maint-voyant" aria-hidden="true"></span>
+    <div>
+      <div class="fw-bold">Mode maintenance
+        <span class="badge {% if maintenance_info %}bg-danger{% else %}bg-success{% endif %} ms-1">
+          {% if maintenance_info %}Activé{% else %}Désactivé{% endif %}
+        </span>
+      </div>
+      <div class="small text-muted">
+        {% if maintenance_info %}
+          Depuis le {{ maintenance_info.depuis }}{% if maintenance_info.par %} par {{ maintenance_info.par }}{% endif %}.
+          Les autres utilisateurs voient la page de maintenance et n'ont accès à aucune fonctionnalité.
+        {% else %}
+          À activer avant de travailler sur le PTA (par exemple en local), pour que personne ne saisisse en même temps.
+          Seul l'administrateur éditeur garde l'accès.
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% if maintenance_info %}
+  <form method="POST" action="{{ url_for('admin.maintenance_desactiver') }}"
+        onsubmit="return confirm('Rouvrir la plateforme à tous les utilisateurs ?')">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+    <button class="btn btn-success"><i class="fas fa-lock-open me-2"></i>Désactiver et rouvrir</button>
+  </form>
+  {% else %}
+  <button class="btn btn-outline-danger" type="button" data-bs-toggle="collapse" data-bs-target="#maintForm">
+    <i class="fas fa-screwdriver-wrench me-2"></i>Activer la maintenance
+  </button>
+  {% endif %}
+</div>
+{% if not maintenance_info %}
+<div class="collapse" id="maintForm">
+  <form method="POST" action="{{ url_for('admin.maintenance_activer') }}" class="maint-form"
+        onsubmit="return confirm('Activer la maintenance ? Tous les autres utilisateurs perdront l\'accès immédiatement.')">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+    <div class="row g-3">
+      <div class="col-md-8">
+        <label class="form-label small fw-semibold mb-1" for="maintMessage">Message affiché aux utilisateurs <span class="text-muted fw-normal">(facultatif)</span></label>
+        <textarea class="form-control" id="maintMessage" name="message" rows="2" maxlength="600"
+                  placeholder="Ex. : Mise à jour du PTA révisé 2026 en cours."></textarea>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label small fw-semibold mb-1" for="maintRetour">Retour prévu <span class="text-muted fw-normal">(facultatif)</span></label>
+        <input type="text" class="form-control" id="maintRetour" name="retour" maxlength="120"
+               placeholder="Ex. : aujourd'hui vers 16h">
+        <button class="btn btn-danger w-100 mt-2"><i class="fas fa-power-off me-2"></i>Activer maintenant</button>
+      </div>
+    </div>
+  </form>
+</div>
+{% endif %}
+<style>
+  .maint-carte {
+    display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem;
+    background: #fff; border: 1px solid var(--abj-ligne); border-radius: 14px; padding: 1rem 1.25rem;
+    box-shadow: 0 1px 2px rgba(15,53,41,.04), 0 6px 20px rgba(15,53,41,.06);
+  }
+  .maint-carte.active { border-color: #F3B4B9; background: #FFF6F6; }
+  .maint-etat { display: flex; align-items: flex-start; gap: .85rem; max-width: 760px; }
+  .maint-voyant { flex: none; width: 12px; height: 12px; border-radius: 50%; margin-top: .35rem; background: #22A565;
+    box-shadow: 0 0 0 4px rgba(34,165,101,.18); }
+  .maint-carte.active .maint-voyant { background: #E8112D; animation: maint-pulse 1.6s ease-out infinite; }
+  @keyframes maint-pulse { 0% { box-shadow: 0 0 0 0 rgba(232,17,45,.5); } 100% { box-shadow: 0 0 0 12px rgba(232,17,45,0); } }
+  .maint-form { background: #fff; border: 1px solid var(--abj-ligne); border-top: 0; border-radius: 0 0 14px 14px;
+    padding: 1rem 1.25rem; margin-top: -8px; }
+  @media (prefers-reduced-motion: reduce) { .maint-carte.active .maint-voyant { animation: none; } }
+</style>
+{% endif %}
+
 <div class="row g-4 mt-2">
   <div class="col-md-6">
     <div class="card border-0 shadow-sm h-100">
@@ -78,6 +150,9 @@
         </a>
         <a href="{{ url_for('admin.backups') }}" class="btn btn-outline-dark">
           <i class="fas fa-database me-2"></i>Sauvegardes PTA
+        </a>
+        <a href="{{ url_for('admin.archives') }}" class="btn btn-outline-success">
+          <i class="fas fa-box-archive me-2"></i>Archives (PTA, PAI, suivis, budget)
         </a>
         <a href="{{ url_for('admin.journal') }}" class="btn btn-outline-secondary">
           <i class="fas fa-history me-2"></i>Journal d'audit

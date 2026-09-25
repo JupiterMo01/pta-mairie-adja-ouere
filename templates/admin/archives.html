@@ -1,0 +1,288 @@
+{% extends "base.html" %}
+{% block title %}Archives{% endblock %}
+{% block page_title %}<i class="fas fa-box-archive me-2"></i>Archives{% endblock %}
+
+{% block content %}
+{% set groupes = [
+  ('PTA', 'fa-clipboard-list', ['pta_initial', 'pta_revise', 'suivi']),
+  ('PAI', 'fa-file-invoice', ['pai_initial', 'pai_revise', 'pei']),
+  ('Budget', 'fa-coins', ['budget']),
+] %}
+{% set icones = {
+  'pta_initial': 'fa-file-lines', 'pta_revise': 'fa-file-pen', 'suivi': 'fa-list-check',
+  'pai_initial': 'fa-file-invoice', 'pai_revise': 'fa-file-invoice-dollar', 'pei': 'fa-chart-line',
+  'budget': 'fa-coins',
+} %}
+{% set details = {
+  'pta_initial': 'Global, récapitulatif, chaque direction et chaque service',
+  'pta_revise':  'Global, récapitulatif, chaque direction et chaque service',
+  'suivi':       'Vue globale, chaque direction et chaque service',
+  'pai_initial': 'Plan annuel d\'investissement complet',
+  'pai_revise':  'Plan annuel d\'investissement complet',
+  'pei':         'Exécution physique et financière, situation au trimestre choisi',
+  'budget':      'Prévisions et réalisations du trimestre ou de l\'année',
+} %}
+
+<div class="arch-intro mt-2 mb-4">
+  <div class="arch-intro-icone"><i class="fas fa-box-archive"></i></div>
+  <div>
+    <div class="fw-bold mb-1">Copies figées, conservées à tout moment</div>
+    <div class="small text-muted">
+      Quand vous êtes sûr du contenu (PTA adopté, PTA révisé, fin de trimestre…), archivez-le ici.
+      Le classeur Excel est enregistré tel quel et reste téléchargeable, même si les données évoluent ensuite.
+      Il n'y a qu'une archive par document et par trimestre : archiver à nouveau
+      <strong>remplace</strong> la précédente, par exemple après une correction.
+    </div>
+  </div>
+</div>
+
+{% if annee_courante %}
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-body p-4">
+    <form method="POST" action="{{ url_for('admin.archive_creer') }}" id="formArchive">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+      <div class="d-flex flex-wrap justify-content-between align-items-baseline gap-2 mb-3">
+        <h5 class="fw-bold mb-0">Archiver maintenant</h5>
+        <span class="small text-muted">Exercice <span class="badge bg-primary">{{ annee_courante.annee }}</span></span>
+      </div>
+
+      <div class="small fw-semibold text-muted mb-2">1. Que voulez-vous archiver ?</div>
+      <div class="arch-groupes mb-4">
+        {% for nom_groupe, icone_groupe, codes in groupes %}
+        <div class="arch-groupe">
+          <div class="arch-groupe-titre"><i class="fas {{ icone_groupe }} me-1"></i>{{ nom_groupe }}</div>
+          {% for code in codes %}
+          <label class="arch-type">
+            <input type="radio" name="type_archive" value="{{ code }}" required
+                   data-trimestre="{{ 1 if code in avec_trimestre else 0 }}">
+            <span class="arch-type-carte">
+              <i class="fas {{ icones[code] }}"></i>
+              <span>
+                <span class="arch-type-nom">{{ types[code] }}</span>
+                <span class="arch-type-detail">{{ details[code] }}</span>
+              </span>
+            </span>
+          </label>
+          {% endfor %}
+        </div>
+        {% endfor %}
+      </div>
+
+      <div id="blocTrimestre" class="mb-4 d-none">
+        <div class="small fw-semibold text-muted mb-2">2. Pour quelle période ?</div>
+        <div class="arch-periodes" role="radiogroup">
+          <label class="arch-periode" id="optGlobal">
+            <input type="radio" name="trimestre" value="0">
+            <span id="lblGlobal">Vue globale</span>
+          </label>
+          {% for t in (1, 2, 3, 4) %}
+          <label class="arch-periode">
+            <input type="radio" name="trimestre" value="{{ t }}" {% if t == 1 %}checked{% endif %}>
+            <span>T{{ t }}</span>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="row g-3 align-items-end">
+        <div class="col-md-8">
+          <label class="form-label small fw-semibold text-muted mb-1" for="libelle">
+            Intitulé <span class="fw-normal">(facultatif, sinon un intitulé est proposé automatiquement)</span>
+          </label>
+          <input type="text" class="form-control" id="libelle" name="libelle" maxlength="200"
+                 placeholder="Ex. : PTA révisé 2026 adopté en session du conseil">
+        </div>
+        <div class="col-md-4 d-grid">
+          <button type="submit" class="btn btn-primary" id="btnArchiver" disabled>
+            <i class="fas fa-box-archive me-2"></i>Archiver
+          </button>
+        </div>
+      </div>
+      <div id="avisRemplacement" class="alert alert-warning py-2 mt-3 mb-0 small d-none">
+        <i class="fas fa-rotate me-1"></i>
+        Une archive de ce document existe déjà (<span id="dateExistante"></span>).
+        Elle sera <strong>remplacée</strong> par la version actuelle.
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{% if not par_annee %}
+<div class="text-center text-muted py-5">
+  <i class="fas fa-box-open fa-2x mb-3 opacity-50"></i>
+  <div>Aucune archive pour le moment.</div>
+</div>
+{% endif %}
+
+{% for annee_label, liste in par_annee.items() %}
+<div class="d-flex align-items-center gap-2 mb-2 mt-4">
+  <h5 class="fw-bold mb-0">Exercice {{ annee_label }}</h5>
+  <span class="text-muted small">· {{ liste|length }} archive{{ 's' if liste|length > 1 }}</span>
+</div>
+<div class="card border-0 shadow-sm mb-3">
+  <div class="table-responsive">
+    <table class="table align-middle mb-0 arch-table">
+      <thead>
+        <tr>
+          <th>Document</th>
+          <th>Période</th>
+          <th>Archivé le</th>
+          <th class="text-end">Contenu</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in liste %}
+        <tr>
+          <td>
+            <div class="d-flex align-items-center gap-2">
+              <span class="arch-puce"><i class="fas {{ icones.get(a.type_archive, 'fa-file') }}"></i></span>
+              <div>
+                <div class="fw-semibold">{{ a.libelle }}</div>
+                <div class="small text-muted">{{ a.type_label }}</div>
+              </div>
+            </div>
+          </td>
+          <td>
+            {% if a.trimestre %}<span class="badge text-bg-light border">T{{ a.trimestre }}</span>
+            {% elif a.trimestre == 0 %}<span class="badge text-bg-light border">{{ 'Année entière' if a.type_archive == 'budget' else 'Vue globale' }}</span>
+            {% else %}<span class="text-muted small">Exercice</span>{% endif %}
+          </td>
+          <td class="small">
+            {{ a.created_at.strftime('%d/%m/%Y à %Hh%M') }}
+            {% if a.created_by %}<div class="text-muted">par {{ a.created_by.prenom }} {{ a.created_by.nom }}</div>{% endif %}
+          </td>
+          <td class="text-end small text-muted text-nowrap">
+            {{ a.nb_feuilles }} feuille{{ 's' if a.nb_feuilles > 1 }} · {{ '%.1f'|format(a.taille / 1048576) }} Mo
+          </td>
+          <td class="text-end text-nowrap">
+            {% if a.id in presents %}
+            <a href="{{ url_for('admin.archive_telecharger', archive_id=a.id) }}" class="btn btn-sm btn-success">
+              <i class="fas fa-file-excel me-1"></i>Télécharger
+            </a>
+            {% else %}
+            <span class="badge text-bg-danger" title="Le fichier n'est pas présent sur ce serveur">Fichier absent</span>
+            {% endif %}
+            <form method="POST" action="{{ url_for('admin.archive_supprimer', archive_id=a.id) }}" class="d-inline"
+                  onsubmit="return confirm('Supprimer définitivement cette archive ?')">
+              <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+              <button class="btn btn-sm btn-outline-danger" title="Supprimer"><i class="fas fa-trash-alt"></i></button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endfor %}
+
+<div id="archAttente" class="arch-attente d-none" role="status" aria-live="polite">
+  <div class="arch-attente-carte">
+    <div class="spinner-border text-success mb-3" aria-hidden="true"></div>
+    <div class="fw-bold">Préparation du classeur…</div>
+    <div class="small text-muted">Cela peut prendre jusqu'à une minute. Merci de ne pas fermer la page.</div>
+  </div>
+</div>
+
+<style>
+  .arch-intro {
+    display: flex; gap: 1rem; align-items: flex-start;
+    background: #fff; border: 1px solid var(--abj-ligne); border-left: 4px solid var(--abj-vert);
+    border-radius: 14px; padding: 1rem 1.25rem;
+  }
+  .arch-intro-icone {
+    flex: none; width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center;
+    background: #EAF3EE; color: var(--abj-vert); font-size: 1.1rem;
+  }
+  .arch-groupes { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; }
+  .arch-groupe { display: flex; flex-direction: column; gap: .5rem; }
+  .arch-groupe-titre { font-size: .72rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--abj-doux); }
+  .arch-type { margin: 0; cursor: pointer; }
+  .arch-type input { position: absolute; opacity: 0; pointer-events: none; }
+  .arch-type-carte {
+    display: flex; gap: .75rem; align-items: flex-start; padding: .7rem .85rem;
+    border: 1.5px solid var(--abj-ligne); border-radius: 12px; background: #fff;
+    transition: border-color .15s, background-color .15s, box-shadow .15s;
+  }
+  .arch-type-carte > i { color: var(--abj-doux); margin-top: .15rem; width: 1.1rem; text-align: center; }
+  .arch-type-nom { display: block; font-weight: 600; font-size: .9rem; }
+  .arch-type-detail { display: block; font-size: .75rem; color: var(--abj-doux); line-height: 1.35; }
+  .arch-type:hover .arch-type-carte { border-color: #B9CFC3; }
+  .arch-type input:checked + .arch-type-carte {
+    border-color: var(--abj-vert); background: #F1F8F4; box-shadow: 0 0 0 3px rgba(0,135,81,.12);
+  }
+  .arch-type input:checked + .arch-type-carte > i { color: var(--abj-vert); }
+  .arch-type input:focus-visible + .arch-type-carte { outline: 2px solid var(--abj-vert); outline-offset: 2px; }
+  .arch-periodes { display: inline-flex; flex-wrap: wrap; gap: .4rem; }
+  .arch-periode { margin: 0; cursor: pointer; }
+  .arch-periode input { position: absolute; opacity: 0; pointer-events: none; }
+  .arch-periode span {
+    display: inline-block; padding: .4rem .95rem; border-radius: 999px; font-weight: 600; font-size: .85rem;
+    border: 1.5px solid var(--abj-ligne); background: #fff; color: var(--abj-encre);
+  }
+  .arch-periode input:checked + span { background: var(--abj-foret); border-color: var(--abj-foret); color: #fff; }
+  .arch-periode input:focus-visible + span { outline: 2px solid var(--abj-vert); outline-offset: 2px; }
+  .arch-puce {
+    flex: none; width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center;
+    background: #EEF3F0; color: var(--abj-foret);
+  }
+  .arch-table th { font-size: .75rem; text-transform: uppercase; letter-spacing: .06em; color: var(--abj-doux); }
+  .arch-attente {
+    position: fixed; inset: 0; z-index: 2000; display: grid; place-items: center;
+    background: rgba(15,53,41,.35); backdrop-filter: blur(3px);
+  }
+  .arch-attente-carte {
+    background: #fff; border-radius: 16px; padding: 1.75rem 2rem; text-align: center;
+    box-shadow: 0 20px 50px rgba(0,0,0,.25); max-width: 340px;
+  }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var form = document.getElementById('formArchive');
+  if (!form) return;
+  var existantes = {{ existantes|tojson }};
+  var bloc = document.getElementById('blocTrimestre');
+  var optGlobal = document.getElementById('optGlobal');
+  var lblGlobal = document.getElementById('lblGlobal');
+  var avis = document.getElementById('avisRemplacement');
+  var btn = document.getElementById('btnArchiver');
+
+  function valeur(nom) {
+    var el = form.querySelector('input[name="' + nom + '"]:checked');
+    return el ? el.value : null;
+  }
+  function maj() {
+    var typeEl = form.querySelector('input[name="type_archive"]:checked');
+    btn.disabled = !typeEl;
+    if (!typeEl) return;
+    var avecTrim = typeEl.dataset.trimestre === '1';
+    bloc.classList.toggle('d-none', !avecTrim);
+    var type = typeEl.value;
+    optGlobal.classList.toggle('d-none', type === 'pei');
+    lblGlobal.textContent = type === 'budget' ? 'Année entière' : 'Vue globale';
+    if (type === 'pei' && valeur('trimestre') === '0') {
+      form.querySelector('input[name="trimestre"][value="1"]').checked = true;
+    }
+    var cle = type + '|' + (avecTrim ? valeur('trimestre') : '');
+    var date = existantes[cle];
+    avis.classList.toggle('d-none', !date);
+    if (date) document.getElementById('dateExistante').textContent = 'archivée le ' + date;
+  }
+  form.addEventListener('change', maj);
+  form.addEventListener('submit', function (e) {
+    var remplace = !avis.classList.contains('d-none');
+    if (remplace && !confirm('Une archive de ce document existe déjà. La remplacer par la version actuelle ?')) {
+      e.preventDefault(); return;
+    }
+    btn.disabled = true;
+    document.getElementById('archAttente').classList.remove('d-none');
+  });
+  maj();
+})();
+</script>
+{% endblock %}

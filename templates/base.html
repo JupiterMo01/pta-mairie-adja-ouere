@@ -331,6 +331,19 @@
       </div>
     </nav>
 
+    {% if maintenance_info and current_user.role == 'admin_editeur' %}
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 px-4 py-2 text-white"
+         style="background:linear-gradient(90deg,#B4232C,#8E1A22);font-size:.88rem;">
+      <span><i class="fas fa-screwdriver-wrench me-2"></i><strong>Mode maintenance actif.</strong>
+        Les autres utilisateurs n'ont pas accès à la plateforme.</span>
+      <form method="POST" action="{{ url_for('admin.maintenance_desactiver') }}" class="m-0"
+            onsubmit="return confirm('Rouvrir la plateforme à tous les utilisateurs ?')">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        <button class="btn btn-sm btn-light fw-semibold"><i class="fas fa-lock-open me-1"></i>Désactiver</button>
+      </form>
+    </div>
+    {% endif %}
+
     <!-- Flash messages -->
     <div class="px-4 pt-3">
       {% with messages = get_flashed_messages(with_categories=true) %}

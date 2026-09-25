@@ -1587,3 +1587,211 @@ def notifier_pta_pai():
               f"{len(destinataires)} destinataire(s)")
     flash(f"Notification envoyée à {len(destinataires)} utilisateur(s) + {len(copies_fixes)} copie(s).", 'success')
     return redirect(url_for('admin.index'))
+
+
+# ─── Mode maintenance ────────────────────────────────────────────────────────
+
+@admin_bp.route('/maintenance/activer', methods=['POST'])
+@editeur_required
+def maintenance_activer():
+    import maintenance
+    maintenance.activer(request.form.get('message', ''), request.form.get('retour', ''),
+                        par=f"{current_user.prenom} {current_user.nom}")
+    log_audit('maintenance_on', "Mode maintenance activé")
+    flash("Mode maintenance activé : les autres utilisateurs n'ont plus accès à la plateforme.", 'warning')
+    return redirect(url_for('admin.index'))
+
+
+@admin_bp.route('/maintenance/desactiver', methods=['POST'])
+@editeur_required
+def maintenance_desactiver():
+    import maintenance
+    maintenance.desactiver()
+    log_audit('maintenance_off', "Mode maintenance désactivé")
+    flash("Mode maintenance désactivé : la plateforme est de nouveau ouverte à tous.", 'success')
+    return redirect(request.referrer if (request.referrer or '').startswith(request.host_url)
+                    else url_for('admin.index'))
+
+
+# ─── Archives : copies figées du PTA et du suivi ─────────────────────────────
+
+def _dossier_archives():
+    import os
+    from flask import current_app
+    d = os.path.join(current_app.instance_path, 'archives')
+    os.makedirs(d, exist_ok=True)
+    return d
+
+
+@admin_bp.route('/archives')
+@editeur_required
+def archives():
+    import os
+    from models import Archive
+    liste = Archive.query.order_by(Archive.annee_label.desc(), Archive.created_at.desc()).all()
+    dossier = _dossier_archives()
+    from utils import get_annee
+    presents = {a.id for a in liste if os.path.exists(os.path.join(dossier, a.fichier))}
+    annee = get_annee()
+    existantes = {f"{a.type_archive}|{a.trimestre if a.trimestre is not None else ''}":
+                  a.created_at.strftime('%d/%m/%Y à %Hh%M')
+                  for a in liste if annee and a.annee_label == annee.annee}
+    par_annee = {}
+    for a in liste:
+        par_annee.setdefault(a.annee_label, []).append(a)
+    return render_template('admin/archives.html', par_annee=par_annee, presents=presents,
+                           types=Archive.TYPES, avec_trimestre=Archive.AVEC_TRIMESTRE,
+                           annee_courante=annee, existantes=existantes)
+
+
+@admin_bp.route('/archives/creer', methods=['POST'])
+@limiter.limit('10 per hour')
+@editeur_required
+def archive_creer():
+    import os, re, io
+    from datetime import datetime, timezone
+    from models import Archive
+    from utils import get_annee
+    from exportation.routes import _build_workbook, _build_suivi_workbook
+
+    annee = get_annee()
+    if not annee:
+        flash("Aucune année PTA sélectionnée.", 'danger')
+        return redirect(url_for('admin.archives'))
+
+    type_archive = request.form.get('type_archive', '')
+    if type_archive not in Archive.TYPES:
+        flash("Type d'archive inconnu.", 'danger')
+        return redirect(url_for('admin.archives'))
+    trimestre = None
+    if type_archive in Archive.AVEC_TRIMESTRE:
+        trimestre = request.form.get('trimestre', 0, type=int)
+        if trimestre not in (0, 1, 2, 3, 4):
+            trimestre = 0
+        if type_archive == 'pei' and trimestre == 0:
+            flash("Pour le point d'exécution du PAI, choisissez le trimestre de référence (T1 à T4).", 'warning')
+            return redirect(url_for('admin.archives'))
+
+    directions = Direction.query.order_by(Direction.nom).all()
+    services   = Service.query.order_by(Service.nom).all()
+    try:
+        if type_archive in ('pta_initial', 'pta_revise'):
+            wb = _build_workbook(annee, include_global=True, include_recap=True,
+                                 directions=directions, services=services)
+            contenu, defaut = _octets(wb), f"{Archive.TYPES[type_archive]} {annee.annee}"
+        elif type_archive == 'suivi':
+            wb = _build_suivi_workbook(annee, trimestre=trimestre, include_global=True,
+                                       dirs=directions, svcs=services)
+            periode = f"T{trimestre}" if trimestre else "vue globale"
+            contenu, defaut = _octets(wb), f"Suivi & Évaluation du PTA {annee.annee} ({periode})"
+        elif type_archive in ('pai_initial', 'pai_revise'):
+            from pai.routes import export_excel as _export_pai
+            contenu = _capturer_export(_export_pai, '/pai/export')
+            defaut = f"{Archive.TYPES[type_archive]} {annee.annee}"
+        elif type_archive == 'pei':
+            from pei.routes import export_excel as _export_pei
+            contenu = _capturer_export(_export_pei, '/pei/export')
+            defaut = f"Point d'exécution du PAI {annee.annee} (situation au T{trimestre})"
+        else:  # budget
+            from budget.routes import export_excel as _export_budget
+            tris = [trimestre] if trimestre else [1, 2, 3, 4]
+            contenu = _capturer_export(_export_budget, '/budget/export', {'t': tris})
+            periode = f"T{trimestre}" if trimestre else "année entière"
+            defaut = f"Exécution du budget {annee.annee} ({periode})"
+    except Exception as e:
+        flash(f"La création de l'archive a échoué : {e}", 'danger')
+        return redirect(url_for('admin.archives'))
+
+    from openpyxl import load_workbook
+    nb_feuilles = len(load_workbook(io.BytesIO(contenu), read_only=True).sheetnames)
+
+    libelle = (request.form.get('libelle', '').strip() or defaut)[:200]
+    horodatage = datetime.now().strftime('%Y-%m-%d_%Hh%M%S')
+    base = re.sub(r'[^A-Za-z0-9]+', '_',
+                  f"{type_archive}_{annee.annee}" + (f"_T{trimestre}" if trimestre else '')).strip('_')
+    fichier = f"{annee.annee}/{base}_{horodatage}.xlsx"
+    chemin = os.path.join(_dossier_archives(), fichier)
+    os.makedirs(os.path.dirname(chemin), exist_ok=True)
+    with open(chemin, 'wb') as f:
+        f.write(contenu)
+
+    # Une seule archive par (année, type, trimestre) : un nouvel archivage remplace l'ancien
+    a = Archive.query.filter_by(annee_label=annee.annee, type_archive=type_archive,
+                                trimestre=trimestre).first()
+    remplace = a is not None
+    if remplace:
+        if a.fichier != fichier:
+            try:
+                os.remove(os.path.join(_dossier_archives(), a.fichier))
+            except OSError:
+                pass
+    else:
+        a = Archive(annee_label=annee.annee, type_archive=type_archive, trimestre=trimestre)
+        db.session.add(a)
+    a.libelle, a.fichier, a.taille, a.nb_feuilles = libelle, fichier, len(contenu), nb_feuilles
+    a.created_at, a.created_by_id = datetime.now(), current_user.id   # heure locale (TZ du serveur)
+    db.session.commit()
+    log_audit('archive_remplacee' if remplace else 'archive_creee',
+              f"Archive {'remplacée' if remplace else 'créée'} : {libelle} ({nb_feuilles} feuille(s))")
+    flash(f"Archive « {libelle} » {'remplacée par la version actuelle' if remplace else 'créée'}. "
+          "Elle restera téléchargeable telle quelle, même si les données évoluent ensuite.", 'success')
+    return redirect(url_for('admin.archives'))
+
+
+def _octets(wb):
+    import io
+    tampon = io.BytesIO()
+    wb.save(tampon)
+    return tampon.getvalue()
+
+
+def _capturer_export(vue, chemin, query=None):
+    """Appelle une vue d'export Excel existante et récupère le fichier produit,
+    avec l'utilisateur et l'année de la requête en cours."""
+    from flask import current_app, session as _s
+    from flask_login import login_user
+    utilisateur = current_user._get_current_object()
+    annee_id, annee_val = _s.get('annee_id'), _s.get('annee')
+    with current_app.test_request_context(chemin, query_string=query or {}):
+        login_user(utilisateur)
+        _s['annee_id'], _s['annee'] = annee_id, annee_val
+        resp = vue()
+        if resp.status_code != 200:
+            raise RuntimeError(f"export indisponible (code {resp.status_code})")
+        resp.direct_passthrough = False
+        return resp.get_data()
+
+
+@admin_bp.route('/archives/<int:archive_id>/telecharger')
+@editeur_required
+def archive_telecharger(archive_id):
+    import os, re
+    from flask import send_file
+    from models import Archive
+    a = db.get_or_404(Archive, archive_id)
+    chemin = os.path.join(_dossier_archives(), a.fichier)
+    if not os.path.exists(chemin):
+        flash("Le fichier de cette archive est introuvable sur ce serveur.", 'danger')
+        return redirect(url_for('admin.archives'))
+    nom = re.sub(r'[^\w\-]+', '_', a.libelle, flags=re.UNICODE).strip('_') + \
+        f"_{a.created_at.strftime('%Y-%m-%d')}.xlsx"
+    return send_file(chemin, as_attachment=True, download_name=nom,
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+
+@admin_bp.route('/archives/<int:archive_id>/supprimer', methods=['POST'])
+@editeur_required
+def archive_supprimer(archive_id):
+    import os
+    from models import Archive
+    a = db.get_or_404(Archive, archive_id)
+    try:
+        os.remove(os.path.join(_dossier_archives(), a.fichier))
+    except OSError:
+        pass
+    libelle = a.libelle
+    db.session.delete(a)
+    db.session.commit()
+    log_audit('archive_supprimee', f"Archive supprimée : {libelle}")
+    flash(f"Archive « {libelle} » supprimée.", 'warning')
+    return redirect(url_for('admin.archives'))

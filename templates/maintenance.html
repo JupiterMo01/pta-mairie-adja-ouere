@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>Maintenance en cours · Àbójútó</title>
+  <link rel="icon" href="{{ url_for('static', filename='img/logo_commune.png') }}">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/@fontsource/fraunces@5/600.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/@fontsource/dm-sans@5/400.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/@fontsource/dm-sans@5/500.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/@fontsource/dm-sans@5/700.css" rel="stylesheet">
+  <style>
+    :root {
+      --vert: #008751; --jaune: #FCD116; --rouge: #E8112D;
+      --serif: 'Fraunces', Georgia, 'Times New Roman', serif;
+      --sans: 'DM Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: var(--sans);
+      color: #fff;
+      background: radial-gradient(120% 90% at 50% 0%, #14463A 0%, #0B2E24 45%, #081C2E 100%);
+      background-attachment: fixed;
+      overflow-x: hidden;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 2.5rem 1rem 4rem;
+      position: relative;
+    }
+
+    /* Trame de fond : grille fine qui dérive lentement */
+    .trame {
+      position: fixed; inset: -50%;
+      background-image:
+        linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+      background-size: 56px 56px;
+      transform: rotate(-8deg);
+      animation: trame 60s linear infinite;
+      pointer-events: none;
+      mask-image: radial-gradient(closest-side, #000 30%, transparent 85%);
+      -webkit-mask-image: radial-gradient(closest-side, #000 30%, transparent 85%);
+    }
+    @keyframes trame { to { background-position: 560px 560px; } }
+
+    .halo { position: fixed; border-radius: 50%; filter: blur(90px); pointer-events: none; }
+    .halo-1 { width: 460px; height: 460px; background: #008751; opacity: .28; top: -160px; left: -120px; animation: derive 24s ease-in-out infinite alternate; }
+    .halo-2 { width: 380px; height: 380px; background: #FCD116; opacity: .12; bottom: -160px; right: -60px; animation: derive 30s ease-in-out infinite alternate-reverse; }
+    @keyframes derive { to { transform: translate(90px, 60px) scale(1.1); } }
+
+    .scene { position: relative; z-index: 1; width: 100%; max-width: 620px; text-align: center; }
+
+    /* Marque */
+    .marque {
+      display: inline-flex; align-items: center; gap: .7rem;
+      animation: monte .8s cubic-bezier(.2,.8,.2,1) both;
+    }
+    .marque-logo { background: #fff; border-radius: 12px; padding: 5px 8px; display: inline-flex; }
+    .marque-logo img { height: 34px; width: auto; display: block; }
+    .marque-nom { font-family: var(--serif); font-weight: 600; font-size: 1.6rem; letter-spacing: -.01em; }
+
+    /* Emblème animé */
+    .embleme {
+      position: relative; width: 210px; height: 210px; margin: 2.2rem auto 1.8rem;
+      animation: apparait 1s .15s cubic-bezier(.2,.8,.2,1) both;
+    }
+    .embleme svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+    .anneau-1 { animation: tourne 26s linear infinite; transform-origin: 50% 50%; }
+    .anneau-2 { animation: tourne 9s linear infinite reverse; transform-origin: 50% 50%; }
+    .coeur {
+      position: absolute; inset: 42px; border-radius: 50%;
+      background: radial-gradient(circle at 35% 30%, rgba(255,255,255,.14), rgba(255,255,255,.03) 60%);
+      border: 1px solid rgba(255,255,255,.14);
+      backdrop-filter: blur(6px);
+      display: grid; place-items: center;
+      box-shadow: inset 0 0 30px rgba(0,0,0,.25), 0 20px 60px rgba(0,0,0,.35);
+    }
+    .engrenages { position: relative; width: 96px; height: 96px; }
+    .engrenages i { position: absolute; }
+    .eng-1 { font-size: 64px; left: 2px; top: 16px; color: var(--jaune); animation: tourne 7s linear infinite; }
+    .eng-2 { font-size: 38px; right: 0; top: 0; color: #fff; opacity: .9; animation: tourne 4.7s linear infinite reverse; }
+    .pulse {
+      position: absolute; inset: 42px; border-radius: 50%;
+      border: 2px solid rgba(252,209,22,.45);
+      animation: pulse 2.8s ease-out infinite;
+    }
+    .pulse.p2 { animation-delay: 1.4s; }
+    @keyframes pulse { from { transform: scale(1); opacity: .8; } to { transform: scale(1.75); opacity: 0; } }
+    @keyframes tourne { to { transform: rotate(360deg); } }
+
+    .surtitre {
+      font-size: .74rem; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: var(--jaune);
+      animation: monte .8s .35s cubic-bezier(.2,.8,.2,1) both;
+    }
+    h1 {
+      font-family: var(--serif); font-weight: 600;
+      font-size: clamp(2rem, 6vw, 2.9rem); line-height: 1.1; margin: .55rem 0 .9rem;
+      text-wrap: balance;
+      animation: monte .8s .45s cubic-bezier(.2,.8,.2,1) both;
+    }
+    .intro {
+      color: rgba(255,255,255,.75); font-size: 1.05rem; line-height: 1.7; margin: 0 auto; max-width: 48ch;
+      animation: monte .8s .55s cubic-bezier(.2,.8,.2,1) both;
+    }
+    .message {
+      margin: 1.5rem auto 0; max-width: 52ch; text-align: left;
+      padding: 1rem 1.2rem; border-radius: 14px;
+      background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12);
+      border-left: 3px solid var(--jaune);
+      color: rgba(255,255,255,.9); line-height: 1.6; white-space: pre-line;
+      animation: monte .8s .65s cubic-bezier(.2,.8,.2,1) both;
+    }
+    .message small { display: block; color: var(--jaune); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; font-size: .68rem; margin-bottom: .35rem; }
+
+    .puces { display: flex; flex-wrap: wrap; justify-content: center; gap: .5rem; margin-top: 1.4rem;
+      animation: monte .8s .75s cubic-bezier(.2,.8,.2,1) both; }
+    .puce {
+      display: inline-flex; align-items: center; gap: .45rem; padding: .45rem .9rem; border-radius: 999px;
+      font-size: .82rem; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14);
+    }
+    .puce i { color: var(--jaune); }
+
+    /* Barre de progression continue aux couleurs nationales */
+    .barre {
+      position: relative; height: 5px; border-radius: 5px; overflow: hidden; margin: 2rem auto 0; max-width: 360px;
+      background: rgba(255,255,255,.1);
+      animation: monte .8s .85s cubic-bezier(.2,.8,.2,1) both;
+    }
+    .barre span {
+      position: absolute; top: 0; bottom: 0; width: 45%; border-radius: 5px;
+      background: linear-gradient(90deg, var(--vert), var(--jaune), var(--rouge));
+      animation: glisse 2.2s cubic-bezier(.65,0,.35,1) infinite;
+    }
+    @keyframes glisse { from { left: -45%; } to { left: 100%; } }
+    .verif { margin-top: .8rem; font-size: .8rem; color: rgba(255,255,255,.55); font-variant-numeric: tabular-nums;
+      animation: monte .8s .9s both; }
+
+    .pied {
+      margin-top: 2.6rem; font-size: .8rem; color: rgba(255,255,255,.5); line-height: 1.7;
+      animation: monte .8s 1s both;
+    }
+    .pied a { color: rgba(255,255,255,.45); text-decoration: none; border-bottom: 1px dotted rgba(255,255,255,.3); }
+    .pied a:hover, .pied a:focus-visible { color: #fff; outline: none; }
+
+    .bandeau { position: fixed; left: 0; right: 0; bottom: 0; height: 6px; display: flex; }
+    .bandeau div { flex: 1; transform-origin: left; animation: bande 1s cubic-bezier(.2,.8,.2,1) both; }
+    .bandeau div:nth-child(1) { background: var(--vert); }
+    .bandeau div:nth-child(2) { background: var(--jaune); animation-delay: .12s; }
+    .bandeau div:nth-child(3) { background: var(--rouge); animation-delay: .24s; }
+    @keyframes bande { from { transform: scaleX(0); } }
+
+    @keyframes monte { from { opacity: 0; transform: translateY(16px); } }
+    @keyframes apparait { from { opacity: 0; transform: scale(.85); } }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; }
+      .barre span { left: 0; width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="trame" aria-hidden="true"></div>
+  <div class="halo halo-1" aria-hidden="true"></div>
+  <div class="halo halo-2" aria-hidden="true"></div>
+
+  <main class="scene">
+    <div class="marque">
+      <span class="marque-logo"><img src="{{ url_for('static', filename='img/logo_commune.png') }}" alt=""></span>
+      <span class="marque-nom">Àbójútó</span>
+    </div>
+
+    <div class="embleme" aria-hidden="true">
+      <svg viewBox="0 0 210 210">
+        <g class="anneau-1">
+          <circle cx="105" cy="105" r="100" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="1.5"
+                  stroke-dasharray="2 9" stroke-linecap="round"/>
+        </g>
+        <g class="anneau-2">
+          <circle cx="105" cy="105" r="80" fill="none" stroke="#008751" stroke-width="4" stroke-linecap="round"
+                  stroke-dasharray="84 419" stroke-dashoffset="0"/>
+          <circle cx="105" cy="105" r="80" fill="none" stroke="#FCD116" stroke-width="4" stroke-linecap="round"
+                  stroke-dasharray="84 419" stroke-dashoffset="-168"/>
+          <circle cx="105" cy="105" r="80" fill="none" stroke="#E8112D" stroke-width="4" stroke-linecap="round"
+                  stroke-dasharray="84 419" stroke-dashoffset="-336"/>
+        </g>
+      </svg>
+      <div class="pulse"></div>
+      <div class="pulse p2"></div>
+      <div class="coeur">
+        <div class="engrenages">
+          <i class="fas fa-gear eng-1"></i>
+          <i class="fas fa-gear eng-2"></i>
+        </div>
+      </div>
+    </div>
+
+    <div class="surtitre">Maintenance en cours</div>
+    <h1>{% if current_user.is_authenticated %}{{ current_user.prenom }}, nous{% else %}Nous{% endif %} améliorons la plateforme</h1>
+    <p class="intro">
+      Àbójútó est momentanément indisponible le temps d'une mise à jour.
+      Vos données sont en sécurité : l'accès sera rétabli très bientôt.
+    </p>
+
+    {% if info.message %}
+    <div class="message"><small>Message de l'administrateur</small>{{ info.message }}</div>
+    {% endif %}
+
+    <div class="puces">
+      {% if info.retour %}<span class="puce"><i class="fas fa-clock"></i>Retour prévu : {{ info.retour }}</span>{% endif %}
+      {% if info.depuis %}<span class="puce"><i class="fas fa-screwdriver-wrench"></i>Depuis le {{ info.depuis }}</span>{% endif %}
+    </div>
+
+    <div class="barre" aria-hidden="true"><span></span></div>
+    <div class="verif" id="verif" aria-live="polite">Cette page vérifie automatiquement le retour de la plateforme.</div>
+
+    <div class="pied">
+      Merci de votre patience et de votre compréhension.<br>
+      Direction du Développement Local et de la Planification · Mairie d'Adja-Ouèrè<br>
+      <a href="{{ url_for('auth.login', admin=1) }}">Accès administrateur</a>
+    </div>
+  </main>
+
+  <div class="bandeau" aria-hidden="true"><div></div><div></div><div></div></div>
+
+  <script>
+    (function () {
+      var reste = 30, el = document.getElementById('verif');
+      setInterval(function () {
+        reste -= 1;
+        if (reste <= 0) { window.location.replace(window.location.href); return; }
+        el.textContent = 'Nouvelle vérification dans ' + reste + ' s';
+      }, 1000);
+    })();
+  </script>
+</body>
+</html>

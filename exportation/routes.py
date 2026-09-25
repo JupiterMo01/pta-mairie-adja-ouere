@@ -343,6 +343,23 @@ def _fill_recap_sheet(ws, annee, directions):
     ws.freeze_panes = 'A3'
 
 
+# ── Préchargement du PTA ──────────────────────────────────────────────────────
+
+def _precharger_pta(annee):
+    """Charge toute la hiérarchie du PTA en quelques requêtes et la retourne.
+    Tant que l'appelant garde ce résultat, les objets restent en mémoire : les calculs
+    par direction et par service ne relisent plus la base à chaque feuille
+    (sans cela, un classeur complet déclenchait près de 100 000 requêtes)."""
+    from sqlalchemy.orm import selectinload
+    from models import Programme, Projet, Activite, Tache
+    return Programme.query.filter_by(annee_id=annee.id).options(
+        selectinload(Programme.projets)
+        .selectinload(Projet.activites)
+        .selectinload(Activite.taches)
+        .selectinload(Tache.services_concernes)
+    ).all()
+
+
 # ── Constructeur de classeur multi-feuilles ───────────────────────────────────
 
 def _build_workbook(annee, include_global=False, include_recap=False,
@@ -356,6 +373,7 @@ def _build_workbook(annee, include_global=False, include_recap=False,
     from dirpta.routes import _fill_sheet as _fdir, _compute_pta_direction
     from svcpta.routes import _fill_sheet as _fsvc, _compute_pta_service
 
+    _pta = _precharger_pta(annee)   # gardé en mémoire jusqu'à la fin de la construction
     wb = Workbook()
     wb.remove(wb.active)
     used = set()
@@ -744,6 +762,7 @@ def _build_suivi_workbook(annee, trimestre=0, dirs=None, svcs=None, include_glob
                                _compute_pta_direction, _compute_pta_service,
                                _load_suivis_global, _filter_and_renorm, _enrich)
 
+    _pta = _precharger_pta(annee)   # gardé en mémoire jusqu'à la fin de la construction
     suivi_map = _load_suivis_global(annee.id)
     wb  = Workbook()
     wb.remove(wb.active)

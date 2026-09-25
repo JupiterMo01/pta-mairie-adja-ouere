@@ -40,6 +40,11 @@ def login():
         user = User.query.filter_by(login=login_val, actif=True).first()
 
         if user and user.check_password(password):
+            import maintenance
+            info = maintenance.etat()
+            if info and user.role != 'admin_editeur':
+                from flask import make_response
+                return make_response(render_template('maintenance.html', info=info), 503)
             login_user(user, remember=False)   # pas de cookie persistant — session expire à la fermeture
             session.permanent = True           # applique PERMANENT_SESSION_LIFETIME (8h)
             annee_active = Annee.query.filter_by(actif=True).first()

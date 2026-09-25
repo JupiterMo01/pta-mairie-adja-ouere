@@ -22,6 +22,39 @@ def create_app(test_config=None):
     db.init_app(app)
     limiter.init_app(app)
 
+    # Table des archives : créée au démarrage si absente (évite une migration manuelle)
+    with app.app_context():
+        try:
+            from models import Archive
+            Archive.__table__.create(db.engine, checkfirst=True)
+        except Exception:
+            pass
+
+    @app.before_request
+    def garde_maintenance():
+        """Pendant la maintenance, seul l'administrateur éditeur accède à la plateforme."""
+        import maintenance
+        info = maintenance.etat()
+        if not info or request.endpoint in ('static', 'api_backup'):
+            return
+        from flask_login import current_user as _cu
+        from flask import jsonify, make_response, render_template
+        if _cu.is_authenticated and _cu.role == 'admin_editeur':
+            return
+        if request.endpoint == 'auth.login' and (request.method == 'POST' or request.args.get('admin')):
+            return   # auth.login refuse ensuite les comptes non administrateurs
+        if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify(ok=False, msg="La plateforme est en maintenance. Votre saisie n'a pas été "
+                                         "enregistrée : réessayez après la maintenance."), 503
+        resp = make_response(render_template('maintenance.html', info=info), 503)
+        resp.headers['Retry-After'] = '120'
+        return resp
+
+    @app.context_processor
+    def inject_maintenance():
+        import maintenance
+        return dict(maintenance_info=maintenance.etat())
+
     login_manager = LoginManager()
     login_manager.init_app(app)
     login_manager.login_view = 'auth.login'

@@ -443,7 +443,7 @@ class Archive(db.Model):
     id            = db.Column(db.Integer, primary_key=True)
     annee_label   = db.Column(db.Integer, nullable=False)
     type_archive  = db.Column(db.String(30), nullable=False)   # voir TYPES
-    trimestre     = db.Column(db.Integer, nullable=True)       # 1 à 4 ; 0 = vue globale / année entière
+    trimestre     = db.Column(db.Integer, nullable=True)       # trimestre de référence (1 à 4) : état complet à cette date
     libelle       = db.Column(db.String(200), nullable=False)
     fichier       = db.Column(db.String(255), nullable=False)  # chemin relatif à instance/archives
     taille        = db.Column(db.Integer, default=0)

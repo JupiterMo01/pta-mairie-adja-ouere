@@ -1663,13 +1663,13 @@ def archive_creer():
     if type_archive not in Archive.TYPES:
         flash("Type d'archive inconnu.", 'danger')
         return redirect(url_for('admin.archives'))
+    # Pour le suivi, le point d'exécution et le budget, le trimestre n'est qu'un repère :
+    # on archive toujours l'état complet, tel qu'il est à la fin de ce trimestre.
     trimestre = None
     if type_archive in Archive.AVEC_TRIMESTRE:
         trimestre = request.form.get('trimestre', 0, type=int)
-        if trimestre not in (0, 1, 2, 3, 4):
-            trimestre = 0
-        if type_archive == 'pei' and trimestre == 0:
-            flash("Pour le point d'exécution du PAI, choisissez le trimestre de référence (T1 à T4).", 'warning')
+        if trimestre not in (1, 2, 3, 4):
+            flash("Choisissez le trimestre de référence (T1 à T4).", 'warning')
             return redirect(url_for('admin.archives'))
 
     directions = Direction.query.order_by(Direction.nom).all()
@@ -1680,10 +1680,11 @@ def archive_creer():
                                  directions=directions, services=services)
             contenu, defaut = _octets(wb), f"{Archive.TYPES[type_archive]} {annee.annee}"
         elif type_archive == 'suivi':
-            wb = _build_suivi_workbook(annee, trimestre=trimestre, include_global=True,
+            # Vue globale : toutes les tâches, avec leur dernier état saisi (aucun filtre)
+            wb = _build_suivi_workbook(annee, trimestre=0, include_global=True,
                                        dirs=directions, svcs=services)
-            periode = f"T{trimestre}" if trimestre else "vue globale"
-            contenu, defaut = _octets(wb), f"Suivi & Évaluation du PTA {annee.annee} ({periode})"
+            contenu = _octets(wb)
+            defaut = f"Suivi & Évaluation du PTA {annee.annee} (situation au T{trimestre})"
         elif type_archive in ('pai_initial', 'pai_revise'):
             from pai.routes import export_excel as _export_pai
             contenu = _capturer_export(_export_pai, '/pai/export')
@@ -1694,10 +1695,9 @@ def archive_creer():
             defaut = f"Point d'exécution du PAI {annee.annee} (situation au T{trimestre})"
         else:  # budget
             from budget.routes import export_excel as _export_budget
-            tris = [trimestre] if trimestre else [1, 2, 3, 4]
-            contenu = _capturer_export(_export_budget, '/budget/export', {'t': tris})
-            periode = f"T{trimestre}" if trimestre else "année entière"
-            defaut = f"Exécution du budget {annee.annee} ({periode})"
+            # Les quatre trimestres, tels qu'ils sont renseignés à cette date
+            contenu = _capturer_export(_export_budget, '/budget/export', {'t': [1, 2, 3, 4]})
+            defaut = f"Exécution du budget {annee.annee} (situation au T{trimestre})"
     except Exception as e:
         flash(f"La création de l'archive a échoué : {e}", 'danger')
         return redirect(url_for('admin.archives'))

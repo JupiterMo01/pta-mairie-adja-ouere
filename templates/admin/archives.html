@@ -16,11 +16,11 @@
 {% set details = {
   'pta_initial': 'Global, récapitulatif, chaque direction et chaque service',
   'pta_revise':  'Global, récapitulatif, chaque direction et chaque service',
-  'suivi':       'Vue globale, chaque direction et chaque service',
+  'suivi':       'Toutes les tâches avec leur dernier état : vue globale, chaque direction, chaque service',
   'pai_initial': 'Plan annuel d\'investissement complet',
   'pai_revise':  'Plan annuel d\'investissement complet',
-  'pei':         'Exécution physique et financière, situation au trimestre choisi',
-  'budget':      'Prévisions et réalisations du trimestre ou de l\'année',
+  'pei':         'Exécution physique et financière complète, telle qu\'elle est à la date d\'archivage',
+  'budget':      'Prévisions et réalisations des quatre trimestres, telles qu\'elles sont à cette date',
 } %}
 
 <div class="arch-intro mt-2 mb-4">
@@ -69,12 +69,9 @@
       </div>
 
       <div id="blocTrimestre" class="mb-4 d-none">
-        <div class="small fw-semibold text-muted mb-2">2. Pour quelle période ?</div>
+        <div class="small fw-semibold text-muted mb-1">2. Situation à la fin de quel trimestre ?</div>
+        <div class="small text-muted mb-2">Le document est archivé en entier, sans aucun filtre : le trimestre sert seulement à le repérer.</div>
         <div class="arch-periodes" role="radiogroup">
-          <label class="arch-periode" id="optGlobal">
-            <input type="radio" name="trimestre" value="0">
-            <span id="lblGlobal">Vue globale</span>
-          </label>
           {% for t in (1, 2, 3, 4) %}
           <label class="arch-periode">
             <input type="radio" name="trimestre" value="{{ t }}" {% if t == 1 %}checked{% endif %}>
@@ -145,8 +142,7 @@
             </div>
           </td>
           <td>
-            {% if a.trimestre %}<span class="badge text-bg-light border">T{{ a.trimestre }}</span>
-            {% elif a.trimestre == 0 %}<span class="badge text-bg-light border">{{ 'Année entière' if a.type_archive == 'budget' else 'Vue globale' }}</span>
+            {% if a.trimestre %}<span class="badge text-bg-light border">Situation au T{{ a.trimestre }}</span>
             {% else %}<span class="text-muted small">Exercice</span>{% endif %}
           </td>
           <td class="small">
@@ -247,8 +243,6 @@
   if (!form) return;
   var existantes = {{ existantes|tojson }};
   var bloc = document.getElementById('blocTrimestre');
-  var optGlobal = document.getElementById('optGlobal');
-  var lblGlobal = document.getElementById('lblGlobal');
   var avis = document.getElementById('avisRemplacement');
   var btn = document.getElementById('btnArchiver');
 
@@ -263,11 +257,6 @@
     var avecTrim = typeEl.dataset.trimestre === '1';
     bloc.classList.toggle('d-none', !avecTrim);
     var type = typeEl.value;
-    optGlobal.classList.toggle('d-none', type === 'pei');
-    lblGlobal.textContent = type === 'budget' ? 'Année entière' : 'Vue globale';
-    if (type === 'pei' && valeur('trimestre') === '0') {
-      form.querySelector('input[name="trimestre"][value="1"]').checked = true;
-    }
     var cle = type + '|' + (avecTrim ? valeur('trimestre') : '');
     var date = existantes[cle];
     avis.classList.toggle('d-none', !date);

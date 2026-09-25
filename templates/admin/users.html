@@ -29,7 +29,13 @@
       <tbody>
         {% for u in users %}
         <tr class="{% if not u.actif %}table-secondary text-muted{% endif %}">
-          <td class="fw-semibold">{{ u.prenom }} {{ u.nom }}</td>
+          <td class="fw-semibold">{{ u.prenom }} {{ u.nom }}
+            {% if u.login == login_principal %}
+            <span class="badge text-bg-warning ms-1" title="Compte modifiable uniquement par son titulaire">
+              <i class="fas fa-crown me-1"></i>Administrateur principal
+            </span>
+            {% endif %}
+          </td>
           <td><code>{{ u.login }}</code></td>
           <td>
             {% if u.role == 'admin_editeur' %}<span class="badge bg-danger">Admin Éditeur</span>
@@ -57,7 +63,11 @@
             {% else %}<span class="badge bg-secondary-subtle text-secondary border">Inactif</span>
             {% endif %}
           </td>
-          {% if current_user.role == 'admin_editeur' %}
+          {% if current_user.role == 'admin_editeur' and u.login == login_principal and not suis_principal %}
+          <td>
+            <span class="text-muted small"><i class="fas fa-lock me-1"></i>Protégé</span>
+          </td>
+          {% elif current_user.role == 'admin_editeur' %}
           <td>
             <a href="{{ url_for('admin.user_edit', user_id=u.id) }}" class="btn btn-sm btn-outline-primary me-1">
               <i class="fas fa-edit"></i>

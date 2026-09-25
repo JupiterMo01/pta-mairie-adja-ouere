@@ -83,6 +83,24 @@ def index():
 
 # ─── Utilisateurs ───────────────────────────────────────────────────────────
 
+LOGIN_PRINCIPAL = 'admin'
+
+
+def _est_principal(user):
+    return user is not None and getattr(user, 'login', None) == LOGIN_PRINCIPAL
+
+
+def _refus_principal(user):
+    """Le compte de l'administrateur principal n'est modifiable que par lui-même.
+    Retourne une redirection si l'action doit être refusée, sinon None."""
+    if _est_principal(user) and not _est_principal(current_user):
+        log_audit('action_refusee',
+                  f"Tentative d'action sur le compte administrateur principal par {current_user.login}")
+        flash("Le compte de l'administrateur principal ne peut être modifié que par lui-même.", 'danger')
+        return redirect(url_for('admin.users'))
+    return None
+
+
 @admin_bp.route('/users')
 @admin_required
 def users():
@@ -90,7 +108,9 @@ def users():
     directions = Direction.query.order_by(Direction.nom).all()
     services = Service.query.order_by(Service.nom).all()
     return render_template('admin/users.html', users=users,
-                           directions=directions, services=services)
+                           directions=directions, services=services,
+                           login_principal=LOGIN_PRINCIPAL,
+                           suis_principal=_est_principal(current_user))
 
 
 @admin_bp.route('/users/add', methods=['POST'])
@@ -155,6 +175,9 @@ def user_add():
 @editeur_required
 def user_edit(user_id):
     user = db.get_or_404(User, user_id)
+    refus = _refus_principal(user)
+    if refus:
+        return refus
     directions = Direction.query.order_by(Direction.nom).all()
     services = Service.query.order_by(Service.nom).all()
 
@@ -180,7 +203,8 @@ def user_edit(user_id):
         except (ValueError, TypeError):
             flash('Identifiant de direction ou service invalide.', 'danger')
             return redirect(url_for('admin.user_edit', user_id=user_id))
-        user.actif = ('actif' in request.form)
+        # Personne ne peut désactiver son propre compte (ni le compte principal) depuis ce formulaire
+        user.actif = True if (user.id == current_user.id or _est_principal(user)) else ('actif' in request.form)
         import re as _re2
         email_edit = request.form.get('email', '').strip()
         if email_edit and not _re2.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', email_edit):
@@ -207,8 +231,11 @@ def user_edit(user_id):
 @editeur_required
 def user_toggle(user_id):
     user = db.get_or_404(User, user_id)
-    if user.login == 'admin' and user.actif:
-        flash('Impossible de désactiver le compte administrateur principal.', 'danger')
+    refus = _refus_principal(user)
+    if refus:
+        return refus
+    if (_est_principal(user) or user.id == current_user.id) and user.actif:
+        flash('Impossible de désactiver ce compte (administrateur principal ou votre propre compte).', 'danger')
         return redirect(url_for('admin.users'))
     user.actif = not user.actif
     db.session.commit()
@@ -223,7 +250,10 @@ def user_toggle(user_id):
 @editeur_required
 def user_delete(user_id):
     user = db.get_or_404(User, user_id)
-    if user.login == 'admin':
+    refus = _refus_principal(user)
+    if refus:
+        return refus
+    if _est_principal(user):
         flash('Impossible de supprimer le compte administrateur principal.', 'danger')
         return redirect(url_for('admin.users'))
     if user.id == current_user.id:
@@ -242,6 +272,9 @@ def user_delete(user_id):
 @editeur_required
 def user_reset_password(user_id):
     user = db.get_or_404(User, user_id)
+    refus = _refus_principal(user)
+    if refus:
+        return refus
     # Génère un mot de passe temporaire aléatoire — l'admin le note et le communique
     mdp_temp = _generer_mdp_temp()
     user.set_password(mdp_temp)

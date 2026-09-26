@@ -124,6 +124,27 @@ def get_annee():
     return Annee.query.filter_by(actif=True).first()
 
 
+# Compte de l'administrateur principal : seul à pouvoir gérer la maintenance, les années, les purges,
+# les comptes administrateurs et les comptes DAAF / SBFC (saisie financière du PAI).
+LOGIN_PRINCIPAL = 'admin'
+
+
+def est_admin_principal(user):
+    return user is not None and getattr(user, 'login', None) == LOGIN_PRINCIPAL
+
+
+def affectation_financiere(role, direction_id=None, service_id=None):
+    """Vrai si le compte donnerait accès à la saisie financière du PAI (direction DAAF, service SBFC)."""
+    from models import Direction, Service, db
+    if role == 'direction' and direction_id:
+        d = db.session.get(Direction, int(direction_id))
+        return bool(d and d.code == 'DAAF')
+    if role == 'service' and service_id:
+        s = db.session.get(Service, int(service_id))
+        return bool(s and s.code == 'SBFC')
+    return False
+
+
 def log_audit(action, details=None):
     """Enregistre une entrée dans le journal d'audit.
     Ne lève jamais d'exception — un échec de log ne doit pas bloquer l'app."""

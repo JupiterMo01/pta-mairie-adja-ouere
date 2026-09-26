@@ -95,6 +95,8 @@ def _alimenter_db():
 
     # Utilisateurs de test
     utilisateurs = [
+        dict(nom='Admin',   prenom='Principal', login='admin',   role='admin_editeur',
+             password='principal2026', actif=True),
         dict(nom='Admin',   prenom='Éditeur', login='admin_ed',  role='admin_editeur',
              password='admin2026', actif=True),
         dict(nom='Admin',   prenom='Lecteur', login='admin_lec', role='admin_lecteur',
@@ -139,6 +141,12 @@ def client(app):
 def client_admin(app):
     """Client connecté comme admin_editeur."""
     return _connecter(app, 'admin_ed', 'admin2026')
+
+
+@pytest.fixture()
+def client_principal(app):
+    """Client connecté comme administrateur principal (identifiant 'admin')."""
+    return _connecter(app, 'admin', 'principal2026')
 
 
 @pytest.fixture()

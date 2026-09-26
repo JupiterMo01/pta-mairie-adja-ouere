@@ -1489,6 +1489,11 @@ def pta_save_manual():
 @pta_bp.route('/reset', methods=['GET', 'POST'])
 @editeur_only
 def pta_reset():
+    from utils import est_admin_principal, log_audit
+    if not est_admin_principal(current_user):
+        log_audit('action_refusee', f"Réinitialisation du PTA refusée à {current_user.login}")
+        flash("La réinitialisation du PTA est réservée à l'administrateur principal.", 'danger')
+        return redirect(url_for('pta.global_pta'))
     annee = get_annee()
     if not annee:
         flash('Aucune année active.', 'danger')

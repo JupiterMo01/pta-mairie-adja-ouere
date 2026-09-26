@@ -343,7 +343,7 @@
       </div>
     </nav>
 
-    {% if maintenance_info and current_user.role == 'admin_editeur' %}
+    {% if maintenance_info and est_principal %}
     <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 px-4 py-2 text-white"
          style="background:linear-gradient(90deg,#B4232C,#8E1A22);font-size:.88rem;">
       <span><i class="fas fa-screwdriver-wrench me-2"></i><strong>Mode maintenance actif.</strong>

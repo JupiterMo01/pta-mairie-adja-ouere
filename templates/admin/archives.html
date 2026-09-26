@@ -160,11 +160,13 @@
             {% else %}
             <span class="badge text-bg-danger" title="Le fichier n'est pas présent sur ce serveur">Fichier absent</span>
             {% endif %}
+            {% if est_principal %}
             <form method="POST" action="{{ url_for('admin.archive_supprimer', archive_id=a.id) }}" class="d-inline"
                   onsubmit="return confirm('Supprimer définitivement cette archive ?')">
               <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
               <button class="btn btn-sm btn-outline-danger" title="Supprimer"><i class="fas fa-trash-alt"></i></button>
             </form>
+            {% endif %}
           </td>
         </tr>
         {% endfor %}

@@ -5,7 +5,7 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mt-2 mb-3">
   <span class="text-muted">{{ directions|length }} direction(s)</span>
-  {% if current_user.role == 'admin_editeur' %}
+  {% if est_principal %}
   <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#modalAdd">
     <i class="fas fa-plus me-1"></i>Nouvelle direction
   </button>
@@ -20,7 +20,7 @@
           <th>Code</th>
           <th>Nom</th>
           <th>Nb. services</th>
-          {% if current_user.role == 'admin_editeur' %}<th>Actions</th>{% endif %}
+          {% if est_principal %}<th>Actions</th>{% endif %}
         </tr>
       </thead>
       <tbody>
@@ -29,7 +29,7 @@
           <td><span class="badge bg-primary fs-6">{{ d.code }}</span></td>
           <td class="fw-semibold">{{ d.nom }}</td>
           <td><span class="badge bg-light text-dark border">{{ d.services|length }}</span></td>
-          {% if current_user.role == 'admin_editeur' %}
+          {% if est_principal %}
           <td>
             <button class="btn btn-sm btn-outline-primary me-1"
                     data-bs-toggle="modal" data-bs-target="#modalEdit{{ d.id }}">
@@ -45,7 +45,7 @@
           {% endif %}
         </tr>
         <!-- Modal édition -->
-        {% if current_user.role == 'admin_editeur' %}
+        {% if est_principal %}
         <div class="modal fade" id="modalEdit{{ d.id }}" tabindex="-1">
           <div class="modal-dialog">
             <div class="modal-content">
@@ -82,7 +82,7 @@
 </div>
 
 <!-- Modal ajout -->
-{% if current_user.role == 'admin_editeur' %}
+{% if est_principal %}
 <div class="modal fade" id="modalAdd" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">

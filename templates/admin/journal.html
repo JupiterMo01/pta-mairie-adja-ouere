@@ -31,10 +31,12 @@
     <a href="{{ url_for('admin.journal') }}" class="btn btn-outline-secondary btn-sm">
       <i class="fas fa-times me-1"></i>Réinitialiser les filtres
     </a>
+    {% if est_principal %}
     <button type="button" class="btn btn-outline-danger btn-sm ms-2"
             data-bs-toggle="modal" data-bs-target="#modalPurgeJournal">
       <i class="fas fa-trash-alt me-1"></i>Purger le journal
     </button>
+    {% endif %}
   </div>
 </form>
 

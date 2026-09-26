@@ -67,6 +67,17 @@
           <td>
             <span class="text-muted small"><i class="fas fa-lock me-1"></i>Protégé</span>
           </td>
+          {% elif current_user.role == 'admin_editeur' and not suis_principal %}
+          <td>
+            {% if u.role in ('direction', 'service') %}
+            <a href="{{ url_for('admin.user_edit', user_id=u.id) }}" class="btn btn-sm btn-outline-primary me-1"
+               title="Modifier le nom, le rattachement ou l'email">
+              <i class="fas fa-edit"></i>
+            </a>
+            {% else %}
+            <span class="text-muted small"><i class="fas fa-lock me-1"></i>Réservé au principal</span>
+            {% endif %}
+          </td>
           {% elif current_user.role == 'admin_editeur' %}
           <td>
             <a href="{{ url_for('admin.user_edit', user_id=u.id) }}" class="btn btn-sm btn-outline-primary me-1">
@@ -141,11 +152,19 @@
               <label class="form-label fw-semibold">Profil *</label>
               <select name="role" class="form-select" required id="roleSelect">
                 <option value="">-- Choisir --</option>
+                {% if suis_principal %}
                 <option value="admin_editeur">Admin Éditeur</option>
                 <option value="admin_lecteur">Admin Lecteur</option>
+                {% endif %}
                 <option value="direction">Direction</option>
                 <option value="service">Service</option>
               </select>
+              {% if not suis_principal %}
+              <div class="form-text text-muted">
+                <i class="fas fa-lock me-1"></i>Les comptes administrateurs et les comptes DAAF ou SBFC
+                (saisie financière du PAI) sont créés par l'administrateur principal.
+              </div>
+              {% endif %}
             </div>
             <div class="col-md-6" id="directionField">
               <label class="form-label fw-semibold">Direction</label>
@@ -184,8 +203,8 @@
     </div>
   </div>
 </div>
-<!-- Modals réinitialisation mot de passe -->
-{% for u in users %}
+<!-- Modals réinitialisation mot de passe (administrateur principal uniquement) -->
+{% for u in users if suis_principal %}
 <div class="modal fade" id="modalReset{{ u.id }}" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">

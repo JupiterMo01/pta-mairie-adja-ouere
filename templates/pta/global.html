@@ -63,11 +63,13 @@
       <i class="fas fa-save me-1"></i>Sauvegarder
     </button>
   </form>
+  {% if est_principal %}
   <a href="{{ url_for('pta.pta_reset') }}"
      class="btn btn-outline-danger btn-sm"
      title="Supprimer tout le contenu du PTA (un backup sera créé)">
     <i class="fas fa-trash-alt me-1"></i>Réinitialiser
   </a>
+  {% endif %}
   {% endif %}
   {% endif %}
 </div>

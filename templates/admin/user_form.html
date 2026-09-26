@@ -25,15 +25,19 @@
               <input type="text" class="form-control bg-light" value="{{ user.login }}" disabled>
               <small class="text-muted">L'identifiant ne peut pas être modifié.</small>
             </div>
+            {% if suis_principal %}
             <div class="col-md-6">
               <label class="form-label fw-semibold">Nouveau mot de passe</label>
               <input type="password" name="password" class="form-control" placeholder="Laisser vide pour ne pas changer">
             </div>
+            {% endif %}
             <div class="col-md-6">
               <label class="form-label fw-semibold">Profil *</label>
               <select name="role" class="form-select" required>
+                {% if suis_principal %}
                 <option value="admin_editeur" {% if user.role=='admin_editeur' %}selected{% endif %}>Admin Éditeur</option>
                 <option value="admin_lecteur" {% if user.role=='admin_lecteur' %}selected{% endif %}>Admin Lecteur</option>
+                {% endif %}
                 <option value="direction" {% if user.role=='direction' %}selected{% endif %}>Direction</option>
                 <option value="service" {% if user.role=='service' %}selected{% endif %}>Service</option>
               </select>
@@ -70,6 +74,7 @@
                 Facultatif. Sert à l'envoi des alertes trimestrielles.
               </div>
             </div>
+            {% if suis_principal %}
             <div class="col-12">
               <div class="form-check form-switch">
                 <input class="form-check-input" type="checkbox" name="actif" id="actifCheck"
@@ -77,6 +82,12 @@
                 <label class="form-check-label" for="actifCheck">Compte actif</label>
               </div>
             </div>
+            {% else %}
+            <div class="col-12 small text-muted">
+              <i class="fas fa-lock me-1"></i>Mot de passe, activation du compte, profils administrateurs et
+              rattachement à la DAAF ou au SBFC : réservés à l'administrateur principal.
+            </div>
+            {% endif %}
           </div>
         </div>
         <div class="card-footer d-flex gap-2">

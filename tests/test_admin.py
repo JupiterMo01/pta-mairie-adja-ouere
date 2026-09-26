@@ -48,17 +48,17 @@ class TestPurgeSuivi:
 
     # ── Test principal ───────────────────────────────────────────────────────
 
-    def test_purge_supprime_tous_les_suivis(self, app, client_admin):
+    def test_purge_supprime_tous_les_suivis(self, app, client_principal):
         """
         Scénario complet :
         1. Crée des SuiviTache
-        2. POST /admin/purge-suivi avec CSRF
+        2. POST /admin/purge-suivi avec CSRF (administrateur principal)
         3. Vérifie que tous les enregistrements sont supprimés
         """
         nb_avant = self._creer_suivis(app)
         assert nb_avant > 0, "Des SuiviTache doivent exister avant la purge"
 
-        r = post_csrf(client_admin, '/admin/purge-suivi', follow_redirects=True)
+        r = post_csrf(client_principal, '/admin/purge-suivi', follow_redirects=True)
         assert r.status_code == 200, f"La purge doit réussir (obtenu {r.status_code})"
 
         nb_apres = self._compter(app)
@@ -67,6 +67,12 @@ class TestPurgeSuivi:
         )
 
     # ── Contrôle d'accès ─────────────────────────────────────────────────────
+
+    def test_purge_refusee_autre_admin_editeur(self, app, client_admin):
+        """Un admin éditeur autre que le principal ne peut pas purger : les suivis restent."""
+        nb_avant = self._creer_suivis(app)
+        post_csrf(client_admin, '/admin/purge-suivi', follow_redirects=True)
+        assert self._compter(app) == nb_avant
 
     def test_purge_refusee_admin_lecteur(self, app, client_lecteur):
         """
@@ -114,13 +120,17 @@ class TestAdminIndex:
         assert 'Directions'   in contenu
         assert 'Services'     in contenu
 
-    def test_page_admin_contient_bouton_purge(self, client_admin):
-        """Le bouton Purger le suivi est visible pour admin_editeur."""
-        r = client_admin.get('/admin/')
+    def test_page_admin_contient_bouton_purge(self, client_principal):
+        """Le bouton Purger le suivi est visible pour l'administrateur principal."""
+        r = client_principal.get('/admin/')
         contenu = r.data.decode('utf-8', errors='replace')
-        assert 'purge-suivi' in contenu or 'urger' in contenu, (
-            "Le bouton de purge doit être visible pour admin_editeur"
-        )
+        assert 'purge-suivi' in contenu, "Le bouton de purge doit être visible pour le principal"
+
+    def test_page_admin_sans_bouton_purge_autre_admin(self, client_admin):
+        """Les boutons de purge et de maintenance sont masqués aux autres admins éditeurs."""
+        contenu = client_admin.get('/admin/').data.decode('utf-8', errors='replace')
+        assert 'purge-suivi' not in contenu
+        assert 'maintenance/activer' not in contenu
 
     def test_page_admin_refusee_service(self, client_service):
         """Un utilisateur 'service' est redirigé depuis /admin/."""

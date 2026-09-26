@@ -42,7 +42,8 @@ def login():
         if user and user.check_password(password):
             import maintenance
             info = maintenance.etat()
-            if info and user.role != 'admin_editeur':
+            from utils import est_admin_principal
+            if info and not est_admin_principal(user):
                 from flask import make_response
                 return make_response(render_template('maintenance.html', info=info), 503)
             login_user(user, remember=False)   # pas de cookie persistant — session expire à la fermeture

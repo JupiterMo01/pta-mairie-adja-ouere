@@ -70,12 +70,14 @@
           Les autres utilisateurs voient la page de maintenance et n'ont accès à aucune fonctionnalité.
         {% else %}
           À activer avant de travailler sur le PTA (par exemple en local), pour que personne ne saisisse en même temps.
-          Seul l'administrateur éditeur garde l'accès.
+          Seul l'administrateur principal garde l'accès.
         {% endif %}
+        {% if not est_principal %}<br><i class="fas fa-lock me-1"></i>Activation et désactivation réservées à l'administrateur principal.{% endif %}
       </div>
     </div>
   </div>
-  {% if maintenance_info %}
+  {% if not est_principal %}
+  {% elif maintenance_info %}
   <form method="POST" action="{{ url_for('admin.maintenance_desactiver') }}"
         onsubmit="return confirm('Rouvrir la plateforme à tous les utilisateurs ?')">
     <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
@@ -87,7 +89,7 @@
   </button>
   {% endif %}
 </div>
-{% if not maintenance_info %}
+{% if est_principal and not maintenance_info %}
 <div class="collapse" id="maintForm">
   <form method="POST" action="{{ url_for('admin.maintenance_activer') }}" class="maint-form"
         onsubmit="return confirm('Activer la maintenance ? Tous les autres utilisateurs perdront l\'accès immédiatement.')">
@@ -207,6 +209,7 @@
             </button>
           </form>
         </div>
+        {% if est_principal %}
         <hr class="my-1">
         <form method="POST" action="{{ url_for('admin.purge_suivi') }}"
               onsubmit="return confirm('⚠️ PURGE DU SUIVI\n\nCette action va supprimer TOUS les suivis et observations de l\'année en cours.\nTout reviendra à « Non exécuté ».\n\nConfirmer ?')">
@@ -221,6 +224,7 @@
             <i class="fas fa-trash-alt me-2"></i>Purger le point d'exécution du PAI (tests)
           </button>
         </form>
+        {% endif %}
         {% endif %}
       </div>
     </div>

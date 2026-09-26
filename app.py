@@ -39,17 +39,18 @@ def create_app(test_config=None):
 
     @app.before_request
     def garde_maintenance():
-        """Pendant la maintenance, seul l'administrateur éditeur accède à la plateforme."""
+        """Pendant la maintenance, seul l'administrateur principal accède à la plateforme."""
         import maintenance
+        from utils import est_admin_principal
         info = maintenance.etat()
         if not info or request.endpoint in ('static', 'api_backup'):
             return
         from flask_login import current_user as _cu
         from flask import jsonify, make_response, render_template
-        if _cu.is_authenticated and _cu.role == 'admin_editeur':
+        if _cu.is_authenticated and est_admin_principal(_cu):
             return
         if request.endpoint == 'auth.login' and (request.method == 'POST' or request.args.get('admin')):
-            return   # auth.login refuse ensuite les comptes non administrateurs
+            return   # auth.login refuse ensuite tous les comptes sauf l'administrateur principal
         if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify(ok=False, msg="La plateforme est en maintenance. Votre saisie n'a pas été "
                                          "enregistrée : réessayez après la maintenance."), 503
@@ -60,7 +61,10 @@ def create_app(test_config=None):
     @app.context_processor
     def inject_maintenance():
         import maintenance
-        return dict(maintenance_info=maintenance.etat())
+        from flask_login import current_user as _cu
+        from utils import est_admin_principal
+        return dict(maintenance_info=maintenance.etat(),
+                    est_principal=_cu.is_authenticated and est_admin_principal(_cu))
 
     login_manager = LoginManager()
     login_manager.init_app(app)

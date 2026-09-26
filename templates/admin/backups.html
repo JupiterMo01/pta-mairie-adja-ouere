@@ -41,7 +41,7 @@
         <td class="text-center">{{ b.nb_activites }}</td>
         <td class="text-center">{{ b.nb_taches }}</td>
         <td>
-          {% if current_user.role == 'admin_editeur' %}
+          {% if est_principal %}
           <!-- Restaurer -->
           <button class="btn btn-sm btn-success me-1"
                   data-bs-toggle="modal"
@@ -64,7 +64,7 @@
       </tr>
 
       <!-- Modal restauration -->
-      {% if current_user.role == 'admin_editeur' %}
+      {% if est_principal %}
       <div class="modal fade" id="modalRestore{{ b.id }}" tabindex="-1">
         <div class="modal-dialog">
           <div class="modal-content border-success">

@@ -8,7 +8,8 @@ import json
 from models import db, User, Direction, Service, Annee, StructureExterne, PTABackup, Programme, Projet, Activite, Tache, SuiviTache, PeiActivite
 from admin import admin_bp
 from extensions import limiter
-from utils import log_audit, valider_mdp, requete_pta
+from utils import (log_audit, valider_mdp, requete_pta, LOGIN_PRINCIPAL,
+                   est_admin_principal as _est_principal, affectation_financiere)
 
 
 def _generer_mdp_temp():
@@ -39,6 +40,21 @@ def editeur_required(f):
 
 # Alias conservé pour compatibilité interne — même comportement qu'editeur_required
 admin_required = editeur_required
+
+
+def principal_required(f):
+    """Actions réservées à l'administrateur principal (maintenance, années, purges, restaurations,
+    directions et services, suppression ou désactivation de comptes, mots de passe)."""
+    @wraps(f)
+    @editeur_required
+    def decorated(*args, **kwargs):
+        if not _est_principal(current_user):
+            log_audit('action_refusee', f"Action réservée à l'administrateur principal "
+                                        f"({request.endpoint}) refusée à {current_user.login}")
+            flash("Cette action est réservée à l'administrateur principal.", 'danger')
+            return redirect(url_for('admin.index'))
+        return f(*args, **kwargs)
+    return decorated
 
 
 # ─── Sauvegarde manuelle ────────────────────────────────────────────────────
@@ -83,11 +99,7 @@ def index():
 
 # ─── Utilisateurs ───────────────────────────────────────────────────────────
 
-LOGIN_PRINCIPAL = 'admin'
-
-
-def _est_principal(user):
-    return user is not None and getattr(user, 'login', None) == LOGIN_PRINCIPAL
+ROLES_NON_ADMIN = ('direction', 'service')
 
 
 def _refus_principal(user):
@@ -97,6 +109,27 @@ def _refus_principal(user):
         log_audit('action_refusee',
                   f"Tentative d'action sur le compte administrateur principal par {current_user.login}")
         flash("Le compte de l'administrateur principal ne peut être modifié que par lui-même.", 'danger')
+        return redirect(url_for('admin.users'))
+    return None
+
+
+def _refus_hors_principal(role, direction_id, service_id, actuel=None):
+    """Hors administrateur principal : seuls des comptes direction ou service, jamais rattachés à la DAAF
+    ni au SBFC (saisie financière du PAI). Retourne une redirection si refusé, sinon None."""
+    if _est_principal(current_user):
+        return None
+    motif = None
+    if role not in ROLES_NON_ADMIN:
+        motif = "Seul l'administrateur principal peut attribuer un profil administrateur."
+    elif affectation_financiere(role, direction_id, service_id) and not (
+            actuel and affectation_financiere(actuel.role, actuel.direction_id, actuel.service_id)
+            and (actuel.role, actuel.direction_id, actuel.service_id) == (
+                role, int(direction_id) if direction_id else None, int(service_id) if service_id else None)):
+        motif = ("Seul l'administrateur principal peut rattacher un compte à la DAAF ou au SBFC, "
+                 "qui saisissent l'exécution financière du PAI.")
+    if motif:
+        log_audit('action_refusee', f"{motif} (tentative de {current_user.login})")
+        flash(motif, 'danger')
         return redirect(url_for('admin.users'))
     return None
 
@@ -127,6 +160,9 @@ def user_add():
     if not all([nom, prenom, login_val, role]):
         flash('Veuillez remplir tous les champs obligatoires (prénom, nom, identifiant, rôle).', 'danger')
         return redirect(url_for('admin.users'))
+    refus = _refus_hors_principal(role, direction_id, service_id)
+    if refus:
+        return refus
 
     # Mot de passe : si vide → auto-génération ; sinon validation
     mdp_auto = False
@@ -178,6 +214,11 @@ def user_edit(user_id):
     refus = _refus_principal(user)
     if refus:
         return refus
+    principal = _est_principal(current_user)
+    if not principal and user.role not in ROLES_NON_ADMIN:
+        log_audit('action_refusee', f"Modification du compte administrateur {user.login} refusée à {current_user.login}")
+        flash("Seul l'administrateur principal peut modifier un compte administrateur.", 'danger')
+        return redirect(url_for('admin.users'))
     directions = Direction.query.order_by(Direction.nom).all()
     services = Service.query.order_by(Service.nom).all()
 
@@ -187,6 +228,13 @@ def user_edit(user_id):
         role = request.form.get('role', '').strip()
         if not all([nom, prenom, role]):
             flash('Nom, prénom et rôle sont obligatoires.', 'danger')
+            return redirect(url_for('admin.user_edit', user_id=user_id))
+        refus = _refus_hors_principal(role, request.form.get('direction_id') or None,
+                                      request.form.get('service_id') or None, actuel=user)
+        if refus:
+            return refus
+        if not principal and request.form.get('password', '').strip():
+            flash("Seul l'administrateur principal peut modifier un mot de passe.", 'danger')
             return redirect(url_for('admin.user_edit', user_id=user_id))
         # Empêcher un admin de rétrograder son propre rôle (perte d'accès)
         if user.id == current_user.id and role != 'admin_editeur':
@@ -204,7 +252,9 @@ def user_edit(user_id):
             flash('Identifiant de direction ou service invalide.', 'danger')
             return redirect(url_for('admin.user_edit', user_id=user_id))
         # Personne ne peut désactiver son propre compte (ni le compte principal) depuis ce formulaire
-        user.actif = True if (user.id == current_user.id or _est_principal(user)) else ('actif' in request.form)
+        # Activer ou désactiver un compte relève de l'administrateur principal
+        if principal:
+            user.actif = True if (user.id == current_user.id or _est_principal(user)) else ('actif' in request.form)
         import re as _re2
         email_edit = request.form.get('email', '').strip()
         if email_edit and not _re2.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', email_edit):
@@ -224,11 +274,11 @@ def user_edit(user_id):
         return redirect(url_for('admin.users'))
 
     return render_template('admin/user_form.html', user=user,
-                           directions=directions, services=services)
+                           directions=directions, services=services, suis_principal=principal)
 
 
 @admin_bp.route('/users/<int:user_id>/toggle', methods=['POST'])
-@editeur_required
+@principal_required
 def user_toggle(user_id):
     user = db.get_or_404(User, user_id)
     refus = _refus_principal(user)
@@ -247,7 +297,7 @@ def user_toggle(user_id):
 
 
 @admin_bp.route('/users/<int:user_id>/delete', methods=['POST'])
-@editeur_required
+@principal_required
 def user_delete(user_id):
     user = db.get_or_404(User, user_id)
     refus = _refus_principal(user)
@@ -269,7 +319,7 @@ def user_delete(user_id):
 
 
 @admin_bp.route('/users/<int:user_id>/reset-password', methods=['POST'])
-@editeur_required
+@principal_required
 def user_reset_password(user_id):
     user = db.get_or_404(User, user_id)
     refus = _refus_principal(user)
@@ -301,7 +351,7 @@ def directions():
 
 
 @admin_bp.route('/directions/add', methods=['POST'])
-@editeur_required
+@principal_required
 def direction_add():
     code = request.form.get('code', '').strip().upper()
     nom = request.form.get('nom', '').strip()
@@ -318,7 +368,7 @@ def direction_add():
 
 
 @admin_bp.route('/directions/<int:dir_id>/edit', methods=['POST'])
-@editeur_required
+@principal_required
 def direction_edit(dir_id):
     d = db.get_or_404(Direction, dir_id)
     code = request.form.get('code', '').strip().upper()
@@ -334,7 +384,7 @@ def direction_edit(dir_id):
 
 
 @admin_bp.route('/directions/<int:dir_id>/delete', methods=['POST'])
-@editeur_required
+@principal_required
 def direction_delete(dir_id):
     d = db.get_or_404(Direction, dir_id)
     if d.services:
@@ -360,7 +410,7 @@ def services():
 
 
 @admin_bp.route('/services/add', methods=['POST'])
-@editeur_required
+@principal_required
 def service_add():
     code = request.form.get('code', '').strip().upper()
     nom = request.form.get('nom', '').strip()
@@ -378,7 +428,7 @@ def service_add():
 
 
 @admin_bp.route('/services/<int:svc_id>/edit', methods=['POST'])
-@editeur_required
+@principal_required
 def service_edit(svc_id):
     s = db.get_or_404(Service, svc_id)
     code = request.form.get('code', '').strip().upper()
@@ -400,7 +450,7 @@ def service_edit(svc_id):
 
 
 @admin_bp.route('/services/<int:svc_id>/delete', methods=['POST'])
-@editeur_required
+@principal_required
 def service_delete(svc_id):
     s = db.get_or_404(Service, svc_id)
     if User.query.filter_by(service_id=svc_id).first():
@@ -422,7 +472,7 @@ def annees():
 
 
 @admin_bp.route('/annees/add', methods=['POST'])
-@editeur_required
+@principal_required
 def annee_add():
     val = request.form.get('annee')
     if not val:
@@ -448,7 +498,7 @@ def annee_add():
 
 
 @admin_bp.route('/annees/<int:ann_id>/confirmer-copie')
-@editeur_required
+@principal_required
 def annee_confirm_copie(ann_id):
     """Page de confirmation : copier ou non le PTA de l'année source vers la nouvelle année."""
     nouvelle = db.get_or_404(Annee, ann_id)
@@ -467,7 +517,7 @@ def annee_confirm_copie(ann_id):
 
 
 @admin_bp.route('/annees/<int:ann_id>/copier-pta', methods=['POST'])
-@editeur_required
+@principal_required
 def annee_copier_pta(ann_id):
     """Copie la structure complète du PTA (sans suivi) depuis l'année source."""
     nouvelle = db.get_or_404(Annee, ann_id)
@@ -590,7 +640,7 @@ def annee_copier_pta(ann_id):
 
 
 @admin_bp.route('/annees/<int:ann_id>/activate', methods=['POST'])
-@editeur_required
+@principal_required
 def annee_activate(ann_id):
     Annee.query.update({'actif': False})
     a = db.get_or_404(Annee, ann_id)
@@ -605,7 +655,7 @@ def annee_activate(ann_id):
 
 
 @admin_bp.route('/annees/<int:ann_id>/deactivate', methods=['POST'])
-@editeur_required
+@principal_required
 def annee_deactivate(ann_id):
     a = db.get_or_404(Annee, ann_id)
     a.actif = False
@@ -619,7 +669,7 @@ def annee_deactivate(ann_id):
 
 @admin_bp.route('/annees/<int:ann_id>/purge-suivi', methods=['POST'])
 @limiter.limit('5 per minute')
-@editeur_required
+@principal_required
 def annee_purge_suivi(ann_id):
     """Vide uniquement les données de suivi (suivi_taches) pour une année."""
     a = db.get_or_404(Annee, ann_id)
@@ -634,7 +684,7 @@ def annee_purge_suivi(ann_id):
 
 @admin_bp.route('/annees/<int:ann_id>/purge-pta', methods=['POST'])
 @limiter.limit('3 per minute')
-@editeur_required
+@principal_required
 def annee_purge_pta(ann_id):
     """Vide TOUT le PTA d'une année (suivi + programmes/projets/activités/tâches)."""
     a = db.get_or_404(Annee, ann_id)
@@ -656,7 +706,7 @@ def annee_purge_pta(ann_id):
 
 
 @admin_bp.route('/annees/<int:ann_id>/delete', methods=['POST'])
-@editeur_required
+@principal_required
 def annee_delete(ann_id):
     a = db.get_or_404(Annee, ann_id)
     if a.actif:
@@ -774,7 +824,7 @@ def journal():
 
 @admin_bp.route('/journal/purge', methods=['POST'])
 @limiter.limit('5 per minute')
-@editeur_required
+@principal_required
 def journal_purge():
     """Purge tout ou partie du journal d'audit."""
     from models import AuditLog
@@ -810,7 +860,7 @@ def backups():
 
 
 @admin_bp.route('/backups/<int:backup_id>/delete', methods=['POST'])
-@editeur_required
+@principal_required
 def backup_delete(backup_id):
     b = db.get_or_404(PTABackup, backup_id)
     db.session.delete(b)
@@ -821,7 +871,7 @@ def backup_delete(backup_id):
 
 @admin_bp.route('/backups/<int:backup_id>/restore', methods=['POST'])
 @limiter.limit('3 per minute')
-@editeur_required
+@principal_required
 def backup_restore(backup_id):
     b = db.get_or_404(PTABackup, backup_id)
     annee = db.session.get(Annee, b.annee_id) if b.annee_id else None
@@ -1244,7 +1294,7 @@ def rappel_saisie():
 
 @admin_bp.route('/purge-suivi', methods=['POST'])
 @limiter.limit('5 per minute')
-@editeur_required
+@principal_required
 def purge_suivi():
     """Supprime tous les suivis de l'année active (tests uniquement).
     Ramène tout à non_execute et efface toutes les observations."""
@@ -1270,7 +1320,7 @@ def purge_suivi():
 
 @admin_bp.route('/purge-pei', methods=['POST'])
 @limiter.limit('5 per minute')
-@editeur_required
+@principal_required
 def purge_pei():
     """Remet à zéro tous les montants, taux physique et observations du PEI
     pour l'année active (tests uniquement)."""
@@ -1624,7 +1674,7 @@ def notifier_pta_pai():
 # ─── Mode maintenance ────────────────────────────────────────────────────────
 
 @admin_bp.route('/maintenance/activer', methods=['POST'])
-@editeur_required
+@principal_required
 def maintenance_activer():
     import maintenance
     maintenance.activer(request.form.get('message', ''), request.form.get('retour', ''),
@@ -1635,7 +1685,7 @@ def maintenance_activer():
 
 
 @admin_bp.route('/maintenance/desactiver', methods=['POST'])
-@editeur_required
+@principal_required
 def maintenance_desactiver():
     import maintenance
     maintenance.desactiver()
@@ -1812,7 +1862,7 @@ def archive_telecharger(archive_id):
 
 
 @admin_bp.route('/archives/<int:archive_id>/supprimer', methods=['POST'])
-@editeur_required
+@principal_required
 def archive_supprimer(archive_id):
     import os
     from models import Archive

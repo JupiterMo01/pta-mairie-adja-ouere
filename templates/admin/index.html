@@ -231,61 +231,153 @@
   </div>
   <div class="col-md-6">
     <div class="card border-0 shadow-sm h-100">
-      <div class="card-header bg-white fw-bold border-0">
-        <i class="fas fa-info-circle me-2 text-primary"></i>Profils utilisateurs
+      <div class="card-header bg-white fw-bold border-0 d-flex justify-content-between align-items-center">
+        <span><i class="fas fa-id-badge me-2 text-primary"></i>Profils utilisateurs</span>
+        <span class="small text-muted fw-normal">Cliquez sur un profil pour le détail</span>
       </div>
-      <div class="card-body">
-        <table class="table table-sm table-borderless align-middle">
-          <tr class="border-bottom">
-            <td class="pe-3 py-2" style="white-space:nowrap"><span class="badge bg-danger">Admin Éditeur</span></td>
-            <td class="text-muted small py-2">
-              Création et modification complète du PTA (programmes → tâches) ·
-              Suivi &amp; Évaluation PTA : saisie et correction de toutes les directions et services ·
-              Gestion des utilisateurs, directions, services, années ·
-              PAI : modification complète (poids, données) ·
-              Point d'exécution PAI : saisie montants financiers et taux physiques ·
-              Exécution du Budget : saisie et modification complète ·
-              Statistiques PTA et PAI · Suivi Pluriannuel (toutes sections, saisie) ·
-              Export Excel / impression de tout · Bibliothèque des modèles ·
-              Sauvegardes, rappels email, bilan global, journal d'audit
-            </td>
-          </tr>
-          <tr class="border-bottom">
-            <td class="pe-3 py-2" style="white-space:nowrap"><span class="badge bg-secondary">Admin Lecteur</span></td>
-            <td class="text-muted small py-2">
-              Lecture complète du PTA global et de tous les PTAs direction / service ·
-              Suivi &amp; Évaluation PTA en lecture seule (toutes directions et services) ·
-              PAI en lecture seule · Point d'exécution PAI en lecture seule ·
-              Exécution du Budget en lecture seule · Statistiques PTA et PAI ·
-              Suivi Pluriannuel (toutes sections, lecture) ·
-              Export Excel / impression de tout · Bibliothèque en lecture seule ·
-              Pas d'accès à l'administration
-            </td>
-          </tr>
-          <tr class="border-bottom">
-            <td class="pe-3 py-2" style="white-space:nowrap"><span class="badge bg-primary">Direction</span></td>
-            <td class="text-muted small py-2">
-              Tableau de bord PTA · PTA de sa direction (lecture, avec filtre par service) ·
-              Suivi &amp; Évaluation PTA : saisie pour toutes les tâches de sa direction ·
-              PAI : lecture (année active) ·
-              Point d'exécution PAI : saisie du taux d'exécution physique pour les activités de sa direction ·
-              Exécution du Budget : lecture · Suivi Pluriannuel (lecture) ·
-              Export Excel de son PTA direction
-            </td>
-          </tr>
-          <tr>
-            <td class="pe-3 py-2" style="white-space:nowrap"><span class="badge bg-success">Service</span></td>
-            <td class="text-muted small py-2">
-              Tableau de bord PTA · PTA de son service uniquement (lecture) ·
-              Suivi &amp; Évaluation PTA : saisie de ses propres tâches uniquement ·
-              PAI : lecture (année active) ·
-              Point d'exécution PAI : lecture uniquement ·
-              Exécution du Budget : lecture · Suivi Pluriannuel (lecture) ·
-              Export Excel de son service uniquement
-            </td>
-          </tr>
-        </table>
+      <div class="card-body pt-1">
+        {% macro droits(icone, titre, points, ton) %}
+        <div class="pf-groupe pf-{{ ton }}">
+          <div class="pf-groupe-titre"><i class="fas fa-{{ icone }} me-1"></i>{{ titre }}</div>
+          <ul>{% for p in points %}<li>{{ p|safe }}</li>{% endfor %}</ul>
+        </div>
+        {% endmacro %}
+        <div class="profils">
+
+          <details class="pf pf-principal">
+            <summary>
+              <span class="pf-icone"><i class="fas fa-crown"></i></span>
+              <span class="pf-tete"><span class="pf-nom">Administrateur principal</span>
+                <span class="pf-resume">Compte <code>admin</code> : tous les droits de l'Admin Éditeur, plus les actions sensibles</span></span>
+              <i class="fas fa-chevron-down pf-fleche"></i>
+            </summary>
+            <div class="pf-corps">
+              {{ droits('pen', 'Lui seul peut', [
+                "Activer et désactiver le <strong>mode maintenance</strong> ; il est le seul à accéder à la plateforme pendant",
+                "Gérer les <strong>années PTA</strong> : créer, copier le PTA, activer, désactiver, supprimer",
+                "Lancer les <strong>purges</strong> (suivi, point d'exécution PAI, PTA d'une année, journal d'audit) et réinitialiser le PTA",
+                "Restaurer ou supprimer une sauvegarde du PTA, supprimer une archive",
+                "Créer, modifier et supprimer les <strong>directions et services</strong>",
+                "Créer et modifier les comptes <strong>administrateurs</strong>, <strong>DAAF</strong> et <strong>SBFC</strong>",
+                "Changer un mot de passe, activer, désactiver ou supprimer un compte"], 'ecrit') }}
+            </div>
+          </details>
+
+          <details class="pf pf-editeur">
+            <summary>
+              <span class="pf-icone"><i class="fas fa-user-pen"></i></span>
+              <span class="pf-tete"><span class="pf-nom">Admin Éditeur</span>
+                <span class="pf-resume">Construit le PTA et le PAI, corrige toutes les saisies, anime la plateforme</span></span>
+              <i class="fas fa-chevron-down pf-fleche"></i>
+            </summary>
+            <div class="pf-corps">
+              {{ droits('pen', 'Peut modifier', [
+                "Le PTA complet (programmes, projets, activités, tâches) et la bibliothèque des modèles",
+                "Le Suivi &amp; Évaluation de toutes les directions et de tous les services",
+                "Le PAI et son point d'exécution : montants financiers et taux physiques",
+                "L'exécution du budget et le suivi pluriannuel",
+                "Les comptes direction et service : création, nom, rattachement, email",
+                "Rappels de saisie, bilan global, notifications, sauvegarde par email, création d'archives"], 'ecrit') }}
+              {{ droits('eye', 'Consulte', [
+                "Statistiques PTA et PAI, Point des activités, journal d'audit",
+                "Toutes les impressions et tous les exports Excel et Word"], 'lit') }}
+              {{ droits('lock', 'Réservé au principal', [
+                "Maintenance, années, purges, directions et services",
+                "Mots de passe, activation et suppression de comptes, comptes administrateurs, DAAF et SBFC"], 'bloque') }}
+            </div>
+          </details>
+
+          <details class="pf pf-lecteur">
+            <summary>
+              <span class="pf-icone"><i class="fas fa-glasses"></i></span>
+              <span class="pf-tete"><span class="pf-nom">Admin Lecteur</span>
+                <span class="pf-resume">Voit tout, ne modifie rien : le profil de pilotage des autorités</span></span>
+              <i class="fas fa-chevron-down pf-fleche"></i>
+            </summary>
+            <div class="pf-corps">
+              {{ droits('eye', 'Consulte', [
+                "Le PTA global et le PTA de chaque direction et de chaque service",
+                "Le Suivi &amp; Évaluation, le Point des activités, le tableau de bord de toutes les entités",
+                "Le PAI, son point d'exécution, l'exécution du budget, le suivi pluriannuel",
+                "Les statistiques PTA et PAI, la bibliothèque des modèles",
+                "Toutes les impressions et tous les exports"], 'lit') }}
+              {{ droits('lock', 'Ne peut pas', [
+                "Saisir ou modifier quoi que ce soit",
+                "Accéder à l'Administration"], 'bloque') }}
+            </div>
+          </details>
+
+          <details class="pf pf-direction">
+            <summary>
+              <span class="pf-icone"><i class="fas fa-building"></i></span>
+              <span class="pf-tete"><span class="pf-nom">Direction</span>
+                <span class="pf-resume">Renseigne le suivi de sa direction et l'avancement physique de ses investissements</span></span>
+              <i class="fas fa-chevron-down pf-fleche"></i>
+            </summary>
+            <div class="pf-corps">
+              {{ droits('pen', 'Peut modifier', [
+                "Le suivi de toutes les tâches de sa direction",
+                "Le taux d'exécution physique et les observations des activités PAI dont elle est responsable, sans pouvoir baisser un taux déjà saisi",
+                "<strong>DAAF uniquement</strong> : les montants engagés, mandatés et payés du PAI, et l'exécution du budget"], 'ecrit') }}
+              {{ droits('eye', 'Consulte', [
+                "Son tableau de bord, le PTA et le Point des activités de sa direction (filtre par service)",
+                "Le PAI et son point d'exécution (année active), le budget, le suivi pluriannuel",
+                "Les exports et impressions de sa direction"], 'lit') }}
+            </div>
+          </details>
+
+          <details class="pf pf-service">
+            <summary>
+              <span class="pf-icone"><i class="fas fa-people-group"></i></span>
+              <span class="pf-tete"><span class="pf-nom">Service</span>
+                <span class="pf-resume">Renseigne le suivi de ses propres tâches</span></span>
+              <i class="fas fa-chevron-down pf-fleche"></i>
+            </summary>
+            <div class="pf-corps">
+              {{ droits('pen', 'Peut modifier', [
+                "Le suivi de ses propres tâches, trimestre par trimestre",
+                "<strong>SBFC uniquement</strong> : les montants engagés, mandatés et payés du PAI, et l'exécution du budget"], 'ecrit') }}
+              {{ droits('eye', 'Consulte', [
+                "Son tableau de bord, le PTA et le Point des activités de son service",
+                "Le PAI et son point d'exécution (année active), le budget, le suivi pluriannuel",
+                "Les exports et impressions de son service"], 'lit') }}
+            </div>
+          </details>
+
+        </div>
       </div>
+      <style>
+        .profils { display: flex; flex-direction: column; gap: .55rem; }
+        .pf { --pf: #5F6E67; --pf-doux: #EEF2F0; border: 1px solid var(--abj-ligne); border-left: 4px solid var(--pf);
+              border-radius: 12px; background: #fff; transition: box-shadow .15s ease; }
+        .pf-principal { --pf: #C99A06; --pf-doux: #FFF7D6; }
+        .pf-editeur   { --pf: #C8102E; --pf-doux: #FDECEE; }
+        .pf-lecteur   { --pf: #5F6E67; --pf-doux: #EEF2F0; }
+        .pf-direction { --pf: #1F5FAD; --pf-doux: #E8F0FB; }
+        .pf-service   { --pf: #008751; --pf-doux: #E3F4EC; }
+        .pf[open] { box-shadow: 0 6px 18px rgba(15,53,41,.08); }
+        .pf summary { list-style: none; display: flex; align-items: center; gap: .75rem; padding: .6rem .8rem; cursor: pointer; }
+        .pf summary::-webkit-details-marker { display: none; }
+        .pf summary:focus-visible { outline: 2px solid var(--pf); outline-offset: 2px; border-radius: 10px; }
+        .pf-icone { flex: none; width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center;
+                    background: var(--pf-doux); color: var(--pf); font-size: .95rem; }
+        .pf-tete { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+        .pf-nom { font-weight: 700; color: var(--abj-encre); line-height: 1.2; }
+        .pf-resume { font-size: .8rem; color: var(--abj-doux); }
+        .pf-fleche { color: var(--abj-doux); font-size: .75rem; transition: transform .2s ease; }
+        .pf[open] .pf-fleche { transform: rotate(180deg); }
+        .pf-corps { padding: .1rem .9rem .8rem calc(.8rem + 36px + .75rem); display: grid; gap: .55rem; }
+        .pf-groupe-titre { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; margin-bottom: .2rem; }
+        .pf-groupe ul { margin: 0; padding-left: 1.05rem; font-size: .82rem; color: var(--abj-encre); }
+        .pf-groupe li { margin-bottom: .15rem; }
+        .pf-groupe li::marker { color: var(--pf); }
+        .pf-ecrit  .pf-groupe-titre { color: var(--pf); }
+        .pf-lit    .pf-groupe-titre { color: var(--abj-doux); }
+        .pf-bloque .pf-groupe-titre { color: #8E1A22; }
+        .pf-bloque ul { color: var(--abj-doux); }
+        @media (max-width: 576px) { .pf-corps { padding-left: .9rem; } }
+        @media (prefers-reduced-motion: reduce) { .pf-fleche, .pf { transition: none; } }
+      </style>
     </div>
   </div>
 </div>

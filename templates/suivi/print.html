@@ -7,7 +7,7 @@
   @page {
     size: A4 landscape;
     margin: 1.8cm 1cm 2.2cm 1cm;
-    @bottom-left  { content: "Mairie d'Adja-Ouèrè · Suivi PTA {{ annee.annee if annee }} · {{ titre | replace('"', "'") | safe }}"; font-size:7pt; color:#555; font-weight:bold; }
+    @bottom-left  { content: "Mairie d'Adja-Ouèrè · Suivi PTA {{ annee.annee if annee }} · {{ titre | replace('"', "'") | replace('<', '') | replace('>', '') | replace('\\', '') | safe }}"; font-size:7pt; color:#555; font-weight:bold; }
     @bottom-center{ content: ""; }
     @bottom-right { content: "Page " counter(page) " / " counter(pages); font-size:7pt; color:#555; font-weight:bold; }
   }

@@ -7,7 +7,7 @@
   @page {
     size: A4 landscape;
     margin: 1.6cm 1cm 2cm 1cm;
-    @bottom-left  { content: "Mairie d'Adja-Ouèrè · Point des activités du PTA {{ annee.annee }} · {{ perimetre.titre | replace('"', "'") | safe }}"; font-size:7pt; color:#555; font-weight:bold; }
+    @bottom-left  { content: "Mairie d'Adja-Ouèrè · Point des activités du PTA {{ annee.annee }} · {{ perimetre.titre | replace('"', "'") | replace('<', '') | replace('>', '') | replace('\\', '') | safe }}"; font-size:7pt; color:#555; font-weight:bold; }
     @bottom-right { content: "Page " counter(page) " / " counter(pages); font-size:7pt; color:#555; font-weight:bold; }
   }
   * { box-sizing:border-box; margin:0; padding:0; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }

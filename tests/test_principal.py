@@ -121,6 +121,20 @@ class TestComptes:
         self._creer(client_principal, 'daaf_par_principal', 'direction', direction_id=daaf)
         assert _utilisateur(app, 'daaf_par_principal') is not None
 
+    def test_autre_admin_ne_modifie_pas_un_compte_daaf(self, app, client_admin):
+        daaf, _ = _ids_financiers(app)
+        with app.app_context():
+            if not User.query.filter_by(login='daaf_existant').first():
+                u = User(nom='Chef', prenom='DAAF', login='daaf_existant', role='direction', direction_id=daaf)
+                u.set_password('Mdp#Test2026')
+                db.session.add(u)
+                db.session.commit()
+            uid = User.query.filter_by(login='daaf_existant').first().id
+        post_csrf(client_admin, f'/admin/users/{uid}/edit',
+                  dict(nom='Modifie', prenom='DAAF', role='direction', direction_id=daaf))
+        assert _utilisateur(app, 'daaf_existant').nom == 'Chef'
+        assert f'/admin/users/{uid}/edit' not in client_admin.get('/admin/users').data.decode()
+
     def test_autre_admin_modifie_le_nom_sans_toucher_au_reste(self, app, client_admin):
         u = _utilisateur(app, 'svc_stc')
         hash_avant, actif_avant = u.password_hash, u.actif

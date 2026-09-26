@@ -113,7 +113,7 @@ def _refus_principal(user):
     return None
 
 
-def _refus_hors_principal(role, direction_id, service_id, actuel=None):
+def _refus_hors_principal(role, direction_id, service_id):
     """Hors administrateur principal : seuls des comptes direction ou service, jamais rattachés à la DAAF
     ni au SBFC (saisie financière du PAI). Retourne une redirection si refusé, sinon None."""
     if _est_principal(current_user):
@@ -121,11 +121,8 @@ def _refus_hors_principal(role, direction_id, service_id, actuel=None):
     motif = None
     if role not in ROLES_NON_ADMIN:
         motif = "Seul l'administrateur principal peut attribuer un profil administrateur."
-    elif affectation_financiere(role, direction_id, service_id) and not (
-            actuel and affectation_financiere(actuel.role, actuel.direction_id, actuel.service_id)
-            and (actuel.role, actuel.direction_id, actuel.service_id) == (
-                role, int(direction_id) if direction_id else None, int(service_id) if service_id else None)):
-        motif = ("Seul l'administrateur principal peut rattacher un compte à la DAAF ou au SBFC, "
+    elif affectation_financiere(role, direction_id, service_id):
+        motif =("Seul l'administrateur principal peut rattacher un compte à la DAAF ou au SBFC, "
                  "qui saisissent l'exécution financière du PAI.")
     if motif:
         log_audit('action_refusee', f"{motif} (tentative de {current_user.login})")
@@ -215,9 +212,10 @@ def user_edit(user_id):
     if refus:
         return refus
     principal = _est_principal(current_user)
-    if not principal and user.role not in ROLES_NON_ADMIN:
-        log_audit('action_refusee', f"Modification du compte administrateur {user.login} refusée à {current_user.login}")
-        flash("Seul l'administrateur principal peut modifier un compte administrateur.", 'danger')
+    if not principal and (user.role not in ROLES_NON_ADMIN or
+                          affectation_financiere(user.role, user.direction_id, user.service_id)):
+        log_audit('action_refusee', f"Modification du compte {user.login} refusée à {current_user.login}")
+        flash("Seul l'administrateur principal peut modifier un compte administrateur, DAAF ou SBFC.", 'danger')
         return redirect(url_for('admin.users'))
     directions = Direction.query.order_by(Direction.nom).all()
     services = Service.query.order_by(Service.nom).all()
@@ -230,7 +228,7 @@ def user_edit(user_id):
             flash('Nom, prénom et rôle sont obligatoires.', 'danger')
             return redirect(url_for('admin.user_edit', user_id=user_id))
         refus = _refus_hors_principal(role, request.form.get('direction_id') or None,
-                                      request.form.get('service_id') or None, actuel=user)
+                                      request.form.get('service_id') or None)
         if refus:
             return refus
         if not principal and request.form.get('password', '').strip():

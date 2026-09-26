@@ -69,7 +69,9 @@
           </td>
           {% elif current_user.role == 'admin_editeur' and not suis_principal %}
           <td>
-            {% if u.role in ('direction', 'service') %}
+            {% set financier = (u.role == 'direction' and u.direction and u.direction.code == 'DAAF')
+                               or (u.role == 'service' and u.service and u.service.code == 'SBFC') %}
+            {% if u.role in ('direction', 'service') and not financier %}
             <a href="{{ url_for('admin.user_edit', user_id=u.id) }}" class="btn btn-sm btn-outline-primary me-1"
                title="Modifier le nom, le rattachement ou l'email">
               <i class="fas fa-edit"></i>

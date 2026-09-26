@@ -165,7 +165,7 @@
         <td class="text-center">{{ pn }}.{{ pjn }}</td>
         <td colspan="2">Projet {{ pn }}.{{ pjn }} : {{ pj.nom }}</td>
         <td class="text-center">{{ pj_d.poids }}%</td>
-        <td colspan="10">
+        <td colspan="10" id="controle-acts-{{ pj.id }}">
           {% if (sum_act_poids - 100)|abs < 1 %}
             <span class="badge bg-success" style="font-size:.6rem;">✓ Poids activités = 100%</span>
           {% else %}
@@ -221,7 +221,7 @@
         {% for d in act.directions_associees %}{% if assoc.append(d.code) %}{% endif %}{% endfor %}
         {% for s in act.services_intervenants %}{% if assoc.append(s.code) %}{% endif %}{% endfor %}
 
-        <tr style="background:#C5DEB5;" data-act-id="{{ act.id }}">
+        <tr style="background:#C5DEB5;" data-act-id="{{ act.id }}" data-proj-id="{{ pj.id }}">
           <td class="text-center">{{ pn }}.{{ pjn }}.{{ loop.index }}</td>
           <td>{{ act.nom }}</td>
           <td class="text-center act-loc">{{ extra.localisation if extra and extra.localisation else '' }}</td>
@@ -496,6 +496,7 @@ async function savePaiEdit(e) {
         row.querySelector('.act-loc').textContent   = fd.get('localisation')  || '';
         row.querySelector('.act-ind').textContent   = fd.get('indicateurs')   || '';
         row.querySelector('.act-obs').textContent   = fd.get('observations_pai') || '';
+        _recalculerControleActs(row.dataset.projId);
         /* scroll retour vers la ligne éditée */
         setTimeout(function() { _paiScrollTo(row); }, 80);
       }
@@ -511,6 +512,21 @@ async function savePaiEdit(e) {
     btn.disabled  = false;
     btn.innerHTML = '<i class="fas fa-save me-1"></i>Enregistrer';
   }
+}
+
+/* Recalcule le panneau « Poids activités » d'un projet après une modification sans rechargement */
+function _recalculerControleActs(projId) {
+  const cellule = document.getElementById('controle-acts-' + projId);
+  if (!cellule) return;
+  let somme = 0;
+  document.querySelectorAll(`tr[data-proj-id="${projId}"]`).forEach(function(tr) {
+    const id = tr.dataset.actId;
+    somme += (PAI_EXTRA[id] && PAI_EXTRA[id].poids_pai) ? Number(PAI_EXTRA[id].poids_pai) : 0;
+  });
+  const ok = Math.abs(somme - 100) < 1;
+  cellule.innerHTML = ok
+    ? '<span class="badge bg-success" style="font-size:.6rem;">✓ Poids activités = 100%</span>'
+    : '<span class="badge bg-danger" style="font-size:.6rem;">⚠ Poids activités = ' + somme + '%</span>';
 }
 
 /* ── Modal Programme ── */

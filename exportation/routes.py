@@ -3,7 +3,7 @@ from flask import render_template, request, redirect, url_for, flash, session, s
 from flask_login import login_required, current_user
 from models import db, Programme, Direction, Service, Annee
 from exportation import exportation_bp
-from utils import get_annee
+from utils import get_annee, requete_pta, programmes_pta
 
 
 def _sheet_name(name, used, prefix=''):
@@ -142,7 +142,7 @@ def _fill_global_sheet(ws, annee):
     ws.merge_cells(f'N{start_row}:N{start_row+2}'); ws.merge_cells(f'O{start_row}:O{start_row+2}')
 
     row = start_row + 3
-    programmes = Programme.query.filter_by(annee_id=annee.id).order_by(Programme.numero).all()
+    programmes = programmes_pta(annee.id)
     _nb_svc = Service.query.count()
     _nb_dir = Direction.query.count()
 
@@ -325,7 +325,7 @@ def _fill_recap_sheet(ws, annee, directions):
         c.alignment = ctr; c.border = brd
     ws.row_dimensions[row].height = 20; row += 1
 
-    programmes = Programme.query.filter_by(annee_id=annee.id).order_by(Programme.numero).all()
+    programmes = programmes_pta(annee.id)
     for idx, prog in enumerate(programmes):
         rp = sum(t.ressources_propres or 0 for pj in prog.projets for a in pj.activites for t in a.taches)
         fa = sum(t.fadec_affecte      or 0 for pj in prog.projets for a in pj.activites for t in a.taches)
@@ -351,7 +351,7 @@ def _precharger_pta(annee):
     par direction et par service ne relisent plus la base à chaque feuille
     (sans cela, un classeur complet déclenchait près de 100 000 requêtes)."""
     from sqlalchemy.orm import selectinload
-    from models import Programme, Projet, Activite, Tache
+    from models import Projet, Activite, Tache
     return Programme.query.filter_by(annee_id=annee.id).options(
         selectinload(Programme.projets)
         .selectinload(Projet.activites)
@@ -425,7 +425,7 @@ def index():
     annee      = get_annee()
     directions = Direction.query.order_by(Direction.nom).all()
     services   = Service.query.order_by(Service.nom).all()
-    programmes = Programme.query.filter_by(annee_id=annee.id).order_by(Programme.numero).all() if annee else []
+    programmes = programmes_pta(annee.id) if annee else []
     return render_template('exportation/index.html',
                            annee=annee, directions=directions,
                            services=services, programmes=programmes)
@@ -603,8 +603,8 @@ def excel_par_programme():
         flash('Sélectionnez au moins un programme.', 'warning')
         return redirect(url_for('exportation.index'))
 
-    programmes = Programme.query.filter(
-        Programme.id.in_(prog_ids), Programme.annee_id == annee.id
+    programmes = requete_pta(annee.id).filter(
+        Programme.id.in_(prog_ids)
     ).order_by(Programme.numero).all()
 
     if not programmes:

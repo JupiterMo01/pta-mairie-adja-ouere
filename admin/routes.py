@@ -8,7 +8,7 @@ import json
 from models import db, User, Direction, Service, Annee, StructureExterne, PTABackup, Programme, Projet, Activite, Tache, SuiviTache, PeiActivite
 from admin import admin_bp
 from extensions import limiter
-from utils import log_audit, valider_mdp
+from utils import log_audit, valider_mdp, requete_pta
 
 
 def _generer_mdp_temp():
@@ -486,8 +486,7 @@ def annee_copier_pta(ann_id):
 
     nb_prog = nb_proj = nb_act = nb_tache = 0
 
-    for prog_src in Programme.query.filter_by(annee_id=source_id)\
-                                   .order_by(Programme.numero).all():
+    for prog_src in requete_pta(source_id).order_by(Programme.numero).all():
         prog_new = Programme(
             annee_id            = ann_id,
             numero              = prog_src.numero,
@@ -644,7 +643,7 @@ def annee_purge_pta(ann_id):
     nb_suivi = SuiviTache.query.filter_by(annee_id=ann_id).delete()
     db.session.flush()
     # 2. Programmes en cascade → projets → activités → tâches
-    programmes = Programme.query.filter_by(annee_id=ann_id).all()
+    programmes = requete_pta(ann_id).all()
     nb_prog = len(programmes)
     for prog in programmes:
         db.session.delete(prog)

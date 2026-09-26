@@ -14,8 +14,8 @@ class User(UserMixin, db.Model):
     login = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
     role = db.Column(db.String(30), nullable=False)
-    direction_id = db.Column(db.Integer, db.ForeignKey('directions.id'), nullable=True)
-    service_id = db.Column(db.Integer, db.ForeignKey('services.id'), nullable=True)
+    direction_id = db.Column(db.Integer, db.ForeignKey('directions.id'), nullable=True, index=True)
+    service_id = db.Column(db.Integer, db.ForeignKey('services.id'), nullable=True, index=True)
     actif = db.Column(db.Boolean, default=True)
     email = db.Column(db.String(200), nullable=True)
 
@@ -48,7 +48,7 @@ class Service(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     code = db.Column(db.String(20), unique=True, nullable=False)
     nom = db.Column(db.String(200), nullable=False)
-    direction_id = db.Column(db.Integer, db.ForeignKey('directions.id'), nullable=False)
+    direction_id = db.Column(db.Integer, db.ForeignKey('directions.id'), nullable=False, index=True)
 
 
 class Annee(db.Model):
@@ -64,7 +64,7 @@ class Annee(db.Model):
 class Programme(db.Model):
     __tablename__ = 'programmes'
     id = db.Column(db.Integer, primary_key=True)
-    annee_id = db.Column(db.Integer, db.ForeignKey('annees.id'), nullable=False)
+    annee_id = db.Column(db.Integer, db.ForeignKey('annees.id'), nullable=False, index=True)
     numero = db.Column(db.Integer, nullable=False)
     nom = db.Column(db.String(300), nullable=False)
     description = db.Column(db.Text, nullable=True)
@@ -101,7 +101,7 @@ class Programme(db.Model):
 class Projet(db.Model):
     __tablename__ = 'projets'
     id = db.Column(db.Integer, primary_key=True)
-    programme_id = db.Column(db.Integer, db.ForeignKey('programmes.id'), nullable=False)
+    programme_id = db.Column(db.Integer, db.ForeignKey('programmes.id'), nullable=False, index=True)
     numero = db.Column(db.Integer, nullable=False)
     nom = db.Column(db.String(300), nullable=False)
     description = db.Column(db.Text, nullable=True)
@@ -153,7 +153,7 @@ class Activite(db.Model):
     numero = db.Column(db.Integer, nullable=False)
     nom = db.Column(db.String(300), nullable=False)
     description = db.Column(db.Text, nullable=True)
-    direction_responsable_id = db.Column(db.Integer, db.ForeignKey('directions.id'), nullable=True)
+    direction_responsable_id = db.Column(db.Integer, db.ForeignKey('directions.id'), nullable=True, index=True)
     imputation_budgetaire = db.Column(db.String(200), nullable=True)
     # Sources de financement (somme des tâches)
     ressources_propres = db.Column(db.Float, default=0.0)
@@ -236,7 +236,7 @@ class Tache(db.Model):
     nom = db.Column(db.String(300), nullable=False)
     description = db.Column(db.Text, nullable=True)
     poids = db.Column(db.Float, default=0.0)
-    service_responsable_id = db.Column(db.Integer, db.ForeignKey('services.id'), nullable=True)
+    service_responsable_id = db.Column(db.Integer, db.ForeignKey('services.id'), nullable=True, index=True)
     imputation_budgetaire = db.Column(db.String(200), nullable=True)
     # Sources de financement (saisie directe au niveau tâche)
     ressources_propres = db.Column(db.Float, default=0.0)
@@ -251,7 +251,7 @@ class Tache(db.Model):
     periode_fin = db.Column(db.String(20), nullable=True)
     observations = db.Column(db.Text, nullable=True)
 
-    direction_responsable_id = db.Column(db.Integer, db.ForeignKey('directions.id'), nullable=True)
+    direction_responsable_id = db.Column(db.Integer, db.ForeignKey('directions.id'), nullable=True, index=True)
 
     service_responsable = db.relationship('Service', foreign_keys=[service_responsable_id])
     direction_responsable = db.relationship('Direction', foreign_keys=[direction_responsable_id])
@@ -277,9 +277,9 @@ class SuiviTache(db.Model):
     __tablename__ = 'suivi_taches'
     id = db.Column(db.Integer, primary_key=True)
     tache_id = db.Column(db.Integer, db.ForeignKey('taches.id'), nullable=False)
-    service_id = db.Column(db.Integer, db.ForeignKey('services.id'), nullable=True)
+    service_id = db.Column(db.Integer, db.ForeignKey('services.id'), nullable=True, index=True)
     trimestre = db.Column(db.Integer, nullable=False)
-    annee_id = db.Column(db.Integer, db.ForeignKey('annees.id'), nullable=False)
+    annee_id = db.Column(db.Integer, db.ForeignKey('annees.id'), nullable=False, index=True)
     statut = db.Column(db.String(20), default='non_execute')
     taux_execution = db.Column(db.Float, nullable=True)   # saisi manuellement si en_cours
     observation = db.Column(db.Text, nullable=True)
@@ -472,7 +472,7 @@ class Archive(db.Model):
 class PTABackup(db.Model):
     __tablename__ = 'pta_backups'
     id = db.Column(db.Integer, primary_key=True)
-    annee_id = db.Column(db.Integer, db.ForeignKey('annees.id'), nullable=True)
+    annee_id = db.Column(db.Integer, db.ForeignKey('annees.id'), nullable=True, index=True)
     annee_label = db.Column(db.Integer, nullable=False)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     created_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)

@@ -7,7 +7,7 @@ from flask_login import login_required, current_user
 from sqlalchemy import func
 from models import db, Programme, Projet, Activite, Tache, Direction, Service, Annee
 from stats import stats_bp
-from utils import get_annee, MOIS_ORDRE as MOIS_NUM
+from utils import get_annee, MOIS_ORDRE as MOIS_NUM, programmes_pta
 
 
 def admin_only(f):
@@ -46,7 +46,7 @@ def _fr(v, d=1):
 
 
 def _compute_stats(annee):
-    programmes = Programme.query.filter_by(annee_id=annee.id).order_by(Programme.numero).all()
+    programmes = programmes_pta(annee.id)
     directions = Direction.query.order_by(Direction.nom).all()
 
     all_projets   = [p for prog in programmes for p in prog.projets]

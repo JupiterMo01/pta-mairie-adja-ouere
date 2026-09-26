@@ -3,7 +3,7 @@ from flask import render_template, redirect, url_for, flash, request, session, s
 from flask_login import login_required, current_user
 from models import db, Programme, Direction, Annee, Service
 from dirpta import dirpta_bp
-from utils import get_annee, _renorm
+from utils import get_annee, _renorm, programmes_pta
 
 
 # ── Calcul du PTA filtré pour une direction ───────────────────────────────────
@@ -15,8 +15,7 @@ def _compute_pta_direction(annee, direction):
     Les poids sont renormalisés à chaque niveau pour toujours sommer à 100.
     Les codes sont renumérotés indépendamment du PTA global.
     """
-    programmes = Programme.query.filter_by(annee_id=annee.id)\
-                                .order_by(Programme.numero).all()
+    programmes = programmes_pta(annee.id)
     result_progs = []
 
     for prog in programmes:

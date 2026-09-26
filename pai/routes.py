@@ -3,7 +3,7 @@ from flask import render_template, abort, request, jsonify, Response
 from flask_login import login_required, current_user
 from models import db, Programme, Projet, Activite, PaiActivite, PaiProgramme, PaiProjet
 from pai import pai_bp
-from utils import get_annee
+from utils import get_annee, programmes_pta
 
 
 # ─── Helpers format ───────────────────────────────────────────────────────────
@@ -46,12 +46,7 @@ def _fadec_label(src_fa, src_fn):
 
 def _build_pai_data(annee):
     """Construit la structure PAI. Poids lus depuis la DB (PaiProgramme, PaiProjet, PaiActivite)."""
-    programmes = (
-        Programme.query
-        .filter_by(annee_id=annee.id)
-        .order_by(Programme.numero)
-        .all()
-    )
+    programmes = programmes_pta(annee.id)
     pai_data = []
     total_fp = total_fadec = total_ptfs = total_global = 0.0
     total_nb = 0
@@ -72,7 +67,7 @@ def _build_pai_data(annee):
                     total_ptfs   += a.src_ap + a.src_af
                     total_global += a.budget_total
                     total_nb     += 1
-                pj_extra = PaiProjet.query.filter_by(projet_id=pj.id).first()
+                pj_extra = pj.pai_extra_proj
                 pg_projets.append({
                     'projet':    pj,
                     'activites': inv_acts,
@@ -81,7 +76,7 @@ def _build_pai_data(annee):
                 })
         if pg_projets:
             prog_num += 1
-            pg_extra = PaiProgramme.query.filter_by(programme_id=pg.id).first()
+            pg_extra = pg.pai_extra_prog
             pai_data.append({
                 'programme': pg,
                 'projets':   pg_projets,

@@ -11,6 +11,7 @@ import datetime
 from flask import render_template, request, session, redirect, url_for, flash, send_file, current_app
 from flask_login import login_required, current_user
 from models import db, Annee, Service, Direction, Programme
+from utils import programmes_pta
 from dashboard import dashboard_bp
 
 INVEST = "Activité d'investissement"
@@ -114,7 +115,7 @@ def _compute_synthese_admin(annee):
 def _cibles_global(annee):
     """Cibles théoriques T1-T4 pour le PTA global (tous programmes)."""
     from stats.routes import _compute_cibles
-    programmes = Programme.query.filter_by(annee_id=annee.id).all()
+    programmes = programmes_pta(annee.id)
     if not programmes:
         return {1: 0.0, 2: 0.0, 3: 0.0, 4: 0.0}
     result = _compute_cibles(programmes)

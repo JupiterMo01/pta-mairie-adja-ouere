@@ -19,6 +19,61 @@ MOIS_ORDRE = {
 TRIMESTRE_RANGE = {1: (1, 3), 2: (4, 6), 3: (7, 9), 4: (10, 12)}
 
 
+def requete_pta(annee_id):
+    """Requête des programmes d'une année avec toute la hiérarchie préchargée
+    (projets, activités, tâches et leurs liens) en une dizaine de requêtes groupées.
+    Sans cela, chaque accès à .projets / .activites / .taches déclenchait sa propre
+    requête (plusieurs milliers par page). À compléter par .order_by(...).all()."""
+    from sqlalchemy.orm import selectinload
+    from models import Programme, Projet, Activite, Tache
+
+    # Les listes associées (services, directions, structures) gardent volontairement leur
+    # chargement d'origine : un chargement groupé les renverrait dans un autre ordre.
+    def activites():
+        return selectinload(Programme.projets).selectinload(Projet.activites)
+
+    return Programme.query.filter_by(annee_id=annee_id).options(
+        selectinload(Programme.pai_extra_prog),
+        selectinload(Programme.projets).selectinload(Projet.pai_extra_proj),
+        activites().selectinload(Activite.pai_extra),
+        activites().selectinload(Activite.pei_extra),
+        activites().selectinload(Activite.taches),
+    )
+
+
+def programmes_pta(annee_id):
+    """Programmes d'une année (ordre des numéros), hiérarchie préchargée.
+    Chargés une seule fois par page affichée : les calculs par direction et par service
+    (tableau de bord, exports multi-feuilles…) réutilisent le même chargement.
+    Le réemploi est annulé à chaque enregistrement en base (voir _vider_cache_pta)."""
+    from flask import g, has_request_context
+    from models import Programme
+    if not has_request_context():
+        return requete_pta(annee_id).order_by(Programme.numero).all()
+    cache = g.setdefault('_cache_pta', {})
+    if annee_id not in cache:
+        cache[annee_id] = requete_pta(annee_id).order_by(Programme.numero).all()
+    return list(cache[annee_id])
+
+
+def _vider_cache_pta(*_args):
+    from flask import g, has_app_context
+    if has_app_context():
+        g.pop('_cache_pta', None)
+
+
+def _brancher_cache_pta():
+    """Vide le cache du PTA après chaque validation ou annulation de transaction."""
+    from sqlalchemy import event
+    from sqlalchemy.orm import Session
+    if not event.contains(Session, 'after_commit', _vider_cache_pta):
+        event.listen(Session, 'after_commit', _vider_cache_pta)
+        event.listen(Session, 'after_rollback', _vider_cache_pta)
+
+
+_brancher_cache_pta()
+
+
 def _renorm(items, src='original_poids', dst='new_poids'):
     """Recalcule les poids pour que leur somme soit exactement 100.
     Le dernier élément absorbe les micro-erreurs d'arrondi.

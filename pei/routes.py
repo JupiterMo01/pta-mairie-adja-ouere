@@ -2,7 +2,7 @@ from flask import render_template, abort, request, redirect, url_for, flash, jso
 from flask_login import login_required, current_user
 from models import (db, Activite, Programme, PaiActivite, PaiProgramme, PaiProjet,
                     PeiActivite)
-from utils import get_annee, log_audit
+from utils import get_annee, log_audit, programmes_pta
 from . import pei_bp
 
 
@@ -41,13 +41,11 @@ def _wavg(pairs):
 
 
 def _build_pei_data(annee):
-    programmes = (Programme.query
-                  .filter_by(annee_id=annee.id)
-                  .order_by(Programme.numero)
-                  .all())
+    programmes = programmes_pta(annee.id)
     data = []
     gl_budget = gl_engage = gl_mandate = gl_paye = 0.0
     prog_num = 0
+    nouveaux = False
 
     for pg in programmes:
         pg_projets = []
@@ -69,10 +67,11 @@ def _build_pei_data(annee):
                 act_num += 1
 
                 # PeiActivite (crée si absent)
-                pei = PeiActivite.query.filter_by(activite_id=act.id).first()
+                pei = act.pei_extra   # préchargé avec le PTA
                 if not pei:
                     pei = PeiActivite(activite_id=act.id)
                     db.session.add(pei)
+                    nouveaux = True
 
                 # Taux physique : saisi manuellement par la direction responsable
                 taux_phys = float(pei.taux_physique or 0.0)
@@ -114,7 +113,7 @@ def _build_pei_data(annee):
                 })
 
             # Projet — agrégation par poids PAI activités
-            pj_extra = PaiProjet.query.filter_by(projet_id=pj.id).first()
+            pj_extra = pj.pai_extra_proj
             pj_poids = int(pj_extra.poids_pai or 0) if pj_extra else 0
 
             pj_budget  = sum(ad['budget']  for ad in act_datas)
@@ -146,7 +145,7 @@ def _build_pei_data(annee):
             continue
 
         prog_num += 1
-        pg_extra = PaiProgramme.query.filter_by(programme_id=pg.id).first()
+        pg_extra = pg.pai_extra_prog
         pg_poids = int(pg_extra.poids_pai or 0) if pg_extra else 0
 
         pg_budget  = sum(pjd['budget']  for pjd in pg_projets)
@@ -174,7 +173,10 @@ def _build_pei_data(annee):
             'taux_pay':   pg_taux_pay,
         })
 
-    db.session.commit()
+    # N'enregistrer que si des lignes ont été créées : un enregistrement à vide invaliderait
+    # toutes les données chargées et forcerait leur relecture une par une.
+    if nouveaux:
+        db.session.commit()
 
     gl_taux_phys = _wavg([(pd['taux_phys'], pd['poids']) for pd in data]) if data else 0.0
     gl_taux_eng  = _wavg([(pd['taux_eng'],  pd['poids']) for pd in data]) if data else 0.0

@@ -20,7 +20,7 @@ from models import db, Programme, Tache, SuiviTache, Annee, Direction, Service
 from svcpta.routes import _compute_pta_service
 from dirpta.routes import _compute_pta_direction
 from suivi import suivi_bp
-from utils import log_audit, get_annee, MOIS_COURT, MOIS_ORDRE, TRIMESTRE_RANGE, _renorm
+from utils import log_audit, get_annee, MOIS_COURT, MOIS_ORDRE, TRIMESTRE_RANGE, _renorm, programmes_pta
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -36,8 +36,7 @@ def _compute_pta_global(annee):
     Retourne toutes les tâches du PTA (aucun filtre service/direction).
     Même structure de données que _compute_pta_service / _compute_pta_direction.
     """
-    programmes = Programme.query.filter_by(annee_id=annee.id)\
-                                .order_by(Programme.numero).all()
+    programmes = programmes_pta(annee.id)
     result_progs = []
 
     for prog in programmes:

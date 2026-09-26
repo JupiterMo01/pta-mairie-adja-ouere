@@ -29,6 +29,13 @@ def create_app(test_config=None):
             Archive.__table__.create(db.engine, checkfirst=True)
         except Exception:
             pass
+        # Index déclarés dans models.py (index=True) : créés sur une base existante s'ils manquent
+        for table in db.metadata.sorted_tables:
+            for index in table.indexes:
+                try:
+                    index.create(db.engine, checkfirst=True)
+                except Exception:
+                    pass
 
     @app.before_request
     def garde_maintenance():

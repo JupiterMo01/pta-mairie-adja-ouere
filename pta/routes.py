@@ -3,10 +3,10 @@ import json
 from functools import wraps
 from flask import render_template, redirect, url_for, flash, request, session, send_file, jsonify
 from flask_login import login_required, current_user
-from sqlalchemy.orm import subqueryload
+from sqlalchemy.orm import subqueryload, selectinload
 from models import db, Programme, Projet, Activite, Tache, Direction, Service, Annee, MODES_EXECUTION, BiblioActivite, BiblioTache, StructureExterne, PTABackup
 from pta import pta_bp
-from utils import get_annee
+from utils import get_annee, requete_pta, programmes_pta
 
 
 def editeur_only(f):
@@ -77,7 +77,7 @@ def global_pta():
     mon_service_id = current_user.service_id if current_user.role == 'service' else None
     ma_direction_id = current_user.direction_id if current_user.role == 'direction' else None
 
-    biblio_activites = BiblioActivite.query.order_by(BiblioActivite.nom).all()
+    biblio_activites = BiblioActivite.query.options(selectinload(BiblioActivite.taches)).order_by(BiblioActivite.nom).all()
     structures_externes = StructureExterne.query.order_by(StructureExterne.nom).all()
     return render_template('pta/global.html',
                            programmes=programmes, annee=annee, annees=annees,
@@ -933,14 +933,15 @@ def activite_modal_edit(act_id):
     if annee:
         programmes = Programme.query.filter_by(annee_id=annee.id)\
                                     .order_by(Programme.numero)\
-                                    .options(subqueryload(Programme.projets)).all()
+                                    .options(subqueryload(Programme.projets)
+                                             .selectinload(Projet.activites)).all()
     return render_template('pta/_modal_edit_activite.html',
         act=act,
         projet=act.projet,
         services=Service.query.order_by(Service.nom).all(),
         directions=Direction.query.order_by(Direction.nom).all(),
         structures_externes=StructureExterne.query.order_by(StructureExterne.nom).all(),
-        biblio_activites=BiblioActivite.query.order_by(BiblioActivite.nom).all(),
+        biblio_activites=BiblioActivite.query.options(selectinload(BiblioActivite.taches)).order_by(BiblioActivite.nom).all(),
         programmes=programmes,
         modes_execution=MODES_EXECUTION)
 
@@ -956,7 +957,8 @@ def projet_modal_add_activite(proj_id):
     if annee:
         programmes = Programme.query.filter_by(annee_id=annee.id)\
                                     .order_by(Programme.numero)\
-                                    .options(subqueryload(Programme.projets)).all()
+                                    .options(subqueryload(Programme.projets)
+                                             .selectinload(Projet.activites)).all()
     return render_template('pta/_modal_add_activite.html',
         projet=projet,
         act=None,
@@ -964,7 +966,7 @@ def projet_modal_add_activite(proj_id):
         services=Service.query.order_by(Service.nom).all(),
         directions=Direction.query.order_by(Direction.nom).all(),
         structures_externes=StructureExterne.query.order_by(StructureExterne.nom).all(),
-        biblio_activites=BiblioActivite.query.order_by(BiblioActivite.nom).all(),
+        biblio_activites=BiblioActivite.query.options(selectinload(BiblioActivite.taches)).order_by(BiblioActivite.nom).all(),
         programmes=programmes,
         modes_execution=MODES_EXECUTION)
 
@@ -1003,7 +1005,7 @@ def print_view():
         return redirect(url_for('pta.global_pta'))
     service_filtre = current_user.service_id if current_user.role == 'service' else None
     nature_filtre  = request.args.get('nature', '').strip()   # 'inv', 'fct' ou ''
-    programmes = Programme.query.filter_by(annee_id=annee.id).order_by(Programme.numero).all()
+    programmes = programmes_pta(annee.id)
     nb_services = Service.query.count()
     nb_directions = Direction.query.count()
     return render_template('pta/print_view.html',
@@ -1193,7 +1195,7 @@ def export_excel():
     ws.merge_cells(f'O{start_row}:O{start_row+2}')    # Observations
 
     row = start_row + 3
-    programmes = Programme.query.filter_by(annee_id=annee.id).order_by(Programme.numero).all()
+    programmes = programmes_pta(annee.id)
     _nb_svc = Service.query.count()
     _nb_dir = Direction.query.count()
 
@@ -1442,7 +1444,7 @@ def _creer_backup_pta(annee):
         }
 
     from datetime import datetime, timezone
-    programmes = Programme.query.filter_by(annee_id=annee.id).order_by(Programme.numero).all()
+    programmes = requete_pta(annee.id).order_by(Programme.numero).all()
     nb_acts = sum(len(pj.activites) for p in programmes for pj in p.projets)
     nb_taches = sum(len(a.taches) for p in programmes for pj in p.projets for a in pj.activites)
 
@@ -1492,7 +1494,7 @@ def pta_reset():
         flash('Aucune année active.', 'danger')
         return redirect(url_for('pta.global_pta'))
 
-    programmes = Programme.query.filter_by(annee_id=annee.id).order_by(Programme.numero).all()
+    programmes = requete_pta(annee.id).order_by(Programme.numero).all()
     nb_progs = len(programmes)
     nb_acts = sum(len(pj.activites) for p in programmes for pj in p.projets)
     nb_taches = sum(len(a.taches) for p in programmes for pj in p.projets for a in pj.activites)

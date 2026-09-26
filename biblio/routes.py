@@ -1,6 +1,7 @@
 ﻿from flask import render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
 from functools import wraps
+from sqlalchemy.orm import selectinload
 from models import (db, BiblioActivite, BiblioTache, Direction, Service,
                     MODES_EXECUTION, StructureExterne, Annee, Programme, Projet, Activite, Tache)
 from biblio import biblio_bp
@@ -144,7 +145,7 @@ def _tache_from_form(t):
 @biblio_bp.route('/')
 @admin_ou_lecteur
 def index():
-    activites = BiblioActivite.query.order_by(BiblioActivite.nom).all()
+    activites = BiblioActivite.query.options(selectinload(BiblioActivite.taches)).order_by(BiblioActivite.nom).all()
     directions = Direction.query.order_by(Direction.nom).all()
     services = Service.query.order_by(Service.nom).all()
     structures_externes = StructureExterne.query.order_by(StructureExterne.nom).all()
@@ -207,7 +208,7 @@ def activite_modal_import_pta(act_id):
 @admin_editeur_only
 def activite_modal_import_biblio(act_id):
     a = db.get_or_404(BiblioActivite, act_id)
-    activites = BiblioActivite.query.order_by(BiblioActivite.nom).all()
+    activites = BiblioActivite.query.options(selectinload(BiblioActivite.taches)).order_by(BiblioActivite.nom).all()
     return render_template('biblio/_modal_import_biblio.html', activite=a, activites=activites)
 
 
